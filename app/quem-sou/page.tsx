@@ -84,7 +84,7 @@ export default function Pagina() {
 <h2 className="sb-t">Fora do <em>consultório</em></h2>
 <p className="sb-p">Gosto de ter um bom livro em mãos e um café recém-passado. Sou apaixonada por papelaria: canetas coloridas, agendas e adesivos. É na meditação e na contemplação que recarrego minhas energias, e meus programas preferidos são passear em livrarias e descobrir novos lugares para tomar café.</p>
 <div className="gostos">
-<span className="gosto">Livros</span><span className="gosto">Café</span><span className="gosto">Papelaria</span><span className="gosto">Meditação</span><span className="gosto">Livrarias</span><span className="gosto">Cafés novos</span>
+<span className="gosto">Livros</span><span className="gosto">Papelaria</span><span className="gosto">Meditação</span><span className="gosto">Livrarias</span><span className="gosto">Cafés novos</span>
 </div>
 </div>
 </div>
