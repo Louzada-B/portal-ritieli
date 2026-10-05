@@ -34,8 +34,8 @@ export const menu = [
 ];
 
 export const hero = {
-  titulo: "Você não precisa dar conta de tudo",
-  destaque: "sozinha.",
+  titulo: "Vamos construir juntas uma vida",
+  destaque: "com mais sentido.",
   texto:
     "Um espaço de acolhimento para cuidar da ansiedade e da depressão, com a Terapia Cognitivo-Comportamental.",
   selos: ["Conversa de 15 minutos, sem compromisso", "Online para todo o Brasil"],

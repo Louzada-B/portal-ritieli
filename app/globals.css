@@ -77,7 +77,8 @@ main { flex: 1 0 auto; }
 .nav-desk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; font-size: 15px; font-weight: 500; }
 .nav-desk a:not(.btn) { text-decoration: none; color: var(--texto-2); }
 .nav-desk a.atual { color: var(--vinho); font-weight: 700; text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
-.nav-mob { display: none; align-items: center; gap: 8px; }
+.nav-mob { display: none; align-items: center; gap: 8px; flex-shrink: 0; }
+.marca-nome { min-width: 0; }
 .btn-menu { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--linha); background: #FFFFFF; color: var(--vinho); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 
 /* Menu do celular */
@@ -356,6 +357,15 @@ main { flex: 1 0 auto; }
   .wa-flut { right: 16px; bottom: 16px; width: 58px; height: 58px; padding: 0; justify-content: center; }
   .wa-rot { display: none; }
   .nao-encontrada { padding: 64px 20px; }
+}
+
+/* ===== Celulares estreitos ===== */
+@media (max-width: 380px) {
+  .topo-in { padding: 10px 12px; }
+  .marca-nome .assina { font-size: 30px; }
+  .marca-nome .crp { font-size: 9px; letter-spacing: 0.06em; }
+  .hero h1 { font-size: 38px; }
+  .hero h1 em { font-size: 43px; }
 }
 
 /* ===== Menos movimento ===== */

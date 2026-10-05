@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     "Terapia Cognitivo-Comportamental online para mulheres, para cuidar da ansiedade e da depressão. Conversa inicial gratuita de 15 minutos.",
   openGraph: {
     title: "Ritieli Hermes · Psicóloga",
-    description: "Você não precisa dar conta de tudo sozinha. Terapia online para todo o Brasil.",
+    description: "Vamos construir juntas uma vida com mais sentido. Terapia online para todo o Brasil.",
     locale: "pt_BR",
     type: "website",
     images: ["/ritieli.webp"],
