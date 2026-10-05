@@ -84,8 +84,8 @@ export const triangulo = {
 export const apresentacao = {
   titulo: "Oi, eu sou a Ritieli.",
   paragrafos: [
-    "Escolhi a psicologia porque sempre me tocou aquilo que as pessoas sentem e nem sempre conseguem dizer. Na formação, encontrei na Terapia Cognitivo-Comportamental um caminho que une acolhimento e ferramentas práticas para a vida real, e foi ali que me reconheci como terapeuta.",
-    "Hoje, dedico meu trabalho a mulheres que carregam muito: cobranças, cansaço, ansiedade, tristeza. Nas nossas sessões, você encontra um espaço sem pressa e sem julgamento, onde vamos no seu ritmo, entendendo seus padrões e construindo, juntas, formas mais leves de viver.",
+    "Sou psicóloga clínica e trabalho com a Terapia Cognitivo-Comportamental, uma abordagem com forte respaldo científico que ajuda a entender o que você sente e a construir formas práticas de lidar com a ansiedade, a tristeza e os desafios do dia a dia.",
+    "Escolhi dedicar meu trabalho às mulheres porque acredito na força, na sensibilidade e no potencial de transformação que existe em cada uma. E acredito que uma relação construída com confiança e acolhimento abre caminho para uma vida com mais leveza, autoestima e sentido.",
   ],
   selos: ["CRP 07/46564", "Pós-graduanda em Terapia Cognitivo-Comportamental", "Atendimento online"],
 };
