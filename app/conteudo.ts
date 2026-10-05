@@ -134,7 +134,7 @@ export const informacoes = [
 export const infantil = {
   titulo: "Também cuido de crianças",
   destaque: "e adolescentes.",
-  texto: "Atendimento presencial em Porto Alegre, com a família junto no processo.",
+  texto: "Sessões presenciais em Porto Alegre e encontros online com a família.",
   botao: "Conhecer o atendimento",
 };
 
