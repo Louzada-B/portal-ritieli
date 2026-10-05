@@ -18,13 +18,13 @@ export const metadata: Metadata = {
     siteName: "Ritieli Hermes · Psicóloga",
     locale: "pt_BR",
     type: "website",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Ritieli Hermes, psicóloga, CRP 07/46564" }],
+    images: [{ url: "/previa.jpg", width: 1200, height: 630, alt: "Ritieli Hermes, psicóloga, CRP 07/46564" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Ritieli Hermes · Psicóloga",
     description: "Vamos construir juntas uma vida com mais sentido. Terapia online para todo o Brasil.",
-    images: ["/og.jpg"],
+    images: ["/previa.jpg"],
   },
 };
 
@@ -39,7 +39,7 @@ const dadosEstruturados = {
   name: "Ritieli Hermes · Psicóloga",
   description: descricao,
   url: siteUrl,
-  image: `${siteUrl}/og.jpg`,
+  image: `${siteUrl}/previa.jpg`,
   telephone: "+55 51 99448-4669",
   email: contato.email,
   medicalSpecialty: "Psychiatric",
