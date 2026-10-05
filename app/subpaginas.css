@@ -169,3 +169,55 @@
 .sub .rot-sobre{font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#B0475D}
 .sub{display:flex;flex-direction:column}
 @media (max-width:760px){.sub .h1[style]{font-size:40px!important}.sub .h1 em[style]{font-size:46px!important}}
+
+/* Quem sou */
+.sub .sb-hero{padding-top:64px;padding-bottom:72px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:64px;align-items:center}
+.sub .sb-foto{position:relative;max-width:440px;justify-self:center;width:100%}
+.sub .sb-foto img{position:relative;display:block;width:100%;aspect-ratio:4/5;object-fit:cover;object-position:50% 10%;border-radius:220px 220px 32px 32px;background:#EAD9DC}
+.sub .sb-foto .moldura{position:absolute;inset:24px -24px -24px 24px;border-radius:220px 220px 32px 32px;border:1.5px solid #C98C99}
+.sub .sb-sec{padding-top:96px;padding-bottom:0}
+.sub .sb-dois{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:start}
+.sub .sb-t{margin:0 0 20px;font-weight:700;font-size:44px;line-height:1.08;letter-spacing:-0.02em;color:#7A2335}
+.sub .sb-t em{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:52px;letter-spacing:0;color:#B0475D}
+.sub .sb-p{margin:0 0 1em;font-size:18px;line-height:1.75;color:#5A3A41}
+.sub .citacao-sb{margin:0;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:44px;line-height:1.2;color:#7A2335;text-align:center;max-width:900px;margin:0 auto}
+.sub .pilares{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.sub .pilar{background:#FFFFFF;border-radius:28px;padding:32px;display:flex;flex-direction:column;gap:12px}
+.sub .pilar .n{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:48px;line-height:1;color:#E39AAB}
+.sub .pilar h3{margin:0;font-weight:700;font-size:22px;color:#3A1F25}
+.sub .pilar p{margin:0;color:#5A3A41;font-size:16px;line-height:1.65}
+.sub .linha{list-style:none;margin:0;padding:0;border-left:2px solid #E2CCD0;display:flex;flex-direction:column;gap:28px}
+.sub .linha li{position:relative;padding-left:28px}
+.sub .linha li::before{content:"";position:absolute;left:-8px;top:6px;width:14px;height:14px;border-radius:50%;background:#7A2335;box-shadow:0 0 0 4px #F8F3F0}
+.sub .linha .q{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#B0475D}
+.sub .linha .o{font-weight:700;font-size:19px;color:#3A1F25;margin-top:2px}
+.sub .linha .d{font-size:15px;color:#6B5A5E}
+.sub .gostos{display:flex;flex-wrap:wrap;gap:10px}
+.sub .gosto{background:#FFFFFF;border:1px solid #EAD9DC;border-radius:999px;padding:10px 18px;font-weight:600;font-size:15px;color:#5A3A41}
+.sub .sb-hist{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
+.sub .sb-hist-l{position:sticky;top:120px;display:flex;flex-direction:column;gap:28px}
+.sub .sb-mapa{margin:0;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:30px;line-height:1.3;color:#B0475D;border-left:3px solid #F2C9D1;padding-left:22px}
+.sub .sb-mais{animation:sbIn .6s ease both}
+@keyframes sbIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sub .sb-ler{font:inherit;font-weight:700;font-size:16px;color:#7A2335;background:#FFFFFF;border:1.5px solid #E2CCD0;border-radius:999px;padding:12px 22px;min-height:48px;cursor:pointer;display:inline-flex;gap:10px;align-items:center;margin-top:4px}
+.sub .sb-ler:hover{border-color:#C98C99}
+.sub .sb-ler:focus-visible{outline:2px solid #7A2335;outline-offset:3px}
+@media (max-width:1100px) and (min-width:761px){.sub .pilares{grid-template-columns:minmax(0,1fr)}.sub .sb-hist{grid-template-columns:minmax(0,1fr);gap:20px}.sub .sb-hist-l{position:static}}
+@media (max-width:760px){
+.sub .sb-hero{grid-template-columns:minmax(0,1fr);gap:36px;padding-top:28px;padding-bottom:48px}
+.sub .sb-foto{max-width:300px}
+.sub .sb-foto .moldura{inset:12px -8px -12px 12px}
+.sub .sb-sec{padding-top:64px}
+.sub .sb-dois{grid-template-columns:minmax(0,1fr);gap:32px}
+.sub .sb-hist{grid-template-columns:minmax(0,1fr);gap:20px}
+.sub .sb-hist-l{position:static;gap:18px}
+.sub .sb-mapa{font-size:24px;padding-left:16px}
+.sub .sb-ler{width:100%;justify-content:center}
+.sub .sb-t{font-size:30px}
+.sub .sb-t em{font-size:36px}
+.sub .sb-p{font-size:16px}
+.sub .citacao-sb{font-size:30px}
+.sub .pilares{grid-template-columns:minmax(0,1fr);gap:14px}
+.sub .pilar{padding:24px 22px;border-radius:22px}
+}
+.sub .sb-foto img{height:auto}
