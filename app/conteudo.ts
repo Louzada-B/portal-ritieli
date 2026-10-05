@@ -16,7 +16,7 @@ export const linkWhatsApp = (mensagem?: string) =>
 export const rotas = {
   inicio: "/",
   quemSou: "/quem-sou",
-  infantil: "/infantil",
+  infantil: "/criancas-e-adolescentes",
   comoFunciona: "/#ficha",
   escritos: "/escritos",
   duvidas: "/duvidas",
@@ -27,7 +27,7 @@ export const rotas = {
 export const menu = [
   { rotulo: "Início", href: rotas.inicio },
   { rotulo: "Quem sou", href: rotas.quemSou },
-  { rotulo: "Infantil", href: rotas.infantil },
+  { rotulo: "Crianças e adolescentes", href: rotas.infantil },
   { rotulo: "Como funciona", href: rotas.comoFunciona },
   { rotulo: "Escritos", href: rotas.escritos },
   { rotulo: "Dúvidas", href: rotas.duvidas },
@@ -132,10 +132,10 @@ export const informacoes = [
 ] as const;
 
 export const infantil = {
-  titulo: "Também cuido de",
-  destaque: "crianças.",
+  titulo: "Também cuido de crianças",
+  destaque: "e adolescentes.",
   texto: "Atendimento presencial em Porto Alegre, com a família junto no processo.",
-  botao: "Conhecer o atendimento infantil",
+  botao: "Conhecer o atendimento",
 };
 
 export const escritos = {
