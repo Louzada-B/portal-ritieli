@@ -24,7 +24,7 @@
 .sub .dest-txt{padding:48px;display:flex;flex-direction:column;gap:16px;justify-content:center}
 .sub .dest-t{margin:0;font-weight:700;font-size:38px;line-height:1.12;letter-spacing:-0.02em;color:#7A2335}
 .sub .cat{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#B0475D}
-.sub .meta{font-size:14px;color:#8A7A7E}
+.sub .meta{font-size:14px;color:#74656A}
 .sub .grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
 .sub .card{background:#FFFFFF;border-radius:28px;overflow:hidden;text-decoration:none;color:#3A1F25;display:flex;flex-direction:column;transition:transform .5s,box-shadow .5s;min-width:0}
 .sub .card:hover{transform:translateY(-4px);box-shadow:0 24px 50px -36px rgba(58,31,37,.6);color:#3A1F25}
@@ -183,7 +183,7 @@
 .sub .citacao-sb{margin:0;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:44px;line-height:1.2;color:#7A2335;text-align:center;max-width:900px;margin:0 auto}
 .sub .pilares{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
 .sub .pilar{background:#FFFFFF;border-radius:28px;padding:32px;display:flex;flex-direction:column;gap:12px}
-.sub .pilar .n{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:48px;line-height:1;color:#E39AAB}
+.sub .pilar .n{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:48px;line-height:1;color:#B0475D}
 .sub .pilar h3{margin:0;font-weight:700;font-size:22px;color:#3A1F25}
 .sub .pilar p{margin:0;color:#5A3A41;font-size:16px;line-height:1.65}
 .sub .linha{list-style:none;margin:0;padding:0;border-left:2px solid #E2CCD0;display:flex;flex-direction:column;gap:28px}

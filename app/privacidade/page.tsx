@@ -17,7 +17,7 @@ export default function Pagina() {
 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: '1 1 520px', minWidth: '0' }}>
 <h1 className="h1">Política de <em>privacidade.</em></h1>
 <p className="intro" style={{ maxWidth: '640px' }}>Cuidar de você também é cuidar das suas informações. Aqui explico, de forma simples, quais dados este site recebe, por que e como eles são protegidos.</p>
-<span style={{ fontSize: '14px', color: '#8A7A7E' }}>Atualizada em 4 de outubro de 2026</span>
+<span style={{ fontSize: '14px', color: '#74656A' }}>Atualizada em 4 de outubro de 2026</span>
 </div>
 </div>
 </section>

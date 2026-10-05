@@ -1,21 +1,30 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Revela from "./componentes/Revela";
+import { contato } from "./conteudo";
+import { siteUrl } from "./site";
 
-const site = process.env.NEXT_PUBLIC_SITE_URL
-  ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+const descricao =
+  "Terapia Cognitivo-Comportamental online para mulheres, para cuidar da ansiedade e da depressão. Atendimento presencial de crianças e adolescentes em Porto Alegre. Conversa inicial gratuita de 15 minutos.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(site),
+  metadataBase: new URL(siteUrl),
   title: "Ritieli Hermes · Psicóloga · CRP 07/46564",
-  description:
-    "Terapia Cognitivo-Comportamental online para mulheres, para cuidar da ansiedade e da depressão. Conversa inicial gratuita de 15 minutos.",
+  description: descricao,
+  applicationName: "Ritieli Hermes · Psicóloga",
   openGraph: {
     title: "Ritieli Hermes · Psicóloga",
     description: "Vamos construir juntas uma vida com mais sentido. Terapia online para todo o Brasil.",
+    siteName: "Ritieli Hermes · Psicóloga",
     locale: "pt_BR",
     type: "website",
-    images: ["/ritieli.webp"],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Ritieli Hermes, psicóloga, CRP 07/46564" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ritieli Hermes · Psicóloga",
+    description: "Vamos construir juntas uma vida com mais sentido. Terapia online para todo o Brasil.",
+    images: ["/og.jpg"],
   },
 };
 
@@ -23,17 +32,44 @@ export const viewport: Viewport = {
   themeColor: "#F6E5E7",
 };
 
+// Dados da psicóloga no formato que os buscadores entendem (schema.org).
+const dadosEstruturados = {
+  "@context": "https://schema.org",
+  "@type": ["MedicalBusiness", "ProfessionalService"],
+  name: "Ritieli Hermes · Psicóloga",
+  description: descricao,
+  url: siteUrl,
+  image: `${siteUrl}/og.jpg`,
+  telephone: "+55 51 99448-4669",
+  email: contato.email,
+  medicalSpecialty: "Psychiatric",
+  areaServed: { "@type": "Country", name: "Brasil" },
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "R. Santa Flora, 1166",
+    addressLocality: "Porto Alegre",
+    addressRegion: "RS",
+    postalCode: "90830-410",
+    addressCountry: "BR",
+  },
+  sameAs: [`https://instagram.com/${contato.instagram}`],
+  founder: {
+    "@type": "Person",
+    name: "Ritieli Hermes",
+    jobTitle: "Psicóloga clínica",
+    identifier: contato.crp,
+    knowsAbout: ["Terapia Cognitivo-Comportamental", "Ansiedade", "Depressão", "Psicoterapia infantil"],
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Mrs+Saint+Delafield&display=swap"
-        />
+        <link rel="preload" href="/fontes/manrope-latin-500-normal.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fontes/manrope-latin-700-normal.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fontes/mrs-saint-delafield-latin-400-normal.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(dadosEstruturados) }} />
       </head>
       <body>
         {children}
