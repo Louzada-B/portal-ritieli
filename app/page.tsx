@@ -55,7 +55,7 @@ export default function Inicio() {
                 <Image src={foto} alt="Ritieli Hermes sorrindo, de blazer vermelho" priority sizes="(max-width: 760px) 330px, 430px" className="hero-img" />
                 <div className="hero-tag">
                   <span className="rotulo">Abordagem</span>
-                  <span className="hero-tag-v">Terapia Cognitivo-Comportamental</span>
+                  <span className="hero-tag-v">Terapia<br />Cognitivo-Comportamental</span>
                 </div>
               </div>
             </div>
@@ -76,7 +76,7 @@ export default function Inicio() {
             <p className="destaque-frase">
               Na TCC, chamamos isso de <span className="marca">pensamentos automáticos</span>. Eles parecem verdades, mas podem ser olhados de perto, questionados e, aos poucos, <em>transformados.</em>
             </p>
-            <p className="destaque-nota">E você não precisa estar &quot;muito mal&quot; para começar.</p>
+            <p className="destaque-nota">Você não precisa chegar ao seu limite para buscar ajuda.</p>
           </div>
         </section>
 

@@ -42,7 +42,6 @@ export default function Pagina() {
 <div className="sb-hist-r">
 <p className="sb-p">Acredito que ninguém escolhe ser psicólogo “do nada”. Normalmente existe um chamado, algo que conversa com a própria história. O meu começou com uma curiosidade imensa sobre o comportamento humano: entender por que sentimos o que sentimos e o que faz cada um de nós ser tão único.</p>
 <p className="sb-p">Junto com ela, sempre carreguei uma empatia que às vezes chegava a doer. Desde criança eu conseguia nomear emoções que, para muitas pessoas, pareciam inacessíveis, e gostava de ajudá-las a encontrar o que antes era desconhecido. Também sempre enxerguei potencial onde o próprio outro não conseguia, e gostei de acreditar nas pessoas até que elas mesmas acreditassem.</p>
-<p className="sb-p">Entender que a Psicologia era um chamado foi como pegar o mapa nas mãos. E estou amando essa trajetória.</p>
 </div>
 </div>
 </section>
@@ -92,7 +91,7 @@ export default function Pagina() {
 
 <section className="wrap" style={{ paddingTop: '96px', paddingBottom: '96px' }}>
 <div className="faixa">
-<h2 className="faixa-t">Que tal nos <em>conhecermos?</em></h2>
+<h2 className="faixa-t">Vamos conversar?</h2>
 <a href={rotas.agendar} className="cta">Agendar conversa inicial gratuita <span aria-hidden="true">→</span></a>
 </div>
 </section>
