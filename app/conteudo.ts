@@ -97,7 +97,7 @@ export const etapas = [
     sub: "Leva 2 minutos",
     texto:
       "Na agenda aqui do site, você escolhe o dia e o horário que funcionam para você e deixa seu nome e contato. Eu confirmo o horário com você pelo WhatsApp.",
-    itens: ["Agenda do site para a conversa inicial", "Confirmação pelo WhatsApp", "Link da chamada enviado por e-mail"],
+    itens: ["Agenda do site para a conversa inicial", "Confirmação pelo WhatsApp", "Link da chamada enviado pelo WhatsApp"],
   },
   {
     n: "02",
