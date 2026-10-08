@@ -5,6 +5,7 @@ import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { criarEvento, apagarEvento } from "../../../lib/google";
 import { PRAZO_HORAS, type Pedido } from "../../../lib/dados";
 import { fmtQuando } from "../../../lib/agenda";
+import { conflitoEm } from "../../../lib/conflitos";
 
 export type Resultado = { erro?: string; ok?: string; aviso?: string };
 
@@ -23,6 +24,8 @@ export async function confirmarPedido(id: string, novoInicio?: string): Promise<
   }
   const { data: cfg } = await sb.from("config_agenda").select("duracao_conversa_min").eq("id", 1).single();
   const fim = new Date(inicio.getTime() + (cfg?.duracao_conversa_min ?? 15) * 60 * 1000);
+  const conflito = await conflitoEm(sb, inicio, cfg?.duracao_conversa_min ?? 15, { pedidoId: id });
+  if (conflito) return { erro: `${conflito} Sugira outro horário.` };
 
   // Reserva primeiro; a regra do banco impede dois pedidos no mesmo horário.
   const r = await sb

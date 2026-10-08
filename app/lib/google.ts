@@ -194,3 +194,63 @@ export async function moverOcorrencia(id: string, original: Date, novoInicio: Da
   });
   ocupadosCache = null;
 }
+
+// Horários ocupados na agenda do Google numa janela (sem cache), para conferir conflitos.
+export async function ocupadosEntre(inicio: Date, fim: Date): Promise<Periodo[] | null> {
+  const con = await conexao();
+  if (!con) return [];
+  const at = await acesso(con);
+  const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ timeMin: inicio.toISOString(), timeMax: fim.toISOString(), timeZone: "America/Sao_Paulo", items: [{ id: "primary" }] }),
+    cache: "no-store",
+  });
+  if (!r.ok) return null;
+  const j = await r.json();
+  return ((j.calendars?.primary?.busy ?? []) as { start: string; end: string }[]).map((b) => ({ inicio: new Date(b.start), fim: new Date(b.end) }));
+}
+
+// Evento de uma sessão avulsa. Reaproveita a sala do Meet do paciente, quando há.
+export async function criarEventoUnico(p: { titulo: string; inicio: Date; duracaoMin: number; descricao: string; conferencia?: unknown }) {
+  const fim = new Date(p.inicio.getTime() + p.duracaoMin * 60000);
+  const j = await gcal("events?conferenceDataVersion=1", {
+    method: "POST",
+    body: JSON.stringify({
+      summary: p.titulo,
+      description: p.descricao,
+      start: { dateTime: p.inicio.toISOString(), timeZone: "America/Sao_Paulo" },
+      end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" },
+      ...(p.conferencia ? { conferenceData: p.conferencia } : {}),
+      reminders: { useDefault: true },
+    }),
+  });
+  ocupadosCache = null;
+  return j.id as string;
+}
+
+export async function moverEvento(id: string, inicio: Date, duracaoMin: number) {
+  const fim = new Date(inicio.getTime() + duracaoMin * 60000);
+  await gcal(`events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ start: { dateTime: inicio.toISOString(), timeZone: "America/Sao_Paulo" }, end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" } }),
+  });
+  ocupadosCache = null;
+}
+
+// Cancela (ou devolve) uma única ocorrência da série semanal.
+export async function situacaoOcorrencia(id: string, original: Date, cancelar: boolean) {
+  const lista = await gcal(`events/${encodeURIComponent(id)}/instances?originalStart=${encodeURIComponent(original.toISOString())}&showDeleted=true`);
+  const inst = (lista.items || [])[0];
+  if (!inst) throw new Error("sem_ocorrencia");
+  await gcal(`events/${encodeURIComponent(inst.id)}`, { method: "PATCH", body: JSON.stringify({ status: cancelar ? "cancelled" : "confirmed" }) });
+  ocupadosCache = null;
+}
+
+// Sala do Meet de um evento, para reaproveitar em outro.
+export async function salaDoEvento(id: string) {
+  const ev = await obterEvento(id).catch(() => null);
+  if (!ev?.conferenceData?.conferenceId) return undefined;
+  const { createRequest: _c, ...resto } = ev.conferenceData;
+  return resto as unknown;
+}

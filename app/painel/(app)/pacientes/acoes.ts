@@ -8,6 +8,7 @@ import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pa
 import { criarEventoSemanal, apagarEvento, obterEvento, mudarFimSerie } from "../../../lib/google";
 import { local, deLocal } from "../../../lib/agenda";
 import { siteUrl } from "../../../site";
+import { conflitoFixo } from "../../../lib/conflitos";
 
 export type Resultado = { erro?: string; ok?: string; id?: string; link?: string; para?: string; texto?: string; valor?: string };
 
@@ -59,6 +60,10 @@ export async function criarPaciente(d: DadosNovo): Promise<Resultado> {
   const per = validarPeriodo(d);
   if ("erro" in per) return { erro: per.erro };
   const sb = await supabaseServidor();
+  if (comum.fixoDia != null && comum.fixoHora) {
+    const c = await conflitoFixo(sb, { fixo_dia: comum.fixoDia, fixo_hora: comum.fixoHora, desde: per.desde, fim: per.fim });
+    if (c) return { erro: c };
+  }
 
   const base = {
     desde: per.desde,
@@ -123,6 +128,11 @@ export async function atualizarPaciente(id: string, d: { nome: string; idade: st
   const sb = await supabaseServidor();
   const { data: atual } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!atual) return { erro: "Paciente não encontrado." };
+  const mudouAgenda = atual.fixo_dia !== comum.fixoDia || (atual.fixo_hora || "").slice(0, 5) !== (comum.fixoHora || "") || atual.desde !== per.desde || (atual.fim || null) !== per.fim;
+  if (atual.status === "ativo" && mudouAgenda && comum.fixoDia != null && comum.fixoHora) {
+    const c = await conflitoFixo(sb, { id, fixo_dia: comum.fixoDia, fixo_hora: comum.fixoHora, desde: per.desde, fim: per.fim, antigo: { dia: atual.fixo_dia, hora: atual.fixo_hora } });
+    if (c) return { erro: c };
+  }
   const { data: novo, error } = await sb
     .from("pacientes")
     .update({
@@ -302,7 +312,10 @@ export async function encerrarPaciente(id: string, ultima: string): Promise<Resu
   const { error } = await sb.from("pacientes").update({ status: "encerrado", fim: ultima, atualizado_em: new Date().toISOString() }).eq("id", id);
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
   const [a, m, d] = ultima.split("-").map(Number);
-  await sb.from("sessoes").delete().eq("paciente_id", id).eq("status", "agendada").gte("inicio", deLocal(a, m - 1, d + 1).toISOString());
+  const depois = deLocal(a, m - 1, d + 1).toISOString();
+  const { data: saem } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", id).eq("status", "agendada").gte("inicio", depois).not("google_evento_id", "is", null);
+  await sb.from("sessoes").delete().eq("paciente_id", id).eq("status", "agendada").gte("inicio", depois);
+  for (const x of saem ?? []) await apagarEvento(x.google_evento_id as string).catch(() => {});
   let aviso = "";
   if (p.google_evento_id) await mudarFimSerie(p.google_evento_id, ultima).catch(() => { aviso = " A agenda do Google não respondeu: confira a sessão semanal por lá."; });
   revalidatePath("/painel/pacientes");
@@ -312,6 +325,12 @@ export async function encerrarPaciente(id: string, ultima: string): Promise<Resu
 
 export async function reativarPaciente(id: string): Promise<Resultado> {
   const sb = await supabaseServidor();
+  const { data: antes } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
+  if (!antes) return { erro: "Paciente não encontrado." };
+  if (antes.fixo_dia != null && antes.fixo_hora) {
+    const c = await conflitoFixo(sb, { id, fixo_dia: antes.fixo_dia, fixo_hora: antes.fixo_hora.slice(0, 5), desde: hojeISO() > antes.desde ? hojeISO() : antes.desde, fim: null });
+    if (c) return { erro: `${c} Mude o horário fixo antes de reativar.` };
+  }
   const { data: p } = await sb.from("pacientes").update({ status: "ativo", fim: null, retomado_em: hojeISO(), atualizado_em: new Date().toISOString() }).eq("id", id).select("*").single<Paciente>();
   if (!p) return { erro: "Não deu para salvar. Tente de novo." };
   revalidatePath("/painel/pacientes");
@@ -333,6 +352,8 @@ export async function excluirPaciente(id: string, confirmacao: string): Promise<
   if (!p) return { erro: "Paciente não encontrado." };
   if (confirmacao.trim().toLowerCase() !== p.nome.trim().toLowerCase()) return { erro: "Escreva o nome completo, igual ao cadastro, para confirmar." };
   if (p.google_evento_id) await apagarEvento(p.google_evento_id).catch(() => {});
+  const { data: avulsas } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", id).not("google_evento_id", "is", null);
+  for (const x of avulsas ?? []) await apagarEvento(x.google_evento_id as string).catch(() => {});
 
   const { data: links } = await sb.from("paciente_responsaveis").select("responsavel_id").eq("paciente_id", id);
   const ids = (links ?? []).map((l) => l.responsavel_id as string);
