@@ -4,6 +4,11 @@ import { supabaseAdmin } from "./supabase/admin";
 import { siteUrl } from "../site";
 import type { Periodo } from "./agenda";
 
+// Cores dos eventos criados pelo portal na Google Agenda (para a Ritieli reconhecer de longe).
+// Códigos do Google: 3 = Uva (sessões), 4 = Flamingo (conversas iniciais).
+export const COR_SESSAO = "3";
+export const COR_CONVERSA = "4";
+
 // Conexão com o Google Agenda da Ritieli: horários ocupados e eventos com Meet.
 // A autorização fica no banco criptografada com a CHAVE_CRIPTO.
 export { cifrar, decifrar };
@@ -106,6 +111,7 @@ export async function criarEvento(p: { id: string; titulo: string; inicio: Date;
       end: { dateTime: p.fim.toISOString(), timeZone: "America/Sao_Paulo" },
       conferenceData: { createRequest: { requestId: p.id, conferenceSolutionKey: { type: "hangoutsMeet" } } },
       reminders: { useDefault: true },
+      colorId: COR_CONVERSA,
     }),
     cache: "no-store",
   });
@@ -166,6 +172,7 @@ export async function criarEventoSemanal(p: { chave: string; titulo: string; ini
       recurrence: [regraSemanal(p.ate)],
       conferenceData: p.conferencia || { createRequest: { requestId: p.chave, conferenceSolutionKey: { type: "hangoutsMeet" } } },
       reminders: { useDefault: true },
+      colorId: COR_SESSAO,
     }),
   });
   ocupadosCache = null;
@@ -223,6 +230,7 @@ export async function criarEventoUnico(p: { titulo: string; inicio: Date; duraca
       end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" },
       ...(p.conferencia ? { conferenceData: p.conferencia } : {}),
       reminders: { useDefault: true },
+      colorId: COR_SESSAO,
     }),
   });
   ocupadosCache = null;
