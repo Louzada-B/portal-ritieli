@@ -33,6 +33,7 @@ const MSG: Record<string, string> = {
   falta: "Falta registrada. Pela sua política, ela é cobrada como sessão.",
   cancelada: "Cancelamento com antecedência registrado, sem cobrança.",
   pago: "Pagamento registrado. Agora falta o recibo.",
+  despago: "Pagamento desmarcado: a sessão voltou para \"a pagar\".",
   recibo: "Recibo marcado como emitido.",
 };
 
@@ -206,6 +207,10 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
     // Pagar vale antes (antecipado) ou depois da sessão.
     const podePagar = l.status !== "cancelada" && !l.pago;
     const podeEmitir = l.status !== "cancelada" && l.pago && !l.recibo;
+    const podeDespagar = l.status !== "cancelada" && l.pago;
+    const despagar = podeDespagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: false, recibo: false }, l.recibo ? `${MSG.despago} O recibo também foi desmarcado.` : MSG.despago)}>Desmarcar pago</button> : null;
+    // Excluir só a sessão registrada à mão, agendada e sem pagamento (para não sumir com dinheiro recebido).
+    const excluir = l.manual && l.status === "agendada" && !l.pago ? <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); })} aria-label="Excluir sessão registrada">Excluir</button> : null;
     const sessao = ag ? (
       <>
         <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "realizada", pago: l.pago, recibo: l.recibo }, l.pago ? "Sessão marcada como realizada. Ela já estava paga." : MSG.realizada)}>Realizada</button>
@@ -215,12 +220,14 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
       </>
     ) : null;
     return {
-      ag, podePagar, podeEmitir, tem: ag || podePagar || podeEmitir, sessao,
+      ag, podePagar, podeEmitir, tem: ag || podePagar || podeEmitir || podeDespagar || !!excluir, sessao, despagar, excluir,
       nodos: (
         <>
           {sessao}
           {podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}
           {podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>{longo ? "Marcar recibo emitido" : "Marcar emitido"}</button> : null}
+          {despagar}
+          {excluir}
         </>
       ),
     };
@@ -408,8 +415,8 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
                     <td><span className="pac"><b>{curto(l.nome)}</b><small>{tipoTxt(l)}</small></span></td>
                     <td><span className="cel"><span className={ST_CLS[l.status]}>{ST_TXT[l.status]}</span>{a.sessao}</span></td>
                     <td className="v">{valorCel(l)}</td>
-                    <td><span className="cel"><span className={pc}>{pt}</span>{a.podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}</span></td>
-                    <td><span className="cel"><span className={rcc}>{rt}</span>{a.podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>Marcar emitido</button> : null}{l.manual && l.status === "agendada" ? <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); })} aria-label="Excluir sessão registrada">Excluir</button> : null}</span></td>
+                    <td><span className="cel"><span className={pc}>{pt}</span>{a.podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}{a.despagar}</span></td>
+                    <td><span className="cel"><span className={rcc}>{rt}</span>{a.podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>Marcar emitido</button> : null}{a.excluir}</span></td>
                   </tr>
                 );
               })}
@@ -424,7 +431,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
                 <div className="cs" key={l.id}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}><span className="pac"><b>{curto(l.nome)}</b><small>{fmtData(l.inicio)} · {tipoTxt(l)}</small></span><b>{valorCel(l)}</b></div>
                   <div className="cel"><span className={ST_CLS[l.status]}>{ST_TXT[l.status]}</span><span className={pc}>{pt}</span><span className={rcc}>{rt}</span></div>
-                  {a.tem || (l.manual && l.status === "agendada") ? <div className="cel">{a.nodos}{l.manual && l.status === "agendada" ? <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); })}>Excluir</button> : null}</div> : null}
+                  {a.tem ? <div className="cel">{a.nodos}</div> : null}
                 </div>
               );
             })}

@@ -153,7 +153,7 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
     return { ok: `Cancelamento registrado. Ela já estava paga e não há outra sessão em aberto: o pagamento ficou como crédito e paga a próxima sessão que for marcada.${resto}${aviso}`, semDesfazer };
   }
   if (usos.length) semDesfazer = true;
-  return { ok: `${cancelando ? "Cancelamento registrado." : "Salvo."}${textoCreditos(usos, id)}${aviso}`, semDesfazer };
+  return { ok: `Salvo.${textoCreditos(usos, id)}${aviso}`, semDesfazer };
 }
 
 export async function mudarValorSessao(id: string, valor: string): Promise<ResSessao> {
@@ -171,7 +171,7 @@ export async function excluirSessao(id: string): Promise<ResSessao> {
   const { data: s } = await sb.from("sessoes").select("google_evento_id, origem, pago_em, status").eq("id", id).single();
   if (!s || s.origem !== "manual") return { erro: "Só dá para excluir uma sessão registrada à mão." };
   // Excluir não pode sumir com dinheiro recebido.
-  if (s.pago_em) return { erro: s.status === "cancelada" ? "Essa sessão guarda um crédito (pagamento já recebido). Ele é usado sozinho na próxima sessão marcada; por isso ela não pode ser excluída." : "Essa sessão está paga. Se foi marcada como paga por engano, toque em Desmarcar pago antes de excluir. Se o pagamento é de verdade, cancele a sessão: o valor vira crédito." };
+  if (s.pago_em) return { erro: s.status === "cancelada" ? "Essa sessão guarda um crédito (pagamento já recebido). Ele é usado sozinho na próxima sessão marcada; por isso ela não pode ser excluída." : "Essa sessão está paga, então não dá para excluir (o pagamento sumiria). Se a paciente desmarcou, use Cancelou: o valor vira crédito. Se foi marcada como paga por engano, toque em Desmarcar pago e depois exclua." };
   const { error } = await sb.from("sessoes").delete().eq("id", id).eq("origem", "manual");
   if (error) return { erro: "Não deu para excluir. Tente de novo." };
   if (s.google_evento_id) await apagarEvento(s.google_evento_id).catch(() => {});
