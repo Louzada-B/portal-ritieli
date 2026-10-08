@@ -25,6 +25,10 @@ export default async function PaginaSessoes({ searchParams }: { searchParams: Pr
     sb.from("semana_padrao").select("dia_semana, ativo, inicio, fim, pausa_inicio, pausa_fim"),
     sb.from("bloqueios").select("inicio, fim").gte("fim", new Date().toISOString()),
   ]);
+  // Créditos de cada paciente (sessões canceladas já pagas, ainda não usadas).
+  const { data: creds } = await sb.from("sessoes").select("paciente_id").eq("status", "cancelada").not("pago_em", "is", null);
+  const credito = new Map<string, number>();
+  for (const c of creds ?? []) credito.set(c.paciente_id as string, (credito.get(c.paciente_id as string) || 0) + 1);
   const mins = (h: string | null) => (h ? Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5)) : null);
   const expediente = (semana ?? []).map((d) => ({ dia: d.dia_semana as number, ativo: !!d.ativo, ini: mins(d.inicio)!, fim: mins(d.fim)!, pIni: mins(d.pausa_inicio), pFim: mins(d.pausa_fim) }));
 
@@ -58,7 +62,7 @@ export default async function PaginaSessoes({ searchParams }: { searchParams: Pr
         rotulo={rotulo}
         ant={`/painel/sessoes?m=${ant}`}
         prox={`/painel/sessoes?m=${prox}`}
-        pacientes={(pacs ?? []).map((p) => ({ id: p.id as string, nome: p.nome as string, valor: p.valor_centavos as number | null, hora: p.fixo_hora ? String(p.fixo_hora).slice(0, 5) : null }))}
+        pacientes={(pacs ?? []).map((p) => ({ id: p.id as string, nome: p.nome as string, valor: p.valor_centavos as number | null, hora: p.fixo_hora ? String(p.fixo_hora).slice(0, 5) : null, credito: credito.get(p.id as string) || 0 }))}
         hoje={{ ano: hoje.ano, mes: hoje.mes, dia: hoje.dia }}
         mesAtual={{ ano, mes }}
         buscaInicial={(q.busca || "").slice(0, 60)}

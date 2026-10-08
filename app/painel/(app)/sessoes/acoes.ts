@@ -7,7 +7,7 @@ import { moverOcorrencia, criarEventoUnico, moverEvento, apagarEvento, situacaoO
 import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
 import { deLocal, fmtQuando, local } from "../../../lib/agenda";
 import { conflitoEm, mesmoPeriodo, DUR_SESSAO } from "../../../lib/conflitos";
-import { gerarSessoesDoMes, type StatusSessao } from "../../../lib/sessoes";
+import { gerarSessoesDoMes, usarCreditos, type StatusSessao, type UsoCredito } from "../../../lib/sessoes";
 
 export type ResSessao = { erro?: string; ok?: string; semDesfazer?: boolean };
 
@@ -24,6 +24,18 @@ async function eventoAvulso(sb: Sb, p: Paciente, inicio: Date): Promise<string |
     descricao: `Sessão avulsa registrada pelo painel.${p.meet_link ? `\nSala: ${p.meet_link}` : ""}`,
     conferencia: sala,
   }).catch(() => null);
+}
+
+const quando = (iso: string) => fmtQuando(new Date(iso)).replace(" · ", ", às ");
+// Texto curto sobre créditos usados (para a mensagem de retorno).
+function textoCreditos(usos: UsoCredito[], aqui?: string) {
+  if (!usos.length) return "";
+  const outros = usos.filter((u) => u.para !== aqui);
+  const nesta = usos.length - outros.length;
+  return [
+    nesta ? " Ela tinha crédito: esta sessão ficou paga com ele, sem somar de novo no Recebido." : "",
+    outros.length ? ` O crédito pagou a sessão de ${outros.map((u) => quando(u.inicio)).join(" e de ")}.` : "",
+  ].join("");
 }
 
 export async function registrarSessao(d: { pacienteId: string; data: string; hora: string; status: StatusSessao; valor: string; pago: boolean }): Promise<ResSessao> {
@@ -45,6 +57,9 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
     if (c) return { erro: c };
   }
 
+  const { count: creditos } = await sb.from("sessoes").select("id", { count: "exact", head: true }).eq("paciente_id", d.pacienteId).eq("status", "cancelada").not("pago_em", "is", null);
+  const temCredito = (creditos ?? 0) > 0;
+
   const { data: nova, error } = await sb
     .from("sessoes")
     .insert({
@@ -52,7 +67,8 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
       inicio: inicio.toISOString(),
       status: d.status,
       valor_centavos: valor,
-      pago_em: d.status !== "cancelada" && d.pago ? new Date().toISOString() : null,
+      // Com crédito, a sessão é paga com ele (logo abaixo), e não com um pagamento novo.
+      pago_em: d.status !== "cancelada" && d.pago && !temCredito ? new Date().toISOString() : null,
       origem: "manual",
     })
     .select("id")
@@ -65,8 +81,10 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
     if (ev) await sb.from("sessoes").update({ google_evento_id: ev }).eq("id", nova.id);
     else aviso = " A agenda do Google não recebeu o evento, mas o horário já está bloqueado no site.";
   }
+  const usos = d.status !== "cancelada" && temCredito ? await usarCreditos(sb, d.pacienteId, nova.id) : [];
   revalidatePath("/painel/sessoes");
-  return { ok: `Sessão registrada.${aviso}` };
+  revalidatePath("/painel/pacientes");
+  return { ok: `Sessão registrada.${textoCreditos(usos, nova.id)}${aviso}` };
 }
 
 // Muda a situação, o pagamento ou o recibo. Também serve para desfazer.
@@ -97,19 +115,11 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
 
   let aviso = "";
   let semDesfazer = false;
-  // Sessão já paga que é cancelada: o pagamento passa para a próxima sessão agendada ainda não paga.
+  // Sessão já paga que é cancelada: o pagamento fica guardado como crédito
+  // e, logo depois de salvar, paga a próxima sessão em aberto (se houver).
   if (cancelando && atual.pago_em) {
-    const { data: prox } = await sb.from("sessoes").select("id, inicio").eq("paciente_id", atual.paciente_id).eq("status", "agendada").is("pago_em", null).gt("inicio", atual.inicio).neq("id", id).order("inicio").limit(1).maybeSingle();
-    if (prox) {
-      await sb.from("sessoes").update({ pago_em: atual.pago_em, recibo_em: atual.recibo_em, atualizado_em: agora }).eq("id", prox.id);
-      aviso = ` O pagamento passou para a sessão de ${fmtQuando(new Date(prox.inicio)).replace(" · ", ", às ")}.`;
-      semDesfazer = true;
-    } else {
-      // Sem outra sessão marcada: o pagamento fica guardado nesta, como crédito.
-      mud.pago_em = atual.pago_em;
-      mud.recibo_em = atual.recibo_em;
-      aviso = " Ela já estava paga e não há outra sessão agendada: o pagamento ficou como crédito.";
-    }
+    mud.pago_em = atual.pago_em;
+    mud.recibo_em = atual.recibo_em;
   }
   if ((cancelando || voltando) && inicio.getTime() > Date.now()) {
     const { data: p } = await sb.from("pacientes").select("*").eq("id", atual.paciente_id).single<Paciente>();
@@ -132,12 +142,18 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
 
   const { error } = await sb.from("sessoes").update(mud).eq("id", id);
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
-  if (aviso && cancelando) {
-    revalidatePath("/painel/sessoes");
-    return { ok: `Cancelamento registrado.${aviso}`, semDesfazer };
-  }
+
+  const usos = await usarCreditos(sb, atual.paciente_id);
   revalidatePath("/painel/sessoes");
-  return { ok: `Salvo.${aviso}` };
+  revalidatePath("/painel/pacientes");
+  if (cancelando && atual.pago_em) {
+    const daqui = usos.find((u) => u.de === id);
+    const resto = textoCreditos(usos.filter((u) => u.de !== id), id);
+    if (daqui) return { ok: `Cancelamento registrado. O pagamento passou para a sessão de ${quando(daqui.inicio)}.${resto}${aviso}`, semDesfazer: true };
+    return { ok: `Cancelamento registrado. Ela já estava paga e não há outra sessão em aberto: o pagamento ficou como crédito e paga a próxima sessão que for marcada.${resto}${aviso}`, semDesfazer };
+  }
+  if (usos.length) semDesfazer = true;
+  return { ok: `${cancelando ? "Cancelamento registrado." : "Salvo."}${textoCreditos(usos, id)}${aviso}`, semDesfazer };
 }
 
 export async function mudarValorSessao(id: string, valor: string): Promise<ResSessao> {
@@ -152,8 +168,10 @@ export async function mudarValorSessao(id: string, valor: string): Promise<ResSe
 
 export async function excluirSessao(id: string): Promise<ResSessao> {
   const sb = await supabaseServidor();
-  const { data: s } = await sb.from("sessoes").select("google_evento_id, origem").eq("id", id).single();
+  const { data: s } = await sb.from("sessoes").select("google_evento_id, origem, pago_em, status").eq("id", id).single();
   if (!s || s.origem !== "manual") return { erro: "Só dá para excluir uma sessão registrada à mão." };
+  // Excluir não pode sumir com dinheiro recebido.
+  if (s.pago_em) return { erro: s.status === "cancelada" ? "Essa sessão guarda um crédito (pagamento já recebido). Ele é usado sozinho na próxima sessão marcada; por isso ela não pode ser excluída." : "Essa sessão está paga. Se foi marcada como paga por engano, toque em Desmarcar pago antes de excluir. Se o pagamento é de verdade, cancele a sessão: o valor vira crédito." };
   const { error } = await sb.from("sessoes").delete().eq("id", id).eq("origem", "manual");
   if (error) return { erro: "Não deu para excluir. Tente de novo." };
   if (s.google_evento_id) await apagarEvento(s.google_evento_id).catch(() => {});
@@ -223,9 +241,10 @@ export async function pagarAdiantado(pacienteId: string, quantas: number): Promi
   const { error } = await sb.from("sessoes").update({ pago_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }).in("id", ids);
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
   revalidatePath("/painel/sessoes");
+  revalidatePath("/painel/pacientes");
   const datas = livres.map((x) => fmtQuando(new Date(x.inicio as string)).split(" · ")[0]).join("; ");
   const falta = n - ids.length;
-  return { ok: `Pagamento antecipado de ${ids.length} ${ids.length === 1 ? "sessão" : "sessões"}: ${datas}.${falta > 0 ? ` Só havia ${ids.length} agendada${ids.length > 1 ? "s" : ""}; as outras ${falta} entram quando forem marcadas.` : ""}`, ids };
+  return { ok: `Pagamento antecipado de ${ids.length} ${ids.length === 1 ? "sessão" : "sessões"}: ${datas}.${falta > 0 ? ` Atenção: só havia ${ids.length} ${ids.length === 1 ? "sessão agendada" : "sessões agendadas"} sem pagamento, então só ${ids.length === 1 ? "ela ficou paga" : "elas ficaram pagas"}. Registre as outras ${falta} sessões e use Pagamento antecipado de novo para elas.` : ""}`, ids };
 }
 
 // Desfaz um pagamento antecipado.

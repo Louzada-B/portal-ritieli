@@ -12,7 +12,7 @@ export type Linha = {
   id: string; inicio: string; nome: string; tipo: "adulta" | "crianca"; status: StatusSessao;
   valor: number | null; pago: boolean; recibo: boolean; manual: boolean; remarcadaDe: string | null;
 };
-type Pac = { id: string; nome: string; valor: number | null; hora: string | null };
+type Pac = { id: string; nome: string; valor: number | null; hora: string | null; credito: number };
 type Estado = { status: StatusSessao; pago: boolean; recibo: boolean };
 
 const DS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -125,6 +125,8 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
   const hojeIso = `${hoje.ano}-${String(hoje.mes + 1).padStart(2, "0")}-${String(hoje.dia).padStart(2, "0")}`;
   const horasRem = remarca ? horasDoDia(expediente, remarca.data) : [];
   const horasReg = r.data ? horasDoDia(expediente, r.data) : [];
+  const pacR = pacientes.find((x) => x.id === r.pacienteId);
+  const credR = pacR?.credito || 0;
   const salvarRemarcar = () =>
     remarca &&
     iniciar(async () => {
@@ -352,7 +354,9 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
               <div className="fc-g">
                 <div className="fc"><label htmlFor="r-val">Valor</label><div className="valor-in" style={{ display: "flex", alignItems: "center", background: "#FFFFFF", border: "1px solid #E2CCD0", borderRadius: 12, paddingLeft: 12 }}><span style={{ fontWeight: 700, color: "#8A7A7E" }}>R$</span><input id="r-val" type="text" inputMode="decimal" value={r.valor} onChange={(e) => setR({ ...r, valor: e.target.value })} style={{ border: 0, boxShadow: "none" }} /></div></div>
                 {r.status !== "cancelada" ? (
-                  <div className="fc"><span className="lb">{r.status === "agendada" ? "Já está paga?" : "Pagamento"}</span><div className="seg">{[["Pago", true], ["Pendente", false]].map(([n, v]) => <button key={String(n)} type="button" className={r.pago === v ? "on" : ""} onClick={() => setR({ ...r, pago: v as boolean })}>{n as string}</button>)}</div></div>
+                  credR ? (
+                    <div className="fc"><span className="lb">Pagamento</span><span className="pill p-ok" style={{ alignSelf: "flex-start" }}>Paga com crédito</span><span style={{ fontSize: 13, color: "#5A3A41" }}>{curto(pacR?.nome || "")} tem {credR === 1 ? "1 sessão" : `${credR} sessões`} em crédito (cancelada já paga). Esta sessão fica paga com ele, sem contar de novo no Recebido.</span></div>
+                  ) : <div className="fc"><span className="lb">{r.status === "agendada" ? "Já está paga?" : "Pagamento"}</span><div className="seg">{[["Pago", true], ["Pendente", false]].map(([n, v]) => <button key={String(n)} type="button" className={r.pago === v ? "on" : ""} onClick={() => setR({ ...r, pago: v as boolean })}>{n as string}</button>)}</div></div>
                 ) : null}
               </div>
               {!pacientes.length ? <span style={{ fontSize: 14, color: "#A3322A" }}>Nenhum paciente ativo. Cadastre em <Link href="/painel/pacientes?novo=1">Pacientes</Link>.</span> : null}
@@ -371,7 +375,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
           <div className="num"><span className="rot">Recibos</span><b>{semRecibo.length}</b><span className="l">a emitir no Receita Saúde</span></div>
         </div>
 
-        <div className="fluxo"><span style={{ color: "#7A2335", flex: "0 0 auto", marginTop: 2 }}><Icone nome="horarios" tam={18} /></span><span><b>Como uma sessão anda por aqui:</b> ela começa como <b>agendada</b> (pagamento &quot;a pagar&quot;). O Pix pode vir antes ou depois: toque em <b>Marcar pago</b> quando cair na sua conta, ou use <b>Pagamento antecipado</b> quando a pessoa pagar várias sessões de uma vez. No dia, você marca <b>realizada</b>, <b>falta</b> ou <b>cancelada com 24h</b> (se ela já estava paga, o pagamento passa para a próxima sessão). Depois de emitir o recibo no Receita Saúde, toque em <b>Marcar emitido</b>. As sessões do horário fixo de cada paciente aparecem sozinhas.</span></div>
+        <div className="fluxo"><span style={{ color: "#7A2335", flex: "0 0 auto", marginTop: 2 }}><Icone nome="horarios" tam={18} /></span><span><b>Como uma sessão anda por aqui:</b> ela começa como <b>agendada</b> (pagamento &quot;a pagar&quot;). O Pix pode vir antes ou depois: toque em <b>Marcar pago</b> quando cair na sua conta, ou use <b>Pagamento antecipado</b> quando a pessoa pagar várias sessões de uma vez. No dia, você marca <b>realizada</b>, <b>falta</b> ou <b>cancelada com 24h</b> (se ela já estava paga, o pagamento vira <b>crédito</b> e paga sozinho a próxima sessão em aberto, ou a próxima que for marcada, sem contar de novo no Recebido). Depois de emitir o recibo no Receita Saúde, toque em <b>Marcar emitido</b>. As sessões do horário fixo de cada paciente aparecem sozinhas.</span></div>
 
         <div className="rs">
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>

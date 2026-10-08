@@ -330,11 +330,15 @@ export async function encerrarPaciente(id: string, ultima: string): Promise<Resu
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
   const [a, m, d] = ultima.split("-").map(Number);
   const depois = deLocal(a, m - 1, d + 1).toISOString();
-  const { data: saem } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", id).eq("status", "agendada").gte("inicio", depois).not("google_evento_id", "is", null);
-  await sb.from("sessoes").delete().eq("paciente_id", id).eq("status", "agendada").gte("inicio", depois);
-  for (const x of saem ?? []) await apagarEvento(x.google_evento_id as string).catch(() => {});
-  let aviso = "";
-  if (p.google_evento_id) await mudarFimSerie(p.google_evento_id, ultima).catch(() => { aviso = " A agenda do Google não respondeu: confira a sessão semanal por lá."; });
+  const { data: saem } = await sb.from("sessoes").select("id, google_evento_id, pago_em").eq("paciente_id", id).eq("status", "agendada").gte("inicio", depois);
+  // Sessões já pagas depois do fim não somem: viram crédito (o dinheiro já entrou).
+  const pagas = (saem ?? []).filter((x) => x.pago_em).map((x) => x.id as string);
+  const livres = (saem ?? []).filter((x) => !x.pago_em).map((x) => x.id as string);
+  if (pagas.length) await sb.from("sessoes").update({ status: "cancelada", atualizado_em: new Date().toISOString() }).in("id", pagas);
+  if (livres.length) await sb.from("sessoes").delete().in("id", livres);
+  for (const x of saem ?? []) if (x.google_evento_id) await apagarEvento(x.google_evento_id as string).catch(() => {});
+  let aviso = pagas.length ? ` ${pagas.length === 1 ? "Uma sessão já paga" : `${pagas.length} sessões já pagas`} depois do fim ${pagas.length === 1 ? "virou crédito" : "viraram crédito"}: aparece na ficha, para combinar a devolução (ou usar, se ela voltar).` : "";
+  if (p.google_evento_id) await mudarFimSerie(p.google_evento_id, ultima).catch(() => { aviso += " A agenda do Google não respondeu: confira a sessão semanal por lá."; });
   revalidatePath("/painel/pacientes");
   revalidatePath("/painel/sessoes");
   return { ok: `Acompanhamento encerrado. A sessão semanal sai da agenda depois da última sessão.${aviso}` };

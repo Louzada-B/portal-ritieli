@@ -44,7 +44,16 @@ export async function gerarSessoesDoMes(sb: SupabaseClient, ano: number, mes: nu
     const hm = `${String(l.h).padStart(2, "0")}:${String(l.min).padStart(2, "0")}`;
     return l.semana !== p.fixo_dia || hm !== String(p.fixo_hora).slice(0, 5);
   });
-  if (sair.length) await sb.from("sessoes").delete().in("id", sair.map((s) => s.id as string));
+  if (sair.length) {
+    // Sessão já paga não some: vira cancelada com o pagamento guardado (crédito),
+    // e o crédito passa para a próxima sessão em aberto do paciente.
+    const ids = sair.map((s) => s.id as string);
+    const { data: pagas } = await sb.from("sessoes").select("id").in("id", ids).not("pago_em", "is", null);
+    const manter = new Set((pagas ?? []).map((x) => x.id as string));
+    if (manter.size) await sb.from("sessoes").update({ status: "cancelada", atualizado_em: new Date().toISOString() }).in("id", [...manter]);
+    const apagar = ids.filter((x) => !manter.has(x));
+    if (apagar.length) await sb.from("sessoes").delete().in("id", apagar);
+  }
 
   const novas: { paciente_id: string; inicio: string; valor_centavos: number | null; origem: "fixo" }[] = [];
   for (const p of pacs) {
@@ -70,6 +79,39 @@ export async function gerarSessoesDoMes(sb: SupabaseClient, ano: number, mes: nu
     }
   }
   if (novas.length) await sb.from("sessoes").upsert(novas, { onConflict: "paciente_id,inicio", ignoreDuplicates: true });
+  await usarCreditos(sb);
+}
+
+// Crédito = sessão cancelada que já estava paga. O dinheiro já entrou, então ele paga
+// automaticamente a próxima sessão em aberto do mesmo paciente, nesta ordem:
+// 1) a sessão indicada (ex.: a que acabou de ser registrada);
+// 2) sessões realizadas ou com falta ainda não pagas (da mais antiga);
+// 3) sessões agendadas ainda não pagas (da mais próxima).
+// O pagamento muda de lugar (não soma de novo no "Recebido"). Sem sessão em aberto, o crédito fica guardado.
+export type UsoCredito = { de: string; para: string; inicio: string };
+export async function usarCreditos(sb: SupabaseClient, pacienteId?: string, preferir?: string): Promise<UsoCredito[]> {
+  let q = sb.from("sessoes").select("id, paciente_id, inicio, pago_em, recibo_em").eq("status", "cancelada").not("pago_em", "is", null).order("inicio");
+  if (pacienteId) q = q.eq("paciente_id", pacienteId);
+  const { data: creditos } = await q;
+  if (!creditos?.length) return [];
+  const usos: UsoCredito[] = [];
+  const pacs = [...new Set(creditos.map((c) => c.paciente_id as string))];
+  for (const pid of pacs) {
+    const { data: abertas } = await sb.from("sessoes").select("id, inicio, status").eq("paciente_id", pid).neq("status", "cancelada").is("pago_em", null);
+    if (!abertas?.length) continue;
+    const ordem = (x: { id: string; inicio: string; status: string }) => (x.id === preferir ? 0 : x.status === "agendada" ? 2 : 1);
+    const fila = (abertas as { id: string; inicio: string; status: string }[]).sort((a, b) => ordem(a) - ordem(b) || a.inicio.localeCompare(b.inicio));
+    const meus = creditos.filter((c) => c.paciente_id === pid);
+    for (let i = 0; i < Math.min(meus.length, fila.length); i++) {
+      const c = meus[i];
+      const alvo = fila[i];
+      // As duas mudanças numa só operação no banco: o pagamento muda de lugar, nunca some nem duplica.
+      const { data: ok } = await sb.rpc("usar_credito", { de: c.id, para: alvo.id });
+      if (!ok) continue;
+      usos.push({ de: c.id as string, para: alvo.id, inicio: alvo.inicio });
+    }
+  }
+  return usos;
 }
 
 // Uma sessão cobra quando foi realizada ou quando houve falta.
