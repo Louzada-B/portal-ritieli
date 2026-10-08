@@ -35,12 +35,12 @@ const MSG: Record<string, string> = {
   pago: "Pagamento registrado. Agora falta o recibo.",
   recibo: "Recibo marcado como emitido.",
 };
-const HORAS = Array.from({ length: 15 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
 
 // Disponibilidade da semana, em minutos do dia (Painel → Disponibilidade).
 export type Expediente = { dia: number; ativo: boolean; ini: number; fim: number; pIni: number | null; pFim: number | null };
 const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 // Inícios possíveis de uma sessão de 50 min no dia escolhido (de hora em hora, fora da pausa).
+let BLOQ: [number, number][] = [];
 function horasDoDia(exp: Expediente[], data: string): string[] {
   const [a, m, d] = data.split("-").map(Number);
   if (!a) return [];
@@ -49,6 +49,8 @@ function horasDoDia(exp: Expediente[], data: string): string[] {
   const r: string[] = [];
   for (let t = e.ini; t + 50 <= e.fim; t += 60) {
     if (e.pIni != null && e.pFim != null && t < e.pFim && t + 50 > e.pIni) continue;
+    const t0 = Date.UTC(a, m - 1, d, Math.floor(t / 60), t % 60) + FUSO;
+    if (BLOQ.some(([b0, b1]) => t0 < b1 && t0 + 50 * 60000 > b0)) continue; // bloqueio (férias, feriado…)
     r.push(hm(t));
   }
   return r;
@@ -91,17 +93,18 @@ function Calendario({ valor, onEscolher, hoje, fechado }: { valor: string; onEsc
 type Props = {
   linhas: Linha[]; rotulo: string; ant: string; prox: string; pacientes: Pac[];
   hoje: { ano: number; mes: number; dia: number }; mesAtual: { ano: number; mes: number }; buscaInicial?: string;
-  expediente: Expediente[];
+  expediente: Expediente[]; bloqueios: [number, number][];
 };
 
-export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, buscaInicial, expediente }: Props) {
+export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, buscaInicial, expediente, bloqueios }: Props) {
+  BLOQ = bloqueios;
   const [filtro, setFiltro] = useState<"todas" | "ag" | "pend" | "rec">("todas");
   const [busca, setBusca] = useState(buscaInicial || "");
   const [form, setForm] = useState(false);
   const [adiant, setAdiant] = useState(false);
   const [ad, setAd] = useState({ pacienteId: "", quantas: "4" });
   const [adIds, setAdIds] = useState<string[] | null>(null);
-  const [r, setR] = useState({ pacienteId: pacientes[0]?.id || "", data: "", hora: pacientes[0]?.hora || "08:00", status: "agendada" as StatusSessao, valor: pacientes[0]?.valor != null ? String(pacientes[0].valor / 100).replace(".", ",") : "", pago: false });
+  const [r, setR] = useState({ pacienteId: pacientes[0]?.id || "", data: "", hora: "", status: "agendada" as StatusSessao, valor: pacientes[0]?.valor != null ? String(pacientes[0].valor / 100).replace(".", ",") : "", pago: false });
   const [msg, setMsg] = useState<{ t: string; erro?: boolean; toast?: boolean; desfazer?: { id: string; e: Estado } } | null>(null);
   const [editVal, setEditVal] = useState<{ id: string; v: string } | null>(null);
   const [remarca, setRemarca] = useState<{ l: Linha; data: string; hora: string } | null>(null);
@@ -121,6 +124,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
   };
   const hojeIso = `${hoje.ano}-${String(hoje.mes + 1).padStart(2, "0")}-${String(hoje.dia).padStart(2, "0")}`;
   const horasRem = remarca ? horasDoDia(expediente, remarca.data) : [];
+  const horasReg = r.data ? horasDoDia(expediente, r.data) : [];
   const salvarRemarcar = () =>
     remarca &&
     iniciar(async () => {
@@ -147,7 +151,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
 
   const escolherPac = (id: string) => {
     const p = pacientes.find((x) => x.id === id);
-    setR({ ...r, pacienteId: id, hora: p?.hora || r.hora, valor: p?.valor != null ? String(p.valor / 100).replace(".", ",") : r.valor });
+    setR({ ...r, pacienteId: id, hora: p?.hora && (!r.data || horasDoDia(expediente, r.data).includes(p.hora)) ? p.hora : r.hora, valor: p?.valor != null ? String(p.valor / 100).replace(".", ",") : r.valor });
   };
 
   const mudar = (l: Linha, novo: Estado, aviso: string) =>
@@ -334,11 +338,12 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
                 </div>
                 <div className="fc"><span className="lb">Data e horário</span>
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8 }}>
-                    <Calendario valor={r.data} onEscolher={(v) => setR({ ...r, data: v })} hoje={hoje} />
-                    <select value={r.hora} onChange={(e) => setR({ ...r, hora: e.target.value })} aria-label="Horário">
-                      {(HORAS.includes(r.hora) ? HORAS : [...HORAS, r.hora].sort()).map((h) => <option key={h} value={h}>{h}</option>)}
+                    <Calendario valor={r.data} onEscolher={(v) => { const hs = horasDoDia(expediente, v); const fixa = pacientes.find((x) => x.id === r.pacienteId)?.hora; setR({ ...r, data: v, hora: hs.includes(r.hora) ? r.hora : fixa && hs.includes(fixa) ? fixa : hs[0] || "" }); }} hoje={hoje} fechado={(v) => !horasDoDia(expediente, v).length} />
+                    <select value={r.hora} onChange={(e) => setR({ ...r, hora: e.target.value })} aria-label="Horário" disabled={!horasReg.length}>
+                      {horasReg.length ? horasReg.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
                     </select>
                   </div>
+                  <span style={{ fontSize: 13, color: "#8A7A7E" }}>{r.data ? "Só aparecem os dias e horários da sua disponibilidade." : "Escolha o dia: os dias em que você não atende ficam riscados."}</span>
                 </div>
               </div>
               <div className="fc"><span className="lb">Situação</span>
