@@ -254,3 +254,12 @@
 @keyframes esqBrilho{from{background-position:100% 0}to{background-position:-100% 0}}
 @media (max-width:760px){.painel .esq-grade{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){.painel .esq{animation:none}}
+/* Celular: topo e abas fixos, como em um aplicativo */
+@media (max-width:760px){
+.painel .adm{overflow-x:clip}
+.painel .m-topo{position:fixed;top:0;left:0;right:0;z-index:40;padding-top:calc(14px + env(safe-area-inset-top))}
+.painel .tab{position:fixed;bottom:0;left:0;right:0;z-index:40;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.painel .pri{padding-top:calc(73px + env(safe-area-inset-top));padding-bottom:calc(72px + env(safe-area-inset-bottom));min-height:100dvh;box-sizing:border-box}
+.painel .salvar{bottom:calc(84px + env(safe-area-inset-bottom))}
+.painel .toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+}
