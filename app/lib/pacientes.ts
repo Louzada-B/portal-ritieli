@@ -22,6 +22,8 @@ export type Paciente = {
   google_evento_id: string | null;
   status: "ativo" | "encerrado";
   desde: string;
+  fim: string | null;
+  retomado_em: string | null;
   pedido_id: string | null;
   ficha_em: string | null;
   criado_em: string;

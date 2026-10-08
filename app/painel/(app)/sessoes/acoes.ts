@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
-import { centavosDe } from "../../../lib/formato";
-import { deLocal } from "../../../lib/agenda";
+import { centavosDe, primeiroNome } from "../../../lib/formato";
+import { moverOcorrencia } from "../../../lib/google";
+import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
+import { deLocal, fmtQuando } from "../../../lib/agenda";
 import type { StatusSessao } from "../../../lib/sessoes";
 
 export type ResSessao = { erro?: string; ok?: string };
@@ -75,4 +77,41 @@ export async function excluirSessao(id: string): Promise<ResSessao> {
   if (error) return { erro: "Não deu para excluir. Tente de novo." };
   revalidatePath("/painel/sessoes");
   return { ok: "Sessão excluída." };
+}
+
+// Remarca uma sessão agendada para outro dia ou horário. Se ela vem do horário fixo,
+// só aquela ocorrência muda na agenda do Google (a sala continua a mesma).
+export async function remarcarSessao(id: string, data: string, hora: string): Promise<ResSessao & { para?: string; texto?: string }> {
+  const md = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
+  const mh = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hora);
+  if (!md || !mh) return { erro: "Escolha a nova data e o horário." };
+  const novo = deLocal(+md[1], +md[2] - 1, +md[3], +mh[1], +mh[2]);
+  const sb = await supabaseServidor();
+  const { data: s } = await sb.from("sessoes").select("id, paciente_id, inicio, status, origem, remarcada_de").eq("id", id).single();
+  if (!s) return { erro: "Sessão não encontrada." };
+  if (s.status !== "agendada") return { erro: "Só dá para remarcar uma sessão agendada." };
+  if (new Date(s.inicio).getTime() === novo.getTime()) return { erro: "Escolha um dia ou horário diferente." };
+  const { data: p } = await sb.from("pacientes").select("*").eq("id", s.paciente_id).single<Paciente>();
+  if (!p) return { erro: "Paciente não encontrado." };
+  const original = new Date(s.remarcada_de || s.inicio);
+  const { error } = await sb.from("sessoes").update({ inicio: novo.toISOString(), remarcada_de: original.toISOString(), atualizado_em: new Date().toISOString() }).eq("id", id);
+  if (error) return { erro: error.code === "23505" ? "Já existe uma sessão desse paciente nesse dia e horário." : "Não deu para salvar. Tente de novo." };
+
+  let aviso = "";
+  if (s.origem === "fixo" && p.google_evento_id) {
+    try {
+      await moverOcorrencia(p.google_evento_id, original, novo, 50);
+    } catch {
+      aviso = " A agenda do Google não acompanhou: ajuste esse dia por lá.";
+    }
+  }
+  revalidatePath("/painel/sessoes");
+  const resps = await responsaveisDe(sb, p.id);
+  const c = contatoPrincipal(p, resps);
+  const antes = fmtQuando(new Date(s.inicio)).replace(" · ", ", às ");
+  const depois = fmtQuando(novo).replace(" · ", ", às ");
+  const sala = p.tipo === "adulta" && p.meet_link ? ` A sala é a mesma de sempre: ${p.meet_link}` : "";
+  const quem = p.tipo === "crianca" ? `a sessão de ${primeiroNome(p.nome)}` : "nossa sessão";
+  const texto = `Olá, ${primeiroNome(c.nome)}! Aqui é a Ritieli. Combinado: ${quem} de ${antes} passa para ${depois}.${sala}`;
+  return { ok: `Sessão remarcada.${aviso}`, para: c.whatsapp || "", texto };
 }

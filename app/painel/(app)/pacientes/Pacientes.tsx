@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
-import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, mudarStatus, excluirPaciente, type DadosNovo } from "./acoes";
+import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, type DadosNovo } from "./acoes";
 
 type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
   cpfFinal: string | null; temNascimento: boolean; temEmergencia: boolean; valor: number | null; tipoValor: "normal" | "social";
-  fixoDia: number | null; fixoHora: string | null; meet: string | null; status: "ativo" | "encerrado"; desde: string; fichaEm: string | null;
+  fixoDia: number | null; fixoHora: string | null; meet: string | null; status: "ativo" | "encerrado"; desde: string; fim: string | null; fichaEm: string | null;
   escola: string | null; cidade: string | null;
 };
 type Detalhe = {
@@ -25,6 +25,22 @@ const mesAno = (iso: string) => new Intl.DateTimeFormat("pt-BR", { month: "long"
 
 function Aviso({ m }: { m: { t: string; erro?: boolean } | null }) {
   return m ? <div className={m.erro ? "aviso erro" : "aviso ok"} role="status">{m.t}</div> : null;
+}
+
+const hojeBR = () => new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+const diaBR = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso + "T12:00:00Z")).replace(/\./g, "");
+const diasAte = (iso: string) => Math.round((new Date(iso + "T12:00:00Z").getTime() - new Date(hojeBR() + "T12:00:00Z").getTime()) / 86400000);
+
+function CamposPeriodo({ desde, fim, setDesde, setFim }: { desde: string; fim: string; setDesde: (v: string) => void; setFim: (v: string) => void }) {
+  return (
+    <>
+      <div className="fc-g">
+        <div className="fc"><label htmlFor="pe-ini">Início do acompanhamento</label><input id="pe-ini" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></div>
+        <div className="fc"><label htmlFor="pe-fim">Fim previsto <span style={{ fontWeight: 500, color: "#8A7A7E" }}>(opcional)</span></label><input id="pe-fim" type="date" value={fim} min={desde} onChange={(e) => setFim(e.target.value)} /></div>
+      </div>
+      <span style={{ fontSize: 13, color: "#6B5A5E", marginTop: -6 }}>O horário fixo fica reservado na agenda só entre essas datas. Sem fim previsto, segue até você encerrar.</span>
+    </>
+  );
 }
 
 function CamposFixo({ dia, hora, setDia, setHora }: { dia: string; hora: string; setDia: (v: string) => void; setHora: (v: string) => void }) {
@@ -62,6 +78,8 @@ function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () =
     tipoValor: "normal",
     fixoDia: "",
     fixoHora: "",
+    desde: hojeBR(),
+    fim: "",
     pedidoId: pedido?.id,
   });
   const set = (o: Partial<DadosNovo>) => setD({ ...d, ...o });
@@ -118,6 +136,7 @@ function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () =
           <div className="fc"><label htmlFor="n-tv">Tipo de valor</label><select id="n-tv" value={d.tipoValor} onChange={(e) => set({ tipoValor: e.target.value as "normal" | "social" })}><option value="normal">Valor normal</option><option value="social">Valor social</option></select></div>
         </div>
         <CamposFixo dia={d.fixoDia} hora={d.fixoHora} setDia={(v) => set({ fixoDia: v })} setHora={(v) => set({ fixoHora: v })} />
+        <CamposPeriodo desde={d.desde} fim={d.fim} setDesde={(v) => set({ desde: v })} setFim={(v) => set({ fim: v })} />
         <span style={{ fontSize: 13, color: "#6B5A5E" }}>Depois de salvar, envie a ficha de cadastro pelo WhatsApp: a pessoa preenche CPF, data de nascimento e contato de emergência num link seguro. Com a ficha preenchida, você gera o termo em Termos.</span>
         <Aviso m={msg} />
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -136,7 +155,8 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
   const [pessoais, setPessoais] = useState<{ nascimento: string; emergencia: string } | null>(null);
   const [cpfNovo, setCpfNovo] = useState("");
   const [editando, setEditando] = useState(false);
-  const [e, setE] = useState({ nome: p.nome, idade: p.idade ? String(p.idade) : "", whatsapp: fone(p.whatsapp), email: p.email || "", valor: p.valor != null ? String(p.valor / 100).replace(".", ",") : "", tipoValor: p.tipoValor, fixoDia: p.fixoDia != null ? String(p.fixoDia) : "", fixoHora: p.fixoHora || "" });
+  const [e, setE] = useState({ nome: p.nome, idade: p.idade ? String(p.idade) : "", whatsapp: fone(p.whatsapp), email: p.email || "", valor: p.valor != null ? String(p.valor / 100).replace(".", ",") : "", tipoValor: p.tipoValor, fixoDia: p.fixoDia != null ? String(p.fixoDia) : "", fixoHora: p.fixoHora || "", desde: p.desde, fim: p.fim || "" });
+  const [encerrando, setEncerrando] = useState<string | null>(null);
   const [novoResp, setNovoResp] = useState<null | { nome: string; parentesco: string; whatsapp: string; email: string; cpf: string; financeiro: boolean }>(null);
   const [envio, setEnvio] = useState<{ link: string; para: string; texto: string } | null>(null);
   const inf = p.tipo === "crianca";
@@ -165,7 +185,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         <span className={inf ? "av k" : "av"}>{iniciais(p.nome)}</span>
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
           <h2 style={{ margin: 0, fontSize: 24, lineHeight: 1.2, color: "#3A1F25" }}>{p.nome}</h2>
-          <span style={{ fontSize: 14, color: "#8A7A7E" }}>{p.status === "ativo" ? `Em acompanhamento desde ${mesAno(p.desde)}` : "Acompanhamento encerrado"}</span>
+          <span style={{ fontSize: 14, color: "#8A7A7E" }}>{p.status === "ativo" ? `Em acompanhamento desde ${mesAno(p.desde)}` : `Acompanhamento encerrado${p.fim ? ` em ${diaBR(p.fim)}` : ""}`}</span>
         </div>
         <span className={inf ? "pill p-in" : "pill p-on"}>{inf ? "Criança ou adolescente" : "Adulta · online"}</span>
       </div>
@@ -184,6 +204,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
             <div className="fc"><label htmlFor="e-tv">Tipo de valor</label><select id="e-tv" value={e.tipoValor} onChange={(x) => setE({ ...e, tipoValor: x.target.value as "normal" | "social" })}><option value="normal">Valor normal</option><option value="social">Valor social</option></select></div>
           </div>
           <CamposFixo dia={e.fixoDia} hora={e.fixoHora} setDia={(v) => setE({ ...e, fixoDia: v })} setHora={(v) => setE({ ...e, fixoHora: v })} />
+          {p.status === "ativo" ? <CamposPeriodo desde={e.desde} fim={e.fim} setDesde={(v) => setE({ ...e, desde: v })} setFim={(v) => setE({ ...e, fim: v })} /> : null}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" className="bt" style={{ width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await atualizarPaciente(p.id, e); av(r); if (r.ok) setEditando(false); })}>Salvar</button>
             <button type="button" className="bt3" onClick={() => setEditando(false)}>Cancelar</button>
@@ -191,9 +212,13 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         </div>
       ) : (
         <>
+          {p.status === "ativo" && p.fim && diasAte(p.fim) <= 7 ? (
+            <div className="aviso" role="status">{diasAte(p.fim) < 0 ? `O fim previsto (${diaBR(p.fim)}) já passou e o horário fixo não está mais reservado.` : `O acompanhamento termina em ${diaBR(p.fim)}.`} Prorrogue em <b>Editar dados</b> ou encerre o acompanhamento.</div>
+          ) : null}
           <div className="dados">
             {inf ? <div className="dado"><span className="di"><Icone nome="crianca" tam={18} /></span><span><span className="l">Idade</span><b>{p.idade ? `${p.idade} anos` : "—"}</b></span></div> : null}
             <div className="dado"><span className="di"><Icone nome="horarios" tam={18} /></span><span><span className="l">Horário fixo</span><b>{fixoTexto(p.fixoDia, p.fixoHora)}</b></span></div>
+            <div className="dado"><span className="di"><Icone nome="calendario" tam={18} /></span><span><span className="l">Período</span><b>{`De ${diaBR(p.desde)} ${p.fim ? `até ${diaBR(p.fim)}` : "· sem data de fim"}`}</b></span></div>
             <div className="dado"><span className="di"><Icone nome="sessoes" tam={18} /></span><span><span className="l">Valor da sessão</span><b>{p.valor != null ? `${reais(p.valor)}${p.tipoValor === "social" ? " · social" : ""}` : "A definir"}</b></span></div>
             {!inf ? (
               <>
@@ -337,11 +362,22 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         <Link href={`/painel/termos?paciente=${p.id}`} className="bt2"><Icone nome="termos" tam={18} />Termos</Link>
         {p.status === "ativo" ? (
-          <button type="button" className="bt3" disabled={pend} onClick={() => { if (confirm("Encerrar o acompanhamento? A sessão semanal sai da sua agenda.")) iniciar(async () => av(await mudarStatus(p.id, "encerrado"))); }}>Encerrar acompanhamento</button>
+          <button type="button" className="bt3" disabled={pend} onClick={() => setEncerrando(hojeBR())}>Encerrar acompanhamento</button>
         ) : (
-          <button type="button" className="bt3" disabled={pend} onClick={() => iniciar(async () => av(await mudarStatus(p.id, "ativo")))}>Reativar acompanhamento</button>
+          <button type="button" className="bt3" disabled={pend} onClick={() => iniciar(async () => av(await reativarPaciente(p.id)))}>Reativar acompanhamento</button>
         )}
       </div>
+      {encerrando !== null ? (
+        <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <b style={{ fontSize: 16 }}>Encerrar o acompanhamento</b>
+          <span style={{ fontSize: 14, color: "#5A3A41" }}>A sessão semanal para na data da última sessão. O que já aconteceu continua na agenda e no histórico, e as sessões agendadas depois dessa data saem.</span>
+          <div className="fc" style={{ maxWidth: 260 }}><label htmlFor="enc-data">Data da última sessão</label><input id="enc-data" type="date" value={encerrando} min={p.desde} onChange={(x) => setEncerrando(x.target.value)} /></div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || !encerrando} onClick={() => iniciar(async () => { const r = await encerrarPaciente(p.id, encerrando); av(r); if (r.ok) setEncerrando(null); })}>{pend ? "Encerrando…" : "Encerrar"}</button>
+            <button type="button" className="bt3" onClick={() => setEncerrando(null)}>Cancelar</button>
+          </div>
+        </div>
+      ) : null}
       <ExcluirPaciente id={p.id} nome={p.nome} />
       <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário entra na próxima etapa.</p>
     </>

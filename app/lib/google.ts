@@ -129,27 +129,68 @@ export async function apagarEvento(id: string) {
 
 // Sessões semanais: evento que se repete toda semana no horário fixo, com sala do Meet.
 // O link é o mesmo em todas as sessões, e o evento bloqueia o horário na agenda do site.
-export async function criarEventoSemanal(p: { chave: string; titulo: string; inicio: Date; duracaoMin: number; descricao: string }) {
+// "ate" (aaaa-mm-dd) é o último dia da série; sem ele, segue até encerrar.
+// "conferencia" reaproveita a sala de um evento anterior (o link não muda).
+export function regraSemanal(ate?: string | null) {
+  if (!ate) return "RRULE:FREQ=WEEKLY";
+  const [a, m, d] = ate.split("-").map(Number);
+  // 23:59:59 em Brasília = 02:59:59 UTC do dia seguinte.
+  const u = new Date(Date.UTC(a, m - 1, d, 23, 59, 59) + 3 * 3600000);
+  const z = u.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  return `RRULE:FREQ=WEEKLY;UNTIL=${z}`;
+}
+
+async function gcal(caminho: string, init: RequestInit = {}) {
   const con = await conexao();
   if (!con) throw new Error("sem_google");
   const at = await acesso(con);
+  const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/${caminho}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json", ...(init.headers || {}) },
+    cache: "no-store",
+  });
+  const j = r.status === 204 ? {} : await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`google: ${j.error?.message || r.status}`);
+  return j;
+}
+
+export async function criarEventoSemanal(p: { chave: string; titulo: string; inicio: Date; duracaoMin: number; descricao: string; ate?: string | null; conferencia?: unknown }) {
   const fim = new Date(p.inicio.getTime() + p.duracaoMin * 60000);
-  const r = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1", {
+  const j = await gcal("events?conferenceDataVersion=1", {
     method: "POST",
-    headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       summary: p.titulo,
       description: p.descricao,
       start: { dateTime: p.inicio.toISOString(), timeZone: "America/Sao_Paulo" },
       end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" },
-      recurrence: ["RRULE:FREQ=WEEKLY"],
-      conferenceData: { createRequest: { requestId: p.chave, conferenceSolutionKey: { type: "hangoutsMeet" } } },
+      recurrence: [regraSemanal(p.ate)],
+      conferenceData: p.conferencia || { createRequest: { requestId: p.chave, conferenceSolutionKey: { type: "hangoutsMeet" } } },
       reminders: { useDefault: true },
     }),
-    cache: "no-store",
   });
-  const j = await r.json();
   ocupadosCache = null;
-  if (!r.ok) throw new Error(`google semanal: ${j.error?.message || r.status}`);
   return { id: j.id as string, meet: (j.hangoutLink as string) || null };
+}
+
+export async function obterEvento(id: string) {
+  return gcal(`events/${encodeURIComponent(id)}`);
+}
+
+// Muda só o último dia da série (ou tira o fim, com null).
+export async function mudarFimSerie(id: string, ate: string | null) {
+  await gcal(`events/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ recurrence: [regraSemanal(ate)] }) });
+  ocupadosCache = null;
+}
+
+// Move uma única ocorrência da série (as outras continuam iguais, com a mesma sala).
+export async function moverOcorrencia(id: string, original: Date, novoInicio: Date, duracaoMin: number) {
+  const lista = await gcal(`events/${encodeURIComponent(id)}/instances?originalStart=${encodeURIComponent(original.toISOString())}&showDeleted=false`);
+  const inst = (lista.items || [])[0];
+  if (!inst) throw new Error("sem_ocorrencia");
+  const fim = new Date(novoInicio.getTime() + duracaoMin * 60000);
+  await gcal(`events/${encodeURIComponent(inst.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ start: { dateTime: novoInicio.toISOString(), timeZone: "America/Sao_Paulo" }, end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" } }),
+  });
+  ocupadosCache = null;
 }

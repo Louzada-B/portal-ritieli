@@ -5,11 +5,12 @@ import { useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { reais } from "../../../lib/formato";
 import type { StatusSessao } from "../../../lib/sessoes";
-import { registrarSessao, mudarSessao, mudarValorSessao, excluirSessao } from "./acoes";
+import { registrarSessao, mudarSessao, mudarValorSessao, excluirSessao, remarcarSessao } from "./acoes";
+import { waLink } from "../../../lib/formato";
 
 export type Linha = {
   id: string; inicio: string; nome: string; tipo: "adulta" | "crianca"; status: StatusSessao;
-  valor: number | null; pago: boolean; recibo: boolean; manual: boolean;
+  valor: number | null; pago: boolean; recibo: boolean; manual: boolean; remarcadaDe: string | null;
 };
 type Pac = { id: string; nome: string; valor: number | null; hora: string | null };
 type Estado = { status: StatusSessao; pago: boolean; recibo: boolean };
@@ -80,7 +81,27 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
   const [r, setR] = useState({ pacienteId: pacientes[0]?.id || "", data: "", hora: pacientes[0]?.hora || "08:00", status: "agendada" as StatusSessao, valor: pacientes[0]?.valor != null ? String(pacientes[0].valor / 100).replace(".", ",") : "", pago: false });
   const [msg, setMsg] = useState<{ t: string; erro?: boolean; desfazer?: { id: string; e: Estado } } | null>(null);
   const [editVal, setEditVal] = useState<{ id: string; v: string } | null>(null);
+  const [remarca, setRemarca] = useState<{ l: Linha; data: string; hora: string } | null>(null);
+  const [envio, setEnvio] = useState<{ para: string; texto: string } | null>(null);
   const [pend, iniciar] = useTransition();
+
+  const abrirRemarcar = (l: Linha) => {
+    const d = loc(l.inicio);
+    setRemarca({ l, data: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`, hora: fmtHora(l.inicio) });
+    setEnvio(null);
+    setMsg(null);
+    setForm(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const salvarRemarcar = () =>
+    remarca &&
+    iniciar(async () => {
+      const res = await remarcarSessao(remarca.l.id, remarca.data, remarca.hora);
+      if (res.erro) return setMsg({ t: res.erro, erro: true });
+      setMsg({ t: res.ok! });
+      setEnvio({ para: res.para || "", texto: res.texto || "" });
+      setRemarca(null);
+    });
 
   const real = linhas.filter((l) => cobra(l.status));
   const aRec = real.filter((l) => !l.pago);
@@ -130,6 +151,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
               <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "realizada", pago: false, recibo: false }, MSG.realizada)}>Realizada</button>
               <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "falta", pago: false, recibo: false }, MSG.falta)}>Faltou</button>
               <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "cancelada", pago: false, recibo: false }, MSG.cancelada)}>{longo ? "Cancelou com 24h" : "Cancelou"}</button>
+              <button type="button" className="mini" disabled={pend} onClick={() => abrirRemarcar(l)}>Remarcar</button>
             </>
           ) : null}
           {podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}
@@ -150,11 +172,11 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
     ) : (
       <button type="button" onClick={() => setEditVal({ id: l.id, v: l.valor != null ? String(l.valor / 100).replace(".", ",") : "" })} title="Mudar o valor" style={{ font: "inherit", fontWeight: 700, color: "inherit", background: "none", border: 0, padding: 0, cursor: "pointer", whiteSpace: "nowrap" }}>{l.status === "cancelada" ? "—" : l.valor == null ? <span style={{ color: "#A3322A", textDecoration: "underline" }}>Definir valor</span> : brl(l.valor)}</button>
     );
-  const tipoTxt = (l: Linha) => `${l.tipo === "crianca" ? "Infantil · presencial" : "Online"} · ${fmtHora(l.inicio)}${l.manual ? " · registrada" : ""}`;
+  const tipoTxt = (l: Linha) => `${l.tipo === "crianca" ? "Infantil · presencial" : "Online"} · ${fmtHora(l.inicio)}${l.manual ? " · registrada" : ""}${l.remarcadaDe ? ` · remarcada de ${fmtData(l.remarcadaDe).split(",")[0].toLowerCase()}, ${fmtHora(l.remarcadaDe)}` : ""}`;
 
   return (
     <>
-      <header className="topo"><div><h1>Sessões e <em>pagamentos.</em></h1><div className="data">O que foi atendido, pago e declarado</div></div><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><button type="button" className="bt" onClick={() => setForm(true)}><Icone nome="mais" tam={18} />Registrar sessão</button></div></header>
+      <header className="topo"><div><h1>Sessões e <em>pagamentos.</em></h1><div className="data">O que foi atendido, pago e declarado</div></div><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><button type="button" className="bt" onClick={() => { setForm(true); setRemarca(null); }}><Icone nome="mais" tam={18} />Registrar sessão</button></div></header>
       <main className="conteudo">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
           <span className="mes"><Link href={ant} scroll={false} aria-label="Mês anterior" className="mes-b">‹</Link><b>{rotulo}</b><Link href={prox} scroll={false} aria-label="Próximo mês" className="mes-b">›</Link></span>
@@ -166,6 +188,38 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
             <span>{msg.t}</span>
             {msg.desfazer ? <button type="button" className="mini" disabled={pend} onClick={desfazer}>Desfazer</button> : null}
           </div>
+        ) : null}
+
+        {envio && envio.texto ? (
+          <div className="caixa ok" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={{ fontSize: 14, color: "#3A1F25" }}>Avise o novo horário. A mensagem já está pronta:</span>
+            <div className="prev">{envio.texto}</div>
+            <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {envio.para ? <a href={waLink(envio.para, envio.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto" }}><Icone nome="whats" tam={18} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado.</span>}
+              <button type="button" className="bt3" onClick={() => setEnvio(null)}>Fechar</button>
+            </span>
+          </div>
+        ) : null}
+
+        {remarca ? (
+          <section className="card">
+            <div className="form-c" style={{ background: "transparent", padding: 0 }}>
+              <h2 className="card-t"><Icone nome="calendario" tam={20} />Remarcar sessão</h2>
+              <span style={{ fontSize: 14, color: "#5A3A41" }}><b>{curto(remarca.l.nome)}</b> · hoje marcada para {fmtData(remarca.l.inicio)}, {fmtHora(remarca.l.inicio)}. Só esta sessão muda: as próximas continuam no horário fixo.</span>
+              <div className="fc"><span className="lb">Novo dia e horário</span>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8, maxWidth: 460 }}>
+                  <Calendario valor={remarca.data} onEscolher={(v) => setRemarca({ ...remarca, data: v })} hoje={hoje} />
+                  <select value={remarca.hora} onChange={(e) => setRemarca({ ...remarca, hora: e.target.value })} aria-label="Novo horário">
+                    {(HORAS.includes(remarca.hora) ? HORAS : [...HORAS, remarca.hora].sort()).map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" className="bt" onClick={salvarRemarcar} disabled={pend} style={{ width: "auto" }}>{pend ? "Remarcando…" : "Remarcar sessão"}</button>
+                <button type="button" className="bt3" onClick={() => setRemarca(null)}>Cancelar</button>
+              </div>
+            </div>
+          </section>
         ) : null}
 
         {form ? (

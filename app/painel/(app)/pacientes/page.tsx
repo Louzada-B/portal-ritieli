@@ -11,7 +11,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
   const sb = await supabaseServidor();
   const { data } = await sb
     .from("pacientes")
-    .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto")
+    .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, fim, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto")
     .order("nome");
   const todos = (data ?? []) as Paciente[];
   const sel = q.id ? todos.find((p) => p.id === q.id) : undefined;
@@ -55,6 +55,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     meet: p.meet_link,
     status: p.status,
     desde: p.desde,
+    fim: p.fim,
     fichaEm: p.ficha_em,
     escola: p.escola,
     cidade: p.cidade,
