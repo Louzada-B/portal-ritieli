@@ -17,7 +17,7 @@ export default function Pagina() {
 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: '1 1 520px', minWidth: '0' }}>
 <h1 className="h1">Política de <em>privacidade.</em></h1>
 <p className="intro" style={{ maxWidth: '640px' }}>Cuidar de você também é cuidar das suas informações. Aqui explico, de forma simples, quais dados este site recebe, por que e como eles são protegidos.</p>
-<span style={{ fontSize: '14px', color: '#74656A' }}>Atualizada em 4 de outubro de 2026</span>
+<span style={{ fontSize: '14px', color: '#74656A' }}>Atualizada em 8 de outubro de 2026</span>
 </div>
 </div>
 </section>
@@ -50,7 +50,7 @@ export default function Pagina() {
 
 <h2 id="quais">Quais dados coletamos</h2>
 <ul>
-<li><strong>No agendamento:</strong> nome, telefone (WhatsApp), e-mail e o horário escolhido para a conversa.</li>
+<li><strong>No agendamento:</strong> nome, telefone (WhatsApp), e-mail, o horário escolhido, a idade da criança ou do adolescente (quando a conversa é sobre um filho ou filha) e a mensagem, se você quiser escrever uma.</li>
 <li><strong>Nas conversas pelo WhatsApp:</strong> as mensagens que você enviar.</li>
 <li><strong>Durante o acompanhamento:</strong> as informações registradas no prontuário psicológico, que é obrigatório, e os dados necessários para emitir recibos, como nome e CPF.</li>
 <li><strong>Na navegação:</strong> informações técnicas básicas, como tipo de dispositivo e páginas visitadas, usadas apenas para manter o site funcionando.</li>
@@ -59,7 +59,7 @@ export default function Pagina() {
 
 <h2 id="para-que">Para que usamos</h2>
 <ul>
-<li>Agendar e confirmar as conversas e sessões e enviar avisos sobre elas.</li>
+<li>Agendar e confirmar as conversas e sessões e enviar avisos sobre elas. Se um pedido de conversa não for respondido em 48 horas, o horário é liberado automaticamente.</li>
 <li>Realizar o atendimento psicológico e manter o prontuário.</li>
 <li>Emitir recibos e cumprir obrigações fiscais.</li>
 <li>Responder às suas mensagens e dúvidas.</li>
@@ -72,11 +72,13 @@ export default function Pagina() {
 <h2 id="compartilha">Com quem compartilhamos</h2>
 <p>Seus dados não são vendidos nem cedidos para fins comerciais. Eles passam apenas por serviços necessários para o atendimento:</p>
 <ul>
-<li><strong>Ferramenta de agenda</strong>, que registra o horário que você escolhe.</li>
-<li><strong>Plataforma de videochamada</strong>, usada nas sessões online. As sessões não são gravadas.</li>
+<li><strong>Supabase</strong>, banco de dados onde ficam guardados os pedidos de agendamento, com servidores em São Paulo.</li>
+<li><strong>Google Agenda e Google Meet</strong>, para registrar a conversa na agenda da psicóloga e criar a sala da videochamada. As sessões não são gravadas.</li>
+<li><strong>Cloudflare Turnstile</strong>, que confere se o formulário de agendamento foi enviado por uma pessoa, e não por um robô.</li>
+<li><strong>Resend</strong>, que envia à psicóloga o aviso de pedido novo, só com o nome e o horário.</li>
 <li><strong>WhatsApp</strong>, para confirmações e mensagens.</li>
 <li><strong>Receita Federal</strong>, por meio do Receita Saúde, para a emissão de recibos.</li>
-<li><strong>Serviço de hospedagem</strong> do site.</li>
+<li><strong>Vercel</strong>, serviço de hospedagem do site.</li>
 </ul>
 <p>Fora isso, só há compartilhamento se houver obrigação legal ou ordem judicial, sempre nos limites do Código de Ética Profissional do Psicólogo.</p>
 
