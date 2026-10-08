@@ -201,6 +201,15 @@ export async function instanciaDaSerie(id: string, original: Date): Promise<Inst
   return inst;
 }
 
+// Procura, na agenda, a série semanal de um paciente que tem uma sessão nesse horário original
+// (para séries antigas que o painel não guardou). Só aceita evento com o título "Sessão · <nome>".
+export async function procurarSerie(titulo: string, original: Date): Promise<string | null> {
+  const q = new URLSearchParams({ timeMin: new Date(original.getTime() - 1000).toISOString(), timeMax: new Date(original.getTime() + 60000).toISOString(), singleEvents: "true", showDeleted: "true", maxResults: "50" });
+  const j = await gcal(`events?${q}`);
+  const it = ((j.items || []) as (Instancia & { recurringEventId?: string; summary?: string })[]).find((x) => x.recurringEventId && x.summary === titulo && mesmaHora(x.originalStartTime?.dateTime, original));
+  return it?.recurringEventId || null;
+}
+
 // Move uma única ocorrência da série (as outras continuam iguais, com a mesma sala).
 export async function moverOcorrencia(id: string, original: Date, novoInicio: Date, duracaoMin: number) {
   const inst = await instanciaDaSerie(id, original);

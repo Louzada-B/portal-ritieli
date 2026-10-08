@@ -20,6 +20,7 @@ export type Paciente = {
   fixo_hora: string | null;
   meet_link: string | null;
   google_evento_id: string | null;
+  series_antigas?: string[] | null; // séries semanais anteriores no Google
   status: "ativo" | "encerrado";
   desde: string;
   fim: string | null;

@@ -9,6 +9,7 @@ import { criarEventoSemanal, apagarEvento, obterEvento, mudarFimSerie, acertarOc
 import { local, deLocal } from "../../../lib/agenda";
 import { siteUrl } from "../../../site";
 import { conflitoFixo } from "../../../lib/conflitos";
+import { serieDaSessao, guardarSerieAntiga } from "../../../lib/serie";
 
 export type Resultado = { erro?: string; ok?: string; id?: string; link?: string; para?: string; texto?: string; valor?: string };
 
@@ -269,7 +270,11 @@ async function refazerSerie(sb: Awaited<ReturnType<typeof supabaseServidor>>, p:
     let corte = somaDias(aPartir, -1);
     if (fimAntigo && fimAntigo < corte) corte = fimAntigo;
     if (inicioVelho > corte) await apagarEvento(p.google_evento_id).catch(() => {});
-    else await mudarFimSerie(p.google_evento_id, corte).catch(() => {});
+    else {
+      await mudarFimSerie(p.google_evento_id, corte).catch(() => {});
+      // A série antiga ainda tem as sessões do período anterior: guarda para poder cancelar ou mover.
+      await guardarSerieAntiga(sb, p, p.google_evento_id);
+    }
   }
   const inicio = p.fixo_dia != null && p.fixo_hora ? primeiraOcorrencia(p.fixo_dia, p.fixo_hora.slice(0, 5), aPartir) : null;
   if (!inicio || (p.fim && isoLocal(inicio) > p.fim)) {
@@ -390,7 +395,7 @@ export async function reativarPaciente(id: string, r: { retomada: string; fixoDi
 // semanal da agenda e apaga ficha, termos, responsáveis só deste paciente e o cadastro.
 export async function excluirPaciente(id: string, confirmacao: string, prontuarioGuardado = false): Promise<Resultado> {
   const sb = await supabaseServidor();
-  const { data: p } = await sb.from("pacientes").select("id, nome, google_evento_id").eq("id", id).single();
+  const { data: p } = await sb.from("pacientes").select("id, nome, google_evento_id, series_antigas").eq("id", id).single();
   if (!p) return { erro: "Paciente não encontrado." };
   if (confirmacao.trim().toLowerCase() !== p.nome.trim().toLowerCase()) return { erro: "Escreva o nome completo, igual ao cadastro, para confirmar." };
   const [{ count: nEvo }, { count: nSec }, { data: anexos }] = await Promise.all([
@@ -402,6 +407,7 @@ export async function excluirPaciente(id: string, confirmacao: string, prontuari
   if (temProntuario && !prontuarioGuardado) return { erro: "Exporte e guarde o prontuário antes de excluir." };
   if (anexos?.length) await sb.storage.from("prontuario").remove(anexos.map((a) => a.caminho as string));
   if (p.google_evento_id) await apagarEvento(p.google_evento_id).catch(() => {});
+  for (const sid of (p.series_antigas as string[] | null) ?? []) await apagarEvento(sid).catch(() => {});
   const { data: avulsas } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", id).not("google_evento_id", "is", null);
   for (const x of avulsas ?? []) await apagarEvento(x.google_evento_id as string).catch(() => {});
 
@@ -442,10 +448,10 @@ export async function acertarAgenda(id: string): Promise<{ ok?: string; erro?: s
     for (const s of sess ?? []) {
       const inicio = new Date(s.inicio);
       const cancelada = s.status === "cancelada";
-      if (s.origem === "fixo" && p.google_evento_id) {
+      if (s.origem === "fixo") {
         const original = new Date(s.remarcada_de || s.inicio);
         try {
-          if (await acertarOcorrencia(p.google_evento_id, original, inicio, cancelada, DURACAO)) mudou++;
+          if (await acertarOcorrencia(await serieDaSessao(sb, p, original), original, inicio, cancelada, DURACAO)) mudou++;
         } catch (e) {
           if (e instanceof Error && e.message === "sem_google") throw e;
           falhou++;

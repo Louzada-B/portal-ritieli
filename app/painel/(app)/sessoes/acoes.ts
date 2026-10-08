@@ -7,6 +7,7 @@ import { moverOcorrencia, criarEventoUnico, moverEvento, apagarEvento, situacaoO
 import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
 import { deLocal, fmtQuando, local } from "../../../lib/agenda";
 import { conflitoEm, mesmoPeriodo, DUR_SESSAO } from "../../../lib/conflitos";
+import { serieDaSessao } from "../../../lib/serie";
 import { gerarSessoesDoMes, usarCreditos, type StatusSessao, type UsoCredito } from "../../../lib/sessoes";
 
 export type ResSessao = { erro?: string; ok?: string; semDesfazer?: boolean };
@@ -124,8 +125,9 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
   if ((cancelando || voltando) && inicio.getTime() > Date.now()) {
     const { data: p } = await sb.from("pacientes").select("*").eq("id", atual.paciente_id).single<Paciente>();
     try {
-      if (atual.origem === "fixo" && p?.google_evento_id) {
-        await situacaoOcorrencia(p.google_evento_id, new Date(atual.remarcada_de || atual.inicio), cancelando);
+      if (atual.origem === "fixo" && p && (p.google_evento_id || p.series_antigas?.length)) {
+        const original = new Date(atual.remarcada_de || atual.inicio);
+        await situacaoOcorrencia(await serieDaSessao(sb, p, original), original, cancelando);
       } else if (atual.origem === "manual") {
         if (cancelando && atual.google_evento_id) {
           await apagarEvento(atual.google_evento_id);
@@ -206,7 +208,7 @@ export async function remarcarSessao(id: string, data: string, hora: string): Pr
 
   let aviso = "";
   try {
-    if (s.origem === "fixo" && p.google_evento_id) await moverOcorrencia(p.google_evento_id, original, novo, DUR_SESSAO);
+    if (s.origem === "fixo" && (p.google_evento_id || p.series_antigas?.length)) await moverOcorrencia(await serieDaSessao(sb, p, original), original, novo, DUR_SESSAO);
     else if (s.origem === "manual" && s.google_evento_id) await moverEvento(s.google_evento_id, novo, DUR_SESSAO);
     else if (s.origem === "manual") {
       const ev = await eventoAvulso(sb, p, novo);
