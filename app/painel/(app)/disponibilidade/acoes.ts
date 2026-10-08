@@ -86,6 +86,7 @@ export async function ajustarGoogle(campo: "bloquear_site" | "enviar_eventos", v
   if (!(await ehAdmin())) return { erro: "Sessão expirada. Entre de novo." };
   const { supabaseAdmin } = await import("../../../lib/supabase/admin");
   const { error } = await supabaseAdmin().from("google_conexao").update({ [campo]: valor }).eq("id", 1);
+  (await import("../../../lib/google")).limparCacheGoogle();
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
   revalidatePath("/painel/disponibilidade");
   return { ok: "Salvo." };
@@ -103,6 +104,7 @@ export async function desconectarGoogle(): Promise<Resultado> {
     } catch {}
   }
   await supabaseAdmin().from("google_conexao").delete().eq("id", 1);
+  (await import("../../../lib/google")).limparCacheGoogle();
   revalidatePath("/painel/disponibilidade");
   return { ok: "Google Agenda desconectada." };
 }

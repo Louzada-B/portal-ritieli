@@ -43,7 +43,7 @@ export async function carregarRegras(sb: SupabaseClient) {
 }
 
 // Horários já tomados por pedidos ativos (aguardando dentro do prazo ou confirmados).
-export async function horariosTomados(sb: SupabaseClient, duracaoMin: number): Promise<Periodo[]> {
+export async function horariosTomados(sb: SupabaseClient, duracaoMin = 15): Promise<Periodo[]> {
   const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { data, error } = await sb.from("pedidos").select("inicio, status, criado_em").in("status", ["aguardando", "confirmado"]).gte("inicio", desde);
   if (error) throw error;
@@ -57,3 +57,16 @@ export async function horariosTomados(sb: SupabaseClient, duracaoMin: number): P
 }
 
 export const periodos = (lista: Bloqueio[]): Periodo[] => lista.map((b) => ({ inicio: new Date(b.inicio), fim: new Date(b.fim) }));
+
+// Carrega tudo o que a agenda precisa de uma vez, em paralelo (banco e Google).
+export async function carregarAgenda(sb: SupabaseClient, opts: { google?: boolean; dias?: number } = {}) {
+  const { ocupadosGoogle } = await import("./google");
+  const [regras, tomados, g] = await Promise.all([
+    carregarRegras(sb),
+    horariosTomados(sb),
+    opts.google === false ? Promise.resolve({ periodos: [] as Periodo[], erro: false }) : ocupadosGoogle(opts.dias ?? 60).catch(() => ({ periodos: [] as Periodo[], erro: true })),
+  ]);
+  const dur = regras.config.duracao_conversa_min;
+  const tomadosAjustados = dur === 15 ? tomados : tomados.map((t) => ({ inicio: t.inicio, fim: new Date(t.inicio.getTime() + dur * 60000) }));
+  return { regras, tomados: tomadosAjustados, google: g };
+}

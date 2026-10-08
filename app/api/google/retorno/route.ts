@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ehAdmin } from "../../../lib/sessao";
-import { cifrar, trocarCodigo } from "../../../lib/google";
+import { cifrar, limparCacheGoogle, trocarCodigo } from "../../../lib/google";
 import { supabaseAdmin } from "../../../lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       conectado_em: new Date().toISOString(),
     });
     if (error) return voltar("erro");
+    limparCacheGoogle();
     return voltar("ok");
   } catch {
     return voltar("erro");

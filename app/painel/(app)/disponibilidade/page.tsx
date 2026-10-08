@@ -1,18 +1,17 @@
 import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { supabaseAdmin } from "../../../lib/supabase/admin";
-import { carregarRegras, horariosTomados, periodos } from "../../../lib/dados";
+import { carregarAgenda, periodos } from "../../../lib/dados";
 import { horariosLivres, local, deLocal, fmtDiaCurto, fmtHora, fmtDiaLongo } from "../../../lib/agenda";
-import { ocupadosGoogle } from "../../../lib/google";
 import { TopoCelular } from "../../componentes/Navegacao";
 import FormDisponibilidade from "./FormDisponibilidade";
 
 export default async function Disponibilidade({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
   const sb = await supabaseServidor();
-  const regras = await carregarRegras(sb);
-  const tomados = await horariosTomados(sb, regras.config.duracao_conversa_min);
-  const { data: con } = await supabaseAdmin().from("google_conexao").select("email, bloquear_site, enviar_eventos").eq("id", 1).maybeSingle();
-  const g = await ocupadosGoogle(regras.config.janela_dias).catch(() => ({ periodos: [], erro: true }));
+  const [{ regras, tomados, google: g }, { data: con }] = await Promise.all([
+    carregarAgenda(sb),
+    supabaseAdmin().from("google_conexao").select("email, bloquear_site, enviar_eventos").eq("id", 1).maybeSingle(),
+  ]);
 
   const livres = horariosLivres({ config: regras.config, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] });
   const hoje = local(new Date());

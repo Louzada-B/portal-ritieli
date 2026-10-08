@@ -249,3 +249,8 @@
 .painel a.fi,.painel a.pi,.painel a.bt,.painel a.bt2,.painel a.bt3{text-decoration:none}
 .painel a.pi{color:#3A1F25}
 .painel .bt:disabled,.painel .bt2:disabled{opacity:.6;cursor:default}
+.painel .esq{background:linear-gradient(90deg,#F1E6E8 0%,#F8F0F1 50%,#F1E6E8 100%);background-size:200% 100%;border-radius:10px;animation:esqBrilho 1.2s ease-in-out infinite}
+.painel .esq-grade{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+@keyframes esqBrilho{from{background-position:100% 0}to{background-position:-100% 0}}
+@media (max-width:760px){.painel .esq-grade{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.painel .esq{animation:none}}

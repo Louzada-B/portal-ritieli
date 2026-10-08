@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
-import { carregarRegras, horariosTomados, periodos, PRAZO_HORAS, type Pedido } from "../../../lib/dados";
+import { carregarAgenda, periodos, PRAZO_HORAS, type Pedido } from "../../../lib/dados";
 import { horariosLivres, fmtQuando } from "../../../lib/agenda";
-import { ocupadosGoogle } from "../../../lib/google";
 import { TopoCelular } from "../../componentes/Navegacao";
 import Detalhe from "./Detalhe";
 
@@ -49,9 +48,7 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
 
   let sugestoes: { iso: string; rot: string }[] = [];
   if (sel?.status === "aguardando") {
-    const regras = await carregarRegras(sb);
-    const tomados = await horariosTomados(sb, regras.config.duracao_conversa_min);
-    const g = await ocupadosGoogle(regras.config.janela_dias).catch(() => ({ periodos: [] }));
+    const { regras, tomados, google: g } = await carregarAgenda(sb);
     sugestoes = horariosLivres({ config: regras.config, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] })
       .slice(0, 12)
       .map((d) => ({ iso: d.toISOString(), rot: fmtQuando(d) }));

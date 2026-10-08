@@ -63,12 +63,28 @@ export async function trocarCodigo(code: string) {
 type Conexao = { refresh_token_cripto: string; bloquear_site: boolean; enviar_eventos: boolean; email: string | null };
 
 export async function conexao(): Promise<Conexao | null> {
+  if (conexaoCache && conexaoCache.ate > Date.now()) return conexaoCache.dados;
   const { data } = await supabaseAdmin().from("google_conexao").select("refresh_token_cripto, bloquear_site, enviar_eventos, email").eq("id", 1).maybeSingle();
-  return (data as Conexao) ?? null;
+  conexaoCache = { dados: (data as Conexao) ?? null, ate: Date.now() + 30 * 1000 };
+  return conexaoCache.dados;
+}
+
+// Guarda o token de acesso na memória do servidor (vale 1 hora no Google; usamos 50 min)
+// e o resultado de "ocupados" por 60 segundos, para o painel não esperar o Google a cada clique.
+let tokenCache: { valor: string; ate: number; chave: string } | null = null;
+let ocupadosCache: { dados: Periodo[]; ate: number; dias: number } | null = null;
+let conexaoCache: { dados: Conexao | null; ate: number } | null = null;
+
+export function limparCacheGoogle() {
+  tokenCache = null;
+  ocupadosCache = null;
+  conexaoCache = null;
 }
 
 async function acesso(con: Conexao) {
+  if (tokenCache && tokenCache.chave === con.refresh_token_cripto && tokenCache.ate > Date.now()) return tokenCache.valor;
   const t = await token({ refresh_token: decifrar(con.refresh_token_cripto), grant_type: "refresh_token" });
+  tokenCache = { valor: t.access_token, ate: Date.now() + 50 * 60 * 1000, chave: con.refresh_token_cripto };
   return t.access_token;
 }
 
@@ -76,6 +92,7 @@ async function acesso(con: Conexao) {
 export async function ocupadosGoogle(dias: number): Promise<{ periodos: Periodo[]; erro: boolean }> {
   const con = await conexao();
   if (!con || !con.bloquear_site) return { periodos: [], erro: false };
+  if (ocupadosCache && ocupadosCache.ate > Date.now() && ocupadosCache.dias >= dias) return { periodos: ocupadosCache.dados, erro: false };
   const at = await acesso(con);
   const inicio = new Date();
   const fim = new Date(inicio.getTime() + (dias + 1) * 86400 * 1000);
@@ -88,7 +105,9 @@ export async function ocupadosGoogle(dias: number): Promise<{ periodos: Periodo[
   if (!r.ok) return { periodos: [], erro: true };
   const j = await r.json();
   const busy = (j.calendars?.primary?.busy ?? []) as { start: string; end: string }[];
-  return { periodos: busy.map((b) => ({ inicio: new Date(b.start), fim: new Date(b.end) })), erro: false };
+  const periodos = busy.map((b) => ({ inicio: new Date(b.start), fim: new Date(b.end) }));
+  ocupadosCache = { dados: periodos, ate: Date.now() + 60 * 1000, dias };
+  return { periodos, erro: false };
 }
 
 // Cria o evento da conversa inicial na agenda dela, com sala do Meet.
@@ -110,6 +129,7 @@ export async function criarEvento(p: { id: string; titulo: string; inicio: Date;
     cache: "no-store",
   });
   const j = await r.json();
+  ocupadosCache = null;
   if (!r.ok) throw new Error(`google evento: ${j.error?.message || r.status}`);
   return { id: j.id as string, meet: (j.hangoutLink as string) || null };
 }

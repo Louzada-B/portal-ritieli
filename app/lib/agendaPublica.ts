@@ -1,8 +1,7 @@
 import "server-only";
 import { supabaseAdmin } from "./supabase/admin";
-import { carregarRegras, horariosTomados, periodos } from "./dados";
+import { carregarAgenda, periodos } from "./dados";
 import { horariosLivres, local, fmtHora, DIAS, MESES } from "./agenda";
-import { ocupadosGoogle } from "./google";
 import { ehAdmin } from "./sessao";
 
 // A agenda só abre para o público quando AGENDA_ABERTA=sim estiver na Vercel.
@@ -16,10 +15,7 @@ export type DiaAgenda = { data: string; rot: string; num: string; mes: string; h
 
 export async function montarAgenda() {
   const sb = supabaseAdmin();
-  await sb.rpc("liberar_pedidos_vencidos");
-  const regras = await carregarRegras(sb);
-  const tomados = await horariosTomados(sb, regras.config.duracao_conversa_min);
-  const g = await ocupadosGoogle(regras.config.janela_dias).catch(() => ({ periodos: [] }));
+  const [, { regras, tomados, google: g }] = await Promise.all([sb.rpc("liberar_pedidos_vencidos"), carregarAgenda(sb)]);
   const base = { config: regras.config, semana: regras.semana, bloqueios: periodos(regras.bloqueios) };
   // Todos os horários do expediente (fora dos bloqueios) e, entre eles, os livres.
   const candidatos = horariosLivres({ ...base, ocupados: [] });

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { supabaseServidor } from "../../lib/supabase/servidor";
 import { supabaseAdmin } from "../../lib/supabase/admin";
-import { carregarRegras, horariosTomados, periodos, PRAZO_HORAS, type Pedido } from "../../lib/dados";
+import { carregarAgenda, periodos, PRAZO_HORAS, type Pedido } from "../../lib/dados";
 import { horariosLivres, fmtHora, fmtDiaLongo, fmtQuando, local } from "../../lib/agenda";
-import { ocupadosGoogle } from "../../lib/google";
 import { TopoCelular } from "../componentes/Navegacao";
 import Icone from "../componentes/Icone";
 
@@ -13,16 +12,14 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const { senha } = await searchParams;
   const sb = await supabaseServidor();
   const agora = new Date();
-  const [{ data: ags }, { data: confs }, regras, { data: con }] = await Promise.all([
+  const [{ data: ags }, { data: confs }, { regras, tomados, google: g }, { data: con }] = await Promise.all([
     sb.from("pedidos").select("*").eq("status", "aguardando").order("criado_em"),
     sb.from("pedidos").select("*").eq("status", "confirmado").gte("inicio", new Date(agora.getTime() - 3600000).toISOString()).order("inicio").limit(8),
-    carregarRegras(sb),
+    carregarAgenda(sb),
     supabaseAdmin().from("google_conexao").select("id").eq("id", 1).maybeSingle(),
   ]);
   const aguardando = (ags ?? []) as Pedido[];
   const confirmadas = (confs ?? []) as Pedido[];
-  const tomados = await horariosTomados(sb, regras.config.duracao_conversa_min);
-  const g = await ocupadosGoogle(7).catch(() => ({ periodos: [] }));
   const livres7 = horariosLivres({ config: { ...regras.config, janela_dias: 7 }, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] });
 
   const maisAntigo = aguardando[0];
