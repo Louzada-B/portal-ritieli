@@ -109,12 +109,12 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
   const semRecibo = real.filter((l) => l.pago && !l.recibo);
   const ags = linhas.filter((l) => l.status === "agendada");
   const soma = (xs: Linha[]) => xs.reduce((a, l) => a + (l.valor || 0), 0);
-  // Busca pelo nome (sem acentos) e sempre em ordem de data, da mais antiga para a mais nova.
+  // Busca pelo nome (sem acentos) e sempre em ordem de data, da mais recente para a mais antiga.
   const sem = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const termo = sem(busca.trim());
   const lista = (filtro === "pend" ? aRec : filtro === "rec" ? semRecibo : filtro === "ag" ? ags : linhas)
     .filter((l) => !termo || sem(l.nome).includes(termo))
-    .sort((a, b) => a.inicio.localeCompare(b.inicio));
+    .sort((a, b) => b.inicio.localeCompare(a.inicio));
 
   const escolherPac = (id: string) => {
     const p = pacientes.find((x) => x.id === id);
