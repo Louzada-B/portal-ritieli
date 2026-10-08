@@ -439,3 +439,18 @@
   .painel .papel{box-shadow:none!important;padding:0!important}
   .painel,.painel .pri,.painel .conteudo{background:#fff!important;padding:0!important;margin:0!important}
 }
+/* Sessões e pagamentos */
+.painel .mes .mes-b{width:38px;height:38px;border-radius:50%;color:#7A2335;font-size:18px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.painel .mes .mes-b:hover{background:#F6E5E7}
+.painel .cs{background:#FFFFFF;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+@media (max-width:760px){
+  .painel .rs{padding:18px}
+  .painel .rs .bt2{width:100%!important}
+  .painel .tab-s{display:none}
+  .painel .lista-s{background:transparent!important;padding:0!important}
+  .painel .cards-s{display:flex;flex-direction:column;gap:10px}
+  .painel .mes{align-self:stretch;justify-content:space-between;flex:1 1 100%}
+  .painel .m-only{display:inline-flex!important;width:100%}
+  .painel .d-only{display:none}
+  .painel .cal{width:100%;box-sizing:border-box}
+}

@@ -13,7 +13,7 @@ export const ITENS: Item[] = [
   { href: "/painel/pedidos", nome: "Pedidos", curto: "Pedidos", icone: "pedidos", contar: true },
   { href: "/painel/disponibilidade", nome: "Disponibilidade", curto: "Horários", icone: "horarios" },
   { href: "/painel/pacientes", nome: "Pacientes", curto: "Pacientes", icone: "pacientes" },
-  { href: "#", nome: "Sessões e pagamentos", curto: "Sessões", icone: "sessoes", emBreve: true },
+  { href: "/painel/sessoes", nome: "Sessões e pagamentos", curto: "Sessões", icone: "sessoes" },
 ];
 const CONTEUDO: Item[] = [
   { href: "#", nome: "Escritos", curto: "Escritos", icone: "escritos", emBreve: true },

@@ -343,7 +343,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         )}
       </div>
       <ExcluirPaciente id={p.id} nome={p.nome} />
-      <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. Prontuário, sessões e pagamentos entram nas próximas etapas.</p>
+      <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário entra na próxima etapa.</p>
     </>
   );
 }

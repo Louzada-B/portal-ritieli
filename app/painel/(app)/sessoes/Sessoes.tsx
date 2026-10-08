@@ -1,0 +1,271 @@
+"use client";
+
+import Link from "next/link";
+import { useState, useTransition } from "react";
+import Icone from "../../componentes/Icone";
+import { reais } from "../../../lib/formato";
+import type { StatusSessao } from "../../../lib/sessoes";
+import { registrarSessao, mudarSessao, mudarValorSessao, excluirSessao } from "./acoes";
+
+export type Linha = {
+  id: string; inicio: string; nome: string; tipo: "adulta" | "crianca"; status: StatusSessao;
+  valor: number | null; pago: boolean; recibo: boolean; manual: boolean;
+};
+type Pac = { id: string; nome: string; valor: number | null; hora: string | null };
+type Estado = { status: StatusSessao; pago: boolean; recibo: boolean };
+
+const DS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MN = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const FUSO = 3 * 3600000;
+const loc = (iso: string) => new Date(new Date(iso).getTime() - FUSO);
+const fmtData = (iso: string) => { const d = loc(iso); return `${DS[d.getUTCDay()]}, ${d.getUTCDate()} ${MS[d.getUTCMonth()]}`; };
+const fmtHora = (iso: string) => { const d = loc(iso); return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`; };
+const curto = (n: string) => { const p = n.trim().split(/\s+/); return p.length > 1 ? `${p[0]} ${p[p.length - 1][0]}.` : p[0]; };
+const brl = (c: number | null) => (c == null ? "—" : reais(c));
+const cobra = (s: StatusSessao) => s === "realizada" || s === "falta";
+
+const ST_CLS: Record<StatusSessao, string> = { realizada: "pill p-ok", agendada: "pill p-on", falta: "pill p-ur", cancelada: "pill p-ne" };
+const ST_TXT: Record<StatusSessao, string> = { realizada: "Realizada", agendada: "Agendada", falta: "Falta (cobrada)", cancelada: "Cancelada com 24h" };
+const MSG: Record<string, string> = {
+  realizada: "Sessão marcada como realizada. O pagamento ficou pendente.",
+  falta: "Falta registrada. Pela sua política, ela é cobrada como sessão.",
+  cancelada: "Cancelamento com antecedência registrado, sem cobrança.",
+  pago: "Pagamento registrado. Agora falta o recibo.",
+  recibo: "Recibo marcado como emitido.",
+};
+const HORAS = Array.from({ length: 15 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
+
+function Calendario({ valor, onEscolher, hoje }: { valor: string; onEscolher: (v: string) => void; hoje: { ano: number; mes: number; dia: number } }) {
+  const [aberto, setAberto] = useState(false);
+  const base = valor ? valor.split("-").map(Number) : [hoje.ano, hoje.mes + 1, hoje.dia];
+  const [cal, setCal] = useState({ ano: base[0], mes: base[1] - 1 });
+  const primeiro = new Date(Date.UTC(cal.ano, cal.mes, 1)).getUTCDay();
+  const nDias = new Date(Date.UTC(cal.ano, cal.mes + 1, 0)).getUTCDate();
+  const iso = (d: number) => `${cal.ano}-${String(cal.mes + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const txt = valor ? (() => { const [a, m, d] = valor.split("-").map(Number); return `${DS[new Date(Date.UTC(a, m - 1, d)).getUTCDay()]}, ${d} ${MS[m - 1]}`; })() : "Escolher data";
+  return (
+    <div className="cal-w">
+      <button type="button" className={valor ? "cal-b" : "cal-b vaz"} onClick={() => setAberto(!aberto)} aria-haspopup="dialog" aria-expanded={aberto}><Icone nome="calendario" tam={18} /><span>{txt}</span></button>
+      {aberto ? (
+        <div className="cal" role="dialog" aria-label="Escolher data">
+          <div className="cal-h">
+            <button type="button" aria-label="Mês anterior" onClick={() => setCal(cal.mes === 0 ? { ano: cal.ano - 1, mes: 11 } : { ano: cal.ano, mes: cal.mes - 1 })}>‹</button>
+            <b>{MN[cal.mes]} {cal.ano}</b>
+            <button type="button" aria-label="Próximo mês" onClick={() => setCal(cal.mes === 11 ? { ano: cal.ano + 1, mes: 0 } : { ano: cal.ano, mes: cal.mes + 1 })}>›</button>
+          </div>
+          <div className="cal-g">
+            {["D", "S", "T", "Q", "Q", "S", "S"].map((w, i) => <span key={i} className="ds">{w}</span>)}
+            {Array.from({ length: primeiro }, (_, i) => <span key={`v${i}`} className="cd vazio" />)}
+            {Array.from({ length: nDias }, (_, i) => {
+              const d = i + 1;
+              const cls = ["cd", valor === iso(d) ? "sel" : "", cal.ano === hoje.ano && cal.mes === hoje.mes && d === hoje.dia ? "hoje" : "", (primeiro + i) % 7 === 0 ? "dom" : ""].filter(Boolean).join(" ");
+              return <button key={d} type="button" className={cls} onClick={() => { onEscolher(iso(d)); setAberto(false); }}>{d}</button>;
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+type Props = {
+  linhas: Linha[]; rotulo: string; ant: string; prox: string; pacientes: Pac[];
+  hoje: { ano: number; mes: number; dia: number }; mesAtual: { ano: number; mes: number };
+};
+
+export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: Props) {
+  const [filtro, setFiltro] = useState<"todas" | "ag" | "pend" | "rec">("todas");
+  const [form, setForm] = useState(false);
+  const [r, setR] = useState({ pacienteId: pacientes[0]?.id || "", data: "", hora: pacientes[0]?.hora || "08:00", status: "agendada" as StatusSessao, valor: pacientes[0]?.valor != null ? String(pacientes[0].valor / 100).replace(".", ",") : "", pago: false });
+  const [msg, setMsg] = useState<{ t: string; erro?: boolean; desfazer?: { id: string; e: Estado } } | null>(null);
+  const [editVal, setEditVal] = useState<{ id: string; v: string } | null>(null);
+  const [pend, iniciar] = useTransition();
+
+  const real = linhas.filter((l) => cobra(l.status));
+  const aRec = real.filter((l) => !l.pago);
+  const semRecibo = real.filter((l) => l.pago && !l.recibo);
+  const ags = linhas.filter((l) => l.status === "agendada");
+  const soma = (xs: Linha[]) => xs.reduce((a, l) => a + (l.valor || 0), 0);
+  const lista = filtro === "pend" ? aRec : filtro === "rec" ? semRecibo : filtro === "ag" ? ags : linhas;
+
+  const escolherPac = (id: string) => {
+    const p = pacientes.find((x) => x.id === id);
+    setR({ ...r, pacienteId: id, hora: p?.hora || r.hora, valor: p?.valor != null ? String(p.valor / 100).replace(".", ",") : r.valor });
+  };
+
+  const mudar = (l: Linha, novo: Estado, aviso: string) =>
+    iniciar(async () => {
+      const res = await mudarSessao(l.id, novo);
+      if (res.erro) return setMsg({ t: res.erro, erro: true });
+      setMsg({ t: aviso, desfazer: { id: l.id, e: { status: l.status, pago: l.pago, recibo: l.recibo } } });
+    });
+
+  const desfazer = () =>
+    msg?.desfazer &&
+    iniciar(async () => {
+      const res = await mudarSessao(msg.desfazer!.id, msg.desfazer!.e);
+      setMsg(res.erro ? { t: res.erro, erro: true } : { t: "Desfeito." });
+    });
+
+  const salvar = () =>
+    iniciar(async () => {
+      const res = await registrarSessao(r);
+      if (res.erro) return setMsg({ t: res.erro, erro: true });
+      setMsg({ t: res.ok! });
+      setForm(false);
+      setR({ ...r, data: "" });
+    });
+
+  const acoes = (l: Linha, longo: boolean) => {
+    const ag = l.status === "agendada";
+    const podePagar = cobra(l.status) && !l.pago;
+    const podeEmitir = cobra(l.status) && l.pago && !l.recibo;
+    return {
+      ag, podePagar, podeEmitir, tem: ag || podePagar || podeEmitir,
+      nodos: (
+        <>
+          {ag ? (
+            <>
+              <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "realizada", pago: false, recibo: false }, MSG.realizada)}>Realizada</button>
+              <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "falta", pago: false, recibo: false }, MSG.falta)}>Faltou</button>
+              <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "cancelada", pago: false, recibo: false }, MSG.cancelada)}>{longo ? "Cancelou com 24h" : "Cancelou"}</button>
+            </>
+          ) : null}
+          {podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}
+          {podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>{longo ? "Marcar recibo emitido" : "Marcar emitido"}</button> : null}
+        </>
+      ),
+    };
+  };
+
+  const pg = (l: Linha) => (l.status === "cancelada" ? ["Sem cobrança", "pill p-ne"] : l.status === "agendada" ? ["Após a sessão", "pill p-ne"] : l.pago ? ["Pago", "pill p-ok"] : ["Pendente", "pill p-av"]);
+  const rc = (l: Linha) => (l.status === "cancelada" || l.status === "agendada" ? ["—", "pill p-ne"] : l.recibo ? ["Recibo emitido", "pill p-ok"] : l.pago ? ["Recibo a emitir", "pill p-ur"] : ["Aguarda pagamento", "pill p-ne"]);
+  const valorCel = (l: Linha) =>
+    editVal?.id === l.id ? (
+      <span className="cel">
+        <span className="valor-in" style={{ display: "flex", alignItems: "center", background: "#FFFFFF", border: "1px solid #E2CCD0", borderRadius: 12, paddingLeft: 10, width: 120 }}><span style={{ fontWeight: 700, color: "#8A7A7E" }}>R$</span><input type="text" inputMode="decimal" autoFocus value={editVal.v} onChange={(e) => setEditVal({ id: l.id, v: e.target.value })} style={{ border: 0, boxShadow: "none", width: "100%", minHeight: 36 }} aria-label="Valor da sessão" /></span>
+        <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await mudarValorSessao(l.id, editVal.v); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); if (!res.erro) setEditVal(null); })}>Salvar</button>
+      </span>
+    ) : (
+      <button type="button" onClick={() => setEditVal({ id: l.id, v: l.valor != null ? String(l.valor / 100).replace(".", ",") : "" })} title="Mudar o valor" style={{ font: "inherit", fontWeight: 700, color: "inherit", background: "none", border: 0, padding: 0, cursor: "pointer", whiteSpace: "nowrap" }}>{l.status === "cancelada" ? "—" : l.valor == null ? <span style={{ color: "#A3322A", textDecoration: "underline" }}>Definir valor</span> : brl(l.valor)}</button>
+    );
+  const tipoTxt = (l: Linha) => `${l.tipo === "crianca" ? "Infantil · presencial" : "Online"} · ${fmtHora(l.inicio)}${l.manual ? " · registrada" : ""}`;
+
+  return (
+    <>
+      <header className="topo"><div><h1>Sessões e <em>pagamentos.</em></h1><div className="data">O que foi atendido, pago e declarado</div></div><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><button type="button" className="bt" onClick={() => setForm(true)}><Icone nome="mais" tam={18} />Registrar sessão</button></div></header>
+      <main className="conteudo">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+          <span className="mes"><Link href={ant} scroll={false} aria-label="Mês anterior" className="mes-b">‹</Link><b>{rotulo}</b><Link href={prox} scroll={false} aria-label="Próximo mês" className="mes-b">›</Link></span>
+          <button type="button" className="bt m-only" onClick={() => setForm(true)}><Icone nome="mais" tam={18} />Registrar sessão</button>
+        </div>
+
+        {msg ? (
+          <div className={msg.erro ? "aviso erro" : "aviso ok"} role="status" style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+            <span>{msg.t}</span>
+            {msg.desfazer ? <button type="button" className="mini" disabled={pend} onClick={desfazer}>Desfazer</button> : null}
+          </div>
+        ) : null}
+
+        {form ? (
+          <section className="card">
+            <div className="form-c" style={{ background: "transparent", padding: 0 }}>
+              <h2 className="card-t"><Icone nome="sessoes" tam={20} />Registrar sessão</h2>
+              <div className="fc-g">
+                <div className="fc"><label htmlFor="r-pac">Paciente</label>
+                  <select id="r-pac" value={r.pacienteId} onChange={(e) => escolherPac(e.target.value)}>
+                    {pacientes.map((p) => <option key={p.id} value={p.id}>{curto(p.nome)}</option>)}
+                  </select>
+                </div>
+                <div className="fc"><span className="lb">Data e horário</span>
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8 }}>
+                    <Calendario valor={r.data} onEscolher={(v) => setR({ ...r, data: v })} hoje={hoje} />
+                    <select value={r.hora} onChange={(e) => setR({ ...r, hora: e.target.value })} aria-label="Horário">
+                      {(HORAS.includes(r.hora) ? HORAS : [...HORAS, r.hora].sort()).map((h) => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="fc"><span className="lb">Situação</span>
+                <div className="seg">{(["agendada", "realizada", "falta", "cancelada"] as StatusSessao[]).map((k) => <button key={k} type="button" className={r.status === k ? "on" : ""} onClick={() => setR({ ...r, status: k })}>{ST_TXT[k]}</button>)}</div>
+              </div>
+              <div className="fc-g">
+                <div className="fc"><label htmlFor="r-val">Valor</label><div className="valor-in" style={{ display: "flex", alignItems: "center", background: "#FFFFFF", border: "1px solid #E2CCD0", borderRadius: 12, paddingLeft: 12 }}><span style={{ fontWeight: 700, color: "#8A7A7E" }}>R$</span><input id="r-val" type="text" inputMode="decimal" value={r.valor} onChange={(e) => setR({ ...r, valor: e.target.value })} style={{ border: 0, boxShadow: "none" }} /></div></div>
+                {cobra(r.status) ? (
+                  <div className="fc"><span className="lb">Pagamento</span><div className="seg">{[["Pago", true], ["Pendente", false]].map(([n, v]) => <button key={String(n)} type="button" className={r.pago === v ? "on" : ""} onClick={() => setR({ ...r, pago: v as boolean })}>{n as string}</button>)}</div></div>
+                ) : null}
+              </div>
+              {!pacientes.length ? <span style={{ fontSize: 14, color: "#A3322A" }}>Nenhum paciente ativo. Cadastre em <Link href="/painel/pacientes?novo=1">Pacientes</Link>.</span> : null}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" className="bt" onClick={salvar} disabled={pend || !pacientes.length} style={{ width: "auto" }}>{pend ? "Salvando…" : "Salvar sessão"}</button>
+                <button type="button" className="bt3" onClick={() => setForm(false)}>Cancelar</button>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <div className="nums">
+          <div className="num"><span className="rot">Sessões cobradas</span><b>{real.length}</b><span className="l">realizadas e faltas</span></div>
+          <div className="num"><span className="rot">Recebido</span><b>{reais(soma(real.filter((l) => l.pago))) || "R$ 0"}</b><span className="l">Pix</span></div>
+          <div className="num"><span className="rot">A receber</span><b>{reais(soma(aRec)) || "R$ 0"}</b><span className="l">{aRec.length} {aRec.length === 1 ? "sessão pendente" : "sessões pendentes"}</span></div>
+          <div className="num"><span className="rot">Recibos</span><b>{semRecibo.length}</b><span className="l">a emitir no Receita Saúde</span></div>
+        </div>
+
+        <div className="fluxo"><span style={{ color: "#7A2335", flex: "0 0 auto", marginTop: 2 }}><Icone nome="horarios" tam={18} /></span><span><b>Como uma sessão anda por aqui:</b> ela começa como <b>agendada</b> (pagamento &quot;após a sessão&quot;). No dia, você marca <b>realizada</b>, <b>falta</b> ou <b>cancelada com 24h</b>. Quando o Pix cair na sua conta, toque em <b>Marcar pago</b>. Depois de emitir o recibo no Receita Saúde, toque em <b>Marcar emitido</b>. As sessões do horário fixo de cada paciente aparecem sozinhas.</span></div>
+
+        <div className="rs">
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <span style={{ flex: "0 0 auto", width: 48, height: 48, borderRadius: "50%", background: "#F6E5E7", color: "#7A2335", display: "flex", alignItems: "center", justifyContent: "center" }}><Icone nome="termos" tam={22} /></span>
+            <span style={{ display: "flex", flexDirection: "column" }}><b style={{ fontSize: 17 }}>Recibos do Receita Saúde</b><span style={{ fontSize: 14, color: "#5A3A41" }}>Toda sessão paga precisa de recibo emitido no Receita Saúde. Emita lá e marque aqui para não esquecer nenhum.</span></span>
+          </div>
+          <a href="https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/auditoria-fiscal/conformidade/perguntas-e-respostas-receita-saude" target="_blank" rel="noopener" className="bt2" style={{ width: "auto" }}><Icone nome="site" tam={18} />Abrir o Receita Saúde</a>
+        </div>
+
+        <div className="filtros" role="group" aria-label="Filtrar sessões">
+          {([["todas", "Todas", linhas.length], ["ag", "Agendadas", ags.length], ["pend", "A receber", aRec.length], ["rec", "Recibo a emitir", semRecibo.length]] as const).map(([k, n, c]) => (
+            <button key={k} type="button" className={filtro === k ? "fi on" : "fi"} aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{n} <b>{c}</b></button>
+          ))}
+        </div>
+
+        <section className="card lista-s" style={{ padding: "20px 12px 8px" }}>
+          <table className="tab-s">
+            <thead><tr><th>Data</th><th>Paciente</th><th>Sessão</th><th>Valor</th><th>Pagamento</th><th>Recibo</th></tr></thead>
+            <tbody>
+              {lista.map((l) => {
+                const a = acoes(l, false);
+                const [pt, pc] = pg(l);
+                const [rt, rcc] = rc(l);
+                return (
+                  <tr key={l.id}>
+                    <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{fmtData(l.inicio)}</td>
+                    <td><span className="pac"><b>{curto(l.nome)}</b><small>{tipoTxt(l)}</small></span></td>
+                    <td><span className="cel"><span className={ST_CLS[l.status]}>{ST_TXT[l.status]}</span>{a.ag ? a.nodos : null}</span></td>
+                    <td className="v">{valorCel(l)}</td>
+                    <td><span className="cel"><span className={pc}>{pt}</span>{a.podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}</span></td>
+                    <td><span className="cel"><span className={rcc}>{rt}</span>{a.podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>Marcar emitido</button> : null}{l.manual && l.status === "agendada" ? <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); })} aria-label="Excluir sessão registrada">Excluir</button> : null}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="cards-s">
+            {lista.map((l) => {
+              const a = acoes(l, true);
+              const [pt, pc] = pg(l);
+              const [rt, rcc] = rc(l);
+              return (
+                <div className="cs" key={l.id}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}><span className="pac"><b>{curto(l.nome)}</b><small>{fmtData(l.inicio)} · {tipoTxt(l)}</small></span><b>{valorCel(l)}</b></div>
+                  <div className="cel"><span className={ST_CLS[l.status]}>{ST_TXT[l.status]}</span><span className={pc}>{pt}</span><span className={rcc}>{rt}</span></div>
+                  {a.tem || (l.manual && l.status === "agendada") ? <div className="cel">{a.nodos}{l.manual && l.status === "agendada" ? <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); })}>Excluir</button> : null}</div> : null}
+                </div>
+              );
+            })}
+          </div>
+          {!lista.length ? <p style={{ margin: 0, padding: "24px 12px 28px", textAlign: "center", color: "#6B5A5E" }}><b style={{ display: "block", color: "#2F6A45", fontSize: 17, marginBottom: 4 }}>Nada por aqui.</b>{linhas.length ? "Nenhuma sessão nesta lista." : "Nenhuma sessão neste mês. As do horário fixo de cada paciente aparecem sozinhas."}</p> : null}
+        </section>
+      </main>
+    </>
+  );
+}
