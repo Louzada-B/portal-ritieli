@@ -74,3 +74,28 @@ export async function gerarSessoesDoMes(sb: SupabaseClient, ano: number, mes: nu
 
 // Uma sessão cobra quando foi realizada ou quando houve falta.
 export const cobra = (s: Pick<Sessao, "status">) => s.status === "realizada" || s.status === "falta";
+
+// Resumo das sessões de um paciente (o acompanhamento inteiro, não só o mês).
+export type ResumoSessoes = {
+  realizadas: number; faltas: number; proximas: number;
+  pagasFrente: number; pagasFrenteAte: string | null;
+  devendo: number; devendoValor: number; credito: number; creditoValor: number; recibos: number;
+};
+export function resumir(rows: Pick<Sessao, "inicio" | "status" | "valor_centavos" | "pago_em" | "recibo_em">[], agora = Date.now()): ResumoSessoes {
+  const futuras = rows.filter((r) => r.status === "agendada" && new Date(r.inicio).getTime() >= agora - 3600000);
+  const frente = futuras.filter((r) => r.pago_em).sort((a, b) => a.inicio.localeCompare(b.inicio));
+  const devendo = rows.filter((r) => (r.status === "realizada" || r.status === "falta") && !r.pago_em);
+  const credito = rows.filter((r) => r.status === "cancelada" && r.pago_em);
+  return {
+    realizadas: rows.filter((r) => r.status === "realizada").length,
+    faltas: rows.filter((r) => r.status === "falta").length,
+    proximas: futuras.length,
+    pagasFrente: frente.length,
+    pagasFrenteAte: frente.length ? frente[frente.length - 1].inicio : null,
+    devendo: devendo.length,
+    devendoValor: devendo.reduce((a, r) => a + (r.valor_centavos || 0), 0),
+    credito: credito.length,
+    creditoValor: credito.reduce((a, r) => a + (r.valor_centavos || 0), 0),
+    recibos: rows.filter((r) => r.pago_em && !r.recibo_em && r.status !== "cancelada").length,
+  };
+}

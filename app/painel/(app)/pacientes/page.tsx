@@ -3,6 +3,9 @@ import { responsaveisDe, type Paciente, type Termo } from "../../../lib/paciente
 import { type Pedido } from "../../../lib/dados";
 import { TopoCelular } from "../../componentes/Navegacao";
 import Pacientes from "./Pacientes";
+import { gerarSessoesDoMes, resumir, type Sessao } from "../../../lib/sessoes";
+import { local, fmtDiaCurto, fmtHora } from "../../../lib/agenda";
+import { reais } from "../../../lib/formato";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,22 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     .order("nome");
   const todos = (data ?? []) as Paciente[];
   const sel = q.id ? todos.find((p) => p.id === q.id) : undefined;
+
+  // Com a ficha aberta, garante as sessões do horário fixo dos próximos meses (para contar as próximas).
+  if (sel) {
+    const l = local(new Date());
+    for (let i = 0; i < 3; i++) await gerarSessoesDoMes(sb, l.ano + Math.floor((l.mes + i) / 12), (l.mes + i) % 12);
+  }
+  const { data: sess } = await sb.from("sessoes").select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, remarcada_de").order("inicio");
+  const porPac = new Map<string, Sessao[]>();
+  for (const x of (sess ?? []) as Sessao[]) porPac.set(x.paciente_id, [...(porPac.get(x.paciente_id) || []), x]);
+  const selo = (id: string) => {
+    const r = resumir(porPac.get(id) || []);
+    if (r.devendo) return { t: `Deve ${reais(r.devendoValor) || `${r.devendo} sess.`}`, cls: "pill p-ur" };
+    if (r.pagasFrente) return { t: `${r.pagasFrente} paga${r.pagasFrente > 1 ? "s" : ""} à frente`, cls: "pill p-ok" };
+    if (r.credito) return { t: "Crédito", cls: "pill p-av" };
+    return null;
+  };
 
   let detalhe = null;
   if (sel) {
@@ -30,6 +49,16 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
       responsaveis: resps.map((r) => ({ id: r.id, nome: r.nome, whatsapp: r.whatsapp, email: r.email, cpfFinal: r.cpf_final, parentesco: r.parentesco, financeiro: r.financeiro })),
       ficha: fichas?.[0] ?? null,
       termo: (termos?.[0] as Termo | undefined) ?? null,
+      sessoes: (() => {
+        const rows = porPac.get(sel.id) || [];
+        const agora = Date.now();
+        const lin = (x: Sessao) => ({ id: x.id, quando: `${fmtDiaCurto(new Date(x.inicio))} · ${fmtHora(new Date(x.inicio))}`, status: x.status, pago: !!x.pago_em, recibo: !!x.recibo_em });
+        return {
+          resumo: resumir(rows, agora),
+          ultimas: rows.filter((x) => new Date(x.inicio).getTime() < agora - 3600000).slice(-5).reverse().map(lin),
+          proximas: rows.filter((x) => new Date(x.inicio).getTime() >= agora - 3600000 && x.status !== "cancelada").slice(0, 5).map(lin),
+        };
+      })(),
       temProntuario: (nEvo ?? 0) + (nSec ?? 0) + (nAnx ?? 0) > 0,
     };
   }
@@ -60,6 +89,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     status: p.status,
     desde: p.desde,
     fim: p.fim,
+    selo: selo(p.id),
     fichaEm: p.ficha_em,
     escola: p.escola,
     cidade: p.cidade,

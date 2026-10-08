@@ -72,12 +72,12 @@ function Calendario({ valor, onEscolher, hoje }: { valor: string; onEscolher: (v
 
 type Props = {
   linhas: Linha[]; rotulo: string; ant: string; prox: string; pacientes: Pac[];
-  hoje: { ano: number; mes: number; dia: number }; mesAtual: { ano: number; mes: number };
+  hoje: { ano: number; mes: number; dia: number }; mesAtual: { ano: number; mes: number }; buscaInicial?: string;
 };
 
-export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: Props) {
+export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, buscaInicial }: Props) {
   const [filtro, setFiltro] = useState<"todas" | "ag" | "pend" | "rec">("todas");
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useState(buscaInicial || "");
   const [form, setForm] = useState(false);
   const [adiant, setAdiant] = useState(false);
   const [ad, setAd] = useState({ pacienteId: "", quantas: "4" });

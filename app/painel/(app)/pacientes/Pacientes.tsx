@@ -12,12 +12,16 @@ type Item = {
   cpfFinal: string | null; temNascimento: boolean; temEmergencia: boolean; valor: number | null; tipoValor: "normal" | "social";
   fixoDia: number | null; fixoHora: string | null; meet: string | null; status: "ativo" | "encerrado"; desde: string; fim: string | null; fichaEm: string | null;
   escola: string | null; cidade: string | null;
+  selo?: { t: string; cls: string } | null;
 };
+type LinhaSessao = { id: string; quando: string; status: "agendada" | "realizada" | "falta" | "cancelada"; pago: boolean; recibo: boolean };
+type ResumoSessoes = { realizadas: number; faltas: number; proximas: number; pagasFrente: number; pagasFrenteAte: string | null; devendo: number; devendoValor: number; credito: number; creditoValor: number; recibos: number };
 type Detalhe = {
   responsaveis: { id: string; nome: string; whatsapp: string | null; email: string | null; cpfFinal: string | null; parentesco: string | null; financeiro: boolean }[];
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
   temProntuario?: boolean;
+  sessoes?: { resumo: ResumoSessoes; ultimas: LinhaSessao[]; proximas: LinhaSessao[] };
 } | null;
 type PedidoBase = { id: string; nome: string; whatsapp: string; email: string; para_quem: "mim" | "filho"; idade_crianca: number | null } | null;
 
@@ -149,6 +153,50 @@ function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () =
   );
 }
 
+const ST_S: Record<LinhaSessao["status"], [string, string]> = { agendada: ["Agendada", "pill p-on"], realizada: ["Realizada", "pill p-ok"], falta: ["Falta", "pill p-ur"], cancelada: ["Cancelada", "pill p-ne"] };
+const PG_S = (l: LinhaSessao): [string, string] =>
+  l.status === "cancelada" ? (l.pago ? ["Crédito", "pill p-av"] : ["Sem cobrança", "pill p-ne"])
+  : l.status === "agendada" ? (l.pago ? ["Pago antecipado", "pill p-ok"] : ["A pagar", "pill p-ne"])
+  : l.pago ? ["Pago", "pill p-ok"] : ["Pendente", "pill p-av"];
+
+function BlocoSessoes({ nome, s }: { nome: string; s: NonNullable<NonNullable<Detalhe>["sessoes"]> }) {
+  const r = s.resumo;
+  const dia = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short" }).format(new Date(iso)).replace(".", "");
+  const situacao = r.devendo
+    ? `Deve ${r.devendo} ${r.devendo === 1 ? "sessão" : "sessões"}${r.devendoValor ? ` · ${reais(r.devendoValor)}` : ""}`
+    : `Tudo em dia${r.pagasFrente ? ` · ${r.pagasFrente} ${r.pagasFrente === 1 ? "sessão paga" : "sessões pagas"} à frente${r.pagasFrenteAte ? ` (até ${dia(r.pagasFrenteAte)})` : ""}` : ""}`;
+  const num = (rot: string, v: string, sub?: string) => <div className="dado"><span><span className="l">{rot}</span><b>{v}</b>{sub ? <span style={{ display: "block", fontSize: 12, color: "#8A7A7E" }}>{sub}</span> : null}</span></div>;
+  const lista = (titulo: string, xs: LinhaSessao[]) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "#5A3A41" }}>{titulo}</span>
+      {xs.length ? xs.map((l) => {
+        const [st, sc] = ST_S[l.status];
+        const [pg, pc] = PG_S(l);
+        return <div key={l.id} style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: 14 }}><b style={{ minWidth: 118 }}>{l.quando}</b><span className={sc}>{st}</span><span className={pc}>{pg}</span></div>;
+      }) : <span style={{ fontSize: 13, color: "#8A7A7E" }}>Nenhuma.</span>}
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <span className="rot">Sessões e pagamentos</span>
+      <div className={r.devendo ? "aviso erro" : "aviso ok"} role="status" style={{ fontWeight: 600 }}>{situacao}</div>
+      <div className="dados">
+        {num("Realizadas", String(r.realizadas), r.faltas ? `e ${r.faltas} ${r.faltas === 1 ? "falta" : "faltas"}` : undefined)}
+        {num("Próximas", String(r.proximas), "agendadas")}
+        {num("Pagas à frente", String(r.pagasFrente))}
+        {num("A receber", r.devendo ? `${r.devendo} · ${reais(r.devendoValor) || "R$ 0"}` : "0")}
+        {num("Crédito", r.credito ? `${r.credito} · ${reais(r.creditoValor) || "R$ 0"}` : "0")}
+        {num("Recibos a emitir", String(r.recibos))}
+      </div>
+      <div className="resp" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+        {lista("Próximas", s.proximas)}
+        {lista("Últimas", s.ultimas)}
+      </div>
+      <Link href={`/painel/sessoes?busca=${encodeURIComponent(nome)}`} style={{ fontSize: 13, fontWeight: 700, alignSelf: "flex-start" }}>Ver todas em Sessões →</Link>
+    </div>
+  );
+}
+
 function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
   const [pend, iniciar] = useTransition();
   const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
@@ -233,6 +281,8 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} onClick={() => setEditando(true)}>Editar dados</button>
         </>
       )}
+
+      {det.sessoes ? <BlocoSessoes nome={p.nome} s={det.sessoes} /> : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span className="rot">Ficha de cadastro</span>
@@ -381,7 +431,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         </div>
       ) : null}
       <ExcluirPaciente id={p.id} nome={p.nome} temProntuario={!!det.temProntuario} />
-      <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário entra na próxima etapa.</p>
+      <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário fica numa área à parte, com criptografia de ponta a ponta.</p>
     </>
   );
 }
@@ -442,7 +492,7 @@ export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroI
             <Link key={p.id} href={`/painel/pacientes?id=${p.id}`} scroll={false} className={sel?.id === p.id ? "pi on" : "pi"}>
               <span className={p.tipo === "crianca" ? "av k" : "av"}>{iniciais(p.nome)}</span>
               <span className="tx">
-                <span style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{p.nome}</b><span className={p.tipo === "crianca" ? "pill p-in" : "pill p-on"}>{p.tipo === "crianca" ? "Criança" : "Adulta"}</span></span>
+                <span style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{p.nome}</b><span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>{p.selo ? <span className={p.selo.cls}>{p.selo.t}</span> : null}<span className={p.tipo === "crianca" ? "pill p-in" : "pill p-on"}>{p.tipo === "crianca" ? "Criança" : "Adulta"}</span></span></span>
                 <span className="q">{fixoTexto(p.fixoDia, p.fixoHora)}</span>
                 <span className="m">{p.fichaEm ? "Ficha preenchida" : "Ficha pendente"}{p.valor != null ? ` · ${reais(p.valor)}` : ""}</span>
               </span>

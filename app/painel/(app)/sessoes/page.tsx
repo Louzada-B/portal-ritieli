@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
-export default async function PaginaSessoes({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
+export default async function PaginaSessoes({ searchParams }: { searchParams: Promise<{ m?: string; busca?: string }> }) {
   const q = await searchParams;
   const hoje = local(new Date());
   const mm = /^(\d{4})-(\d{2})$/.exec(q.m || "");
@@ -57,6 +57,7 @@ export default async function PaginaSessoes({ searchParams }: { searchParams: Pr
         pacientes={(pacs ?? []).map((p) => ({ id: p.id as string, nome: p.nome as string, valor: p.valor_centavos as number | null, hora: p.fixo_hora ? String(p.fixo_hora).slice(0, 5) : null }))}
         hoje={{ ano: hoje.ano, mes: hoje.mes, dia: hoje.dia }}
         mesAtual={{ ano, mes }}
+        buscaInicial={(q.busca || "").slice(0, 60)}
       />
     </>
   );
