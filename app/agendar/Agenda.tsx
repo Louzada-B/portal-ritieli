@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Forma, FORMA_B } from "../componentes/Formas";
 import { linkWhatsApp, rotas } from "../conteudo";
 import type { DiaAgenda } from "../lib/agendaPublica";
@@ -37,6 +37,8 @@ const fone = (v: string) => {
   return `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
 };
 
+const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 export default function Agenda({ diasIniciais, duracao, siteKey }: { diasIniciais: DiaAgenda[]; duracao: number; siteKey: string }) {
   const [etapa, setEtapa] = useState<1 | 2 | 3 | 4>(1);
   const [quem, setQuem] = useState<"mim" | "filho" | null>(null);
@@ -55,6 +57,33 @@ export default function Agenda({ diasIniciais, duracao, siteKey }: { diasIniciai
 
   const filho = quem === "filho";
   const dia = dias[diaSel];
+
+  // Calendário em semanas (segunda a sábado; domingo só se houver horário), da semana de hoje
+  // até a semana do último dia com horário. Dias sem horário ficam apagados.
+  const { colunas, celulas, mesesRot } = useMemo(() => {
+    const MESES_N = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    const utc = (iso: string) => { const [a, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(a, m - 1, d)); };
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    const temDomingo = dias.some((d) => utc(d.data).getUTCDay() === 0);
+    const colunas = temDomingo ? [1, 2, 3, 4, 5, 6, 0] : [1, 2, 3, 4, 5, 6];
+    if (!dias.length) return { colunas, celulas: [], mesesRot: "" };
+    const ini = utc(hoje < dias[0].data ? hoje : dias[0].data);
+    ini.setUTCDate(ini.getUTCDate() - ((ini.getUTCDay() + 6) % 7)); // segunda da semana
+    const fim = utc(dias[dias.length - 1].data);
+    const celulas: { chave: string; data: string; num: string; mesCurto: string; mesNome: string; primeira: boolean }[] = [];
+    const meses: number[] = [];
+    const ultimo = new Date(fim);
+    ultimo.setUTCDate(ultimo.getUTCDate() + (6 - ((ultimo.getUTCDay() + 6) % 7))); // domingo da última semana
+    for (const d = new Date(ini); d <= ultimo; d.setUTCDate(d.getUTCDate() + 1)) {
+      if (!colunas.includes(d.getUTCDay())) continue;
+      const k = iso(d);
+      if (k >= hoje && d <= fim && !meses.includes(d.getUTCMonth())) meses.push(d.getUTCMonth());
+      celulas.push({ chave: k, data: k, num: String(d.getUTCDate()), mesCurto: MESES_N[d.getUTCMonth()].slice(0, 3), mesNome: MESES_N[d.getUTCMonth()], primeira: !celulas.length });
+    }
+    const mesesRot = meses.map((m) => MESES_N[m]).join(" e ");
+    return { colunas, celulas, mesesRot: mesesRot.charAt(0).toUpperCase() + mesesRot.slice(1) };
+  }, [dias]);
   const horaSel = dia?.horarios.find((h) => h.iso === hora);
 
   const ir = (n: 1 | 2 | 3) => {
@@ -235,14 +264,18 @@ export default function Agenda({ diasIniciais, duracao, siteKey }: { diasIniciai
               {dias.length ? (
                 <>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <span className="ag-rot">{dia?.mes}</span>
-                    <div className="ag-dias" role="group" aria-label="Dias disponíveis">
-                      {dias.map((d, i) => (
-                        <button key={d.data} type="button" className={i === diaSel ? "dia sel" : "dia"} aria-pressed={i === diaSel} onClick={() => { setDiaSel(i); setHora(null); }}>
-                          <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{d.rot}</span>
-                          <span style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.1 }}>{d.num}</span>
-                        </button>
-                      ))}
+                    <span className="ag-rot">{mesesRot}</span>
+                    <div className="ag-cal" role="group" aria-label="Dias disponíveis" style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(0,1fr))` }}>
+                      {colunas.map((c) => <span key={c} className="ag-cal-s" aria-hidden="true">{SEMANA[c]}</span>)}
+                      {celulas.map((c) => {
+                        const i = dias.findIndex((d) => d.data === c.data);
+                        return (
+                          <button key={c.chave} type="button" className={i === diaSel ? "dia sel" : "dia"} disabled={i < 0} aria-pressed={i === diaSel} aria-label={`${c.num} de ${c.mesNome}${i < 0 ? ", sem horários" : ""}`} onClick={() => { setDiaSel(i); setHora(null); }}>
+                            <span style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1 }}>{c.num}</span>
+                            {c.num === "1" ? <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{c.mesCurto}</span> : null}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

@@ -115,3 +115,9 @@
 @media (prefers-reduced-motion:reduce){
 .ok-sel,.ok-sel path,.ok-status i{animation:none!important;stroke-dashoffset:0}
 }
+/* Calendário em semanas (segunda a sábado) */
+.ag-cal{display:grid;gap:8px}
+.ag-cal-s{text-align:center;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#9A5A67}
+.ag-card .ag-cal .dia{min-width:0;min-height:56px;padding:8px 2px;justify-content:center}
+.ag-card .ag-cal .dia:disabled{background:transparent;border-color:transparent;color:#C9B8BB;cursor:default}
+@media (max-width:760px){.ag-cal{gap:6px}.ag-card .ag-cal .dia{min-height:50px;border-radius:12px}}
