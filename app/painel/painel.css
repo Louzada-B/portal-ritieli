@@ -454,3 +454,23 @@
   .painel .d-only{display:none}
   .painel .cal{width:100%;box-sizing:border-box}
 }
+/* Prontuário */
+.painel .pr-print{display:none}
+@media (max-width:760px){
+  .painel .pr-g{grid-template-columns:minmax(0,1fr)}
+  .painel .pr-l{position:static}
+  .painel .abas-p{flex-direction:row;overflow-x:auto;margin:0 -18px;padding:0 18px 4px;scrollbar-width:none}
+  .painel .pa{flex:0 0 auto;white-space:nowrap}
+  .painel .idg{grid-template-columns:minmax(0,1fr)}
+  .painel .trava{padding:28px 20px;margin-top:8px}
+  .painel .log{font-size:13px}
+  .painel .log .esc-m{display:none}
+}
+@media print{
+  .painel .lat,.painel .tab,.painel .topo,.painel .m-topo,.painel .faixa-ab,.painel .pr-g,.painel .conteudo>.aviso{display:none!important}
+  .painel .pr-print{display:block!important;font-family:Georgia,serif;color:#000;font-size:12pt;line-height:1.5}
+  .painel .pr-print h1{font-size:16pt;margin:0 0 4pt}
+  .painel .pr-print h2{font-size:12pt;text-transform:uppercase;letter-spacing:.05em;margin:16pt 0 6pt;border-bottom:1px solid #999}
+  .painel .pr-print p{margin:0 0 4pt}
+  .painel .adm{display:block!important}
+}

@@ -346,11 +346,19 @@ export async function reativarPaciente(id: string): Promise<Resultado> {
 
 // Exclusão definitiva (pedido da própria pessoa ou cadastro de teste): tira a sessão
 // semanal da agenda e apaga ficha, termos, responsáveis só deste paciente e o cadastro.
-export async function excluirPaciente(id: string, confirmacao: string): Promise<Resultado> {
+export async function excluirPaciente(id: string, confirmacao: string, prontuarioGuardado = false): Promise<Resultado> {
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("id, nome, google_evento_id").eq("id", id).single();
   if (!p) return { erro: "Paciente não encontrado." };
   if (confirmacao.trim().toLowerCase() !== p.nome.trim().toLowerCase()) return { erro: "Escreva o nome completo, igual ao cadastro, para confirmar." };
+  const [{ count: nEvo }, { count: nSec }, { data: anexos }] = await Promise.all([
+    sb.from("prontuario_evolucoes").select("id", { count: "exact", head: true }).eq("paciente_id", id),
+    sb.from("prontuario_secoes").select("id", { count: "exact", head: true }).eq("paciente_id", id),
+    sb.from("prontuario_anexos").select("caminho").eq("paciente_id", id),
+  ]);
+  const temProntuario = (nEvo ?? 0) + (nSec ?? 0) + (anexos?.length ?? 0) > 0;
+  if (temProntuario && !prontuarioGuardado) return { erro: "Exporte e guarde o prontuário antes de excluir." };
+  if (anexos?.length) await sb.storage.from("prontuario").remove(anexos.map((a) => a.caminho as string));
   if (p.google_evento_id) await apagarEvento(p.google_evento_id).catch(() => {});
   const { data: avulsas } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", id).not("google_evento_id", "is", null);
   for (const x of avulsas ?? []) await apagarEvento(x.google_evento_id as string).catch(() => {});

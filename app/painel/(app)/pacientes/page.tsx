@@ -18,15 +18,19 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
 
   let detalhe = null;
   if (sel) {
-    const [resps, { data: fichas }, { data: termos }] = await Promise.all([
+    const [resps, { data: fichas }, { data: termos }, { count: nEvo }, { count: nSec }, { count: nAnx }] = await Promise.all([
       responsaveisDe(sb, sel.id),
       sb.from("fichas").select("criado_em, expira_em, preenchida_em").eq("paciente_id", sel.id).order("criado_em", { ascending: false }).limit(1),
       sb.from("termos").select("id, paciente_id, resumo, status, enviado_em, aceito_em, aceite_nome").eq("paciente_id", sel.id).order("enviado_em", { ascending: false }).limit(1),
+      sb.from("prontuario_evolucoes").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
+      sb.from("prontuario_secoes").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
+      sb.from("prontuario_anexos").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
     ]);
     detalhe = {
       responsaveis: resps.map((r) => ({ id: r.id, nome: r.nome, whatsapp: r.whatsapp, email: r.email, cpfFinal: r.cpf_final, parentesco: r.parentesco, financeiro: r.financeiro })),
       ficha: fichas?.[0] ?? null,
       termo: (termos?.[0] as Termo | undefined) ?? null,
+      temProntuario: (nEvo ?? 0) + (nSec ?? 0) + (nAnx ?? 0) > 0,
     };
   }
 

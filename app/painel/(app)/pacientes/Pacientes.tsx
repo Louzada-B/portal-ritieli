@@ -17,6 +17,7 @@ type Detalhe = {
   responsaveis: { id: string; nome: string; whatsapp: string | null; email: string | null; cpfFinal: string | null; parentesco: string | null; financeiro: boolean }[];
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
+  temProntuario?: boolean;
 } | null;
 type PedidoBase = { id: string; nome: string; whatsapp: string; email: string; para_quem: "mim" | "filho"; idade_crianca: number | null } | null;
 
@@ -360,6 +361,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <Link href={`/painel/prontuario/${p.id}`} className="bt"><Icone nome="escudo" tam={18} />Prontuário</Link>
         <Link href={`/painel/termos?paciente=${p.id}`} className="bt2"><Icone nome="termos" tam={18} />Termos</Link>
         {p.status === "ativo" ? (
           <button type="button" className="bt3" disabled={pend} onClick={() => setEncerrando(hojeBR())}>Encerrar acompanhamento</button>
@@ -378,13 +380,14 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           </div>
         </div>
       ) : null}
-      <ExcluirPaciente id={p.id} nome={p.nome} />
+      <ExcluirPaciente id={p.id} nome={p.nome} temProntuario={!!det.temProntuario} />
       <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário entra na próxima etapa.</p>
     </>
   );
 }
 
-function ExcluirPaciente({ id, nome }: { id: string; nome: string }) {
+function ExcluirPaciente({ id, nome, temProntuario }: { id: string; nome: string; temProntuario: boolean }) {
+  const [guardado, setGuardado] = useState(false);
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [txt, setTxt] = useState("");
@@ -396,10 +399,17 @@ function ExcluirPaciente({ id, nome }: { id: string; nome: string }) {
     <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <b style={{ fontSize: 16 }}>Excluir {nome} de vez?</b>
       <span style={{ fontSize: 14, color: "#5A3A41" }}>Apaga o cadastro, a ficha, os termos e os responsáveis que não cuidam de outro paciente, e tira a sessão semanal da sua agenda. Não dá para desfazer. Use quando a pessoa pedir a exclusão dos dados.</span>
+      {temProntuario ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "#FBF1E6", borderRadius: 12, padding: "12px 14px" }}>
+          <span style={{ fontSize: 14, color: "#8A4B12" }}>Este paciente tem prontuário. Pela Resolução CFP 001/2009, ele deve ser guardado por pelo menos 5 anos. Antes de excluir, abra o prontuário e use <b>Exportar PDF</b>.</span>
+          <Link href={`/painel/prontuario/${id}`} style={{ fontSize: 13, fontWeight: 700 }}>Abrir o prontuário →</Link>
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14 }}><input type="checkbox" checked={guardado} onChange={() => setGuardado(!guardado)} style={{ marginTop: 3 }} /><span>Já exportei e guardei o prontuário.</span></label>
+        </div>
+      ) : null}
       <div className="fc"><label htmlFor="ex-nome">Para confirmar, escreva o nome completo</label><input id="ex-nome" type="text" autoComplete="off" value={txt} onChange={(e) => setTxt(e.target.value)} placeholder={nome} /></div>
       {erro ? <div className="aviso erro" role="alert">{erro}</div> : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-        <button type="button" className="bt" style={{ background: "#A3322A", width: "auto" }} disabled={pend || txt.trim().toLowerCase() !== nome.trim().toLowerCase()} onClick={() => iniciar(async () => { const r = await excluirPaciente(id, txt); if (r.erro) return setErro(r.erro); router.push("/painel/pacientes", { scroll: false }); })}>{pend ? "Excluindo…" : "Excluir de vez"}</button>
+        <button type="button" className="bt" style={{ background: "#A3322A", width: "auto" }} disabled={pend || txt.trim().toLowerCase() !== nome.trim().toLowerCase() || (temProntuario && !guardado)} onClick={() => iniciar(async () => { const r = await excluirPaciente(id, txt, guardado); if (r.erro) return setErro(r.erro); router.push("/painel/pacientes", { scroll: false }); })}>{pend ? "Excluindo…" : "Excluir de vez"}</button>
         <button type="button" className="bt3" onClick={() => { setAberto(false); setTxt(""); setErro(""); }}>Cancelar</button>
       </div>
     </div>
