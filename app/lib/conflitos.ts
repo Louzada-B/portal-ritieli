@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { deLocal, fmtQuando, local, minutos, DIAS_LONGOS, type DiaSemana, type Periodo } from "./agenda";
+import { deLocal, fmtQuando, fmtHora as fmtHoraCurta, local, minutos, DIAS_LONGOS, type DiaSemana, type Periodo } from "./agenda";
 import { ocupadosEntre } from "./google";
 import { PRAZO_HORAS } from "./dados";
 
@@ -74,8 +74,9 @@ export async function conflitoLote(sb: SupabaseClient, inicios: Date[], durMin: 
       return `Conflito de agenda: ${fmtQuando(new Date(t0))} está num bloqueio${b.motivo ? ` (${b.motivo})` : ""}.`;
     }
     if (g === null) return "A agenda do Google não respondeu, então não deu para conferir conflitos. Tente de novo.";
-    const ocupado = g.find((x) => sobrepoe(t0, t1, x.inicio.getTime(), x.fim.getTime()) && !(ign.google && ign.google(x)));
-    if (ocupado) return `Conflito de agenda: você tem um compromisso na agenda do Google em ${fmtQuando(ocupado.inicio)}.`;
+    const bate = g.filter((x) => sobrepoe(t0, t1, x.inicio.getTime(), x.fim.getTime()) && !(ign.google && ign.google(x)));
+    const ocupado = bate.find((x) => x.titulo) || bate[0];
+    if (ocupado) return `Conflito de agenda: você tem ${ocupado.titulo ? `“${ocupado.titulo}”` : "um compromisso"} na agenda do Google em ${fmtQuando(ocupado.inicio)}, até ${fmtHoraCurta(ocupado.fim)}.`;
   }
   return null;
 }

@@ -12,7 +12,7 @@ export type DiaSemana = {
   pausa_inicio: string | null;
   pausa_fim: string | null;
 };
-export type Periodo = { inicio: Date; fim: Date };
+export type Periodo = { inicio: Date; fim: Date; titulo?: string };
 
 const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const DIAS_LONGOS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];

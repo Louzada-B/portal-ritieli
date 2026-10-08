@@ -82,16 +82,9 @@ export async function ocupadosGoogle(dias: number): Promise<{ periodos: Periodo[
   const at = await acesso(con);
   const inicio = new Date();
   const fim = new Date(inicio.getTime() + (dias + 1) * 86400 * 1000);
-  const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ timeMin: inicio.toISOString(), timeMax: fim.toISOString(), timeZone: "America/Sao_Paulo", items: [{ id: "primary" }] }),
-    cache: "no-store",
-  });
-  if (!r.ok) return { periodos: [], erro: true };
-  const j = await r.json();
-  const busy = (j.calendars?.primary?.busy ?? []) as { start: string; end: string }[];
-  const periodos = busy.map((b) => ({ inicio: new Date(b.start), fim: new Date(b.end) }));
+  const [ev, fb] = await Promise.all([eventosOcupados(at, inicio, fim), livreOcupado(at, inicio, fim)]);
+  if (!ev || !fb) return { periodos: [], erro: true };
+  const periodos = [...ev, ...fb].map((p) => ({ inicio: p.inicio, fim: p.fim }));
   ocupadosCache = { dados: periodos, ate: Date.now() + 60 * 1000, dias };
   return { periodos, erro: false };
 }
@@ -219,11 +212,31 @@ export async function moverOcorrencia(id: string, original: Date, novoInicio: Da
   ocupadosCache = null;
 }
 
-// Horários ocupados na agenda do Google numa janela (sem cache), para conferir conflitos.
-export async function ocupadosEntre(inicio: Date, fim: Date): Promise<Periodo[] | null> {
-  const con = await conexao();
-  if (!con) return [];
-  const at = await acesso(con);
+// Compromissos da agenda principal numa janela, lidos evento por evento.
+// Pega o que o "livre/ocupado" do Google às vezes deixa passar (ex.: evento marcado como
+// "Disponível"): qualquer compromisso com horário conta, menos os que ela recusou.
+// Eventos de dia inteiro (aniversários, lembretes) não bloqueiam.
+async function eventosOcupados(at: string, inicio: Date, fim: Date): Promise<Periodo[] | null> {
+  const lista: Periodo[] = [];
+  let pagina: string | undefined;
+  for (let i = 0; i < 10; i++) {
+    const q = new URLSearchParams({ timeMin: inicio.toISOString(), timeMax: fim.toISOString(), singleEvents: "true", maxResults: "2500", showDeleted: "false" });
+    if (pagina) q.set("pageToken", pagina);
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${q}`, { headers: { Authorization: `Bearer ${at}` }, cache: "no-store" });
+    if (!r.ok) return null;
+    const j = await r.json();
+    for (const e of (j.items ?? []) as { status?: string; start?: { dateTime?: string }; end?: { dateTime?: string }; summary?: string; attendees?: { self?: boolean; responseStatus?: string }[] }[]) {
+      if (e.status === "cancelled" || !e.start?.dateTime || !e.end?.dateTime) continue;
+      if ((e.attendees ?? []).some((a) => a.self && a.responseStatus === "declined")) continue;
+      lista.push({ inicio: new Date(e.start.dateTime), fim: new Date(e.end.dateTime), titulo: e.summary || undefined });
+    }
+    pagina = j.nextPageToken;
+    if (!pagina) break;
+  }
+  return lista;
+}
+
+async function livreOcupado(at: string, inicio: Date, fim: Date): Promise<Periodo[] | null> {
   const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
     headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json" },
@@ -233,6 +246,17 @@ export async function ocupadosEntre(inicio: Date, fim: Date): Promise<Periodo[] 
   if (!r.ok) return null;
   const j = await r.json();
   return ((j.calendars?.primary?.busy ?? []) as { start: string; end: string }[]).map((b) => ({ inicio: new Date(b.start), fim: new Date(b.end) }));
+}
+
+// Horários ocupados na agenda do Google numa janela (sem cache), para conferir conflitos.
+// Junta os eventos (com o nome do compromisso) e o livre/ocupado. Se o Google não responder, devolve null.
+export async function ocupadosEntre(inicio: Date, fim: Date): Promise<Periodo[] | null> {
+  const con = await conexao();
+  if (!con) return [];
+  const at = await acesso(con);
+  const [ev, fb] = await Promise.all([eventosOcupados(at, inicio, fim), livreOcupado(at, inicio, fim)]);
+  if (!ev || !fb) return null;
+  return [...ev, ...fb];
 }
 
 // Evento de uma sessão avulsa. Reaproveita a sala do Meet do paciente, quando há.
