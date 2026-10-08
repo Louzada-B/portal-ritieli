@@ -483,3 +483,6 @@
 }
 .painel .fc textarea.corpo{min-height:340px;border-radius:0 0 12px 12px;font-size:16px;line-height:1.7;padding:14px 16px}
 @media (max-width:760px){.painel .conteudo.m-vendo>.barra{display:none!important}}
+/* Sugerir horários: dias numa linha que rola */
+.painel .dias-sug{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.painel .dias-sug .chip{flex:0 0 auto;border-radius:14px;text-align:center;line-height:1.25;padding-top:8px;padding-bottom:8px}

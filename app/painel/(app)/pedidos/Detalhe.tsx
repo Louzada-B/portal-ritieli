@@ -34,6 +34,15 @@ export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes
   const router = useRouter();
   const [acao, setAcao] = useState<"" | "sug" | "rec" | "exc">("");
   const [sugs, setSugs] = useState<string[]>([]);
+  // Sugestões: primeiro o dia, depois o horário (até 3 no total, de dias diferentes se quiser).
+  const dias = sugestoes.reduce<{ dia: string; itens: { iso: string; rot: string; hora: string }[] }[]>((acc, s) => {
+    const [dia, hora] = s.rot.split(" · ");
+    const g = acc.find((x) => x.dia === dia);
+    if (g) g.itens.push({ ...s, hora });
+    else acc.push({ dia, itens: [{ ...s, hora }] });
+    return acc;
+  }, []);
+  const [diaSel, setDiaSel] = useState(dias[0]?.dia || "");
   const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
   const [aviso, setAviso] = useState<string | undefined>();
   const [pend, iniciar] = useTransition();
@@ -95,15 +104,37 @@ export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes
       {p.status === "aguardando" && acao === "sug" ? (
         <div className="caixa sug">
           <b style={{ fontSize: 16 }}>Escolha até 3 horários livres para sugerir</b>
-          <div className="chips">
-            {sugestoes.map((s) => {
-              const on = sugs.includes(s.iso);
-              return (
-                <button key={s.iso} type="button" className={on ? "chip on" : "chip"} aria-pressed={on} onClick={() => setSugs(on ? sugs.filter((x) => x !== s.iso) : sugs.length < 3 ? [...sugs, s.iso] : sugs)}>{s.rot}</button>
-              );
-            })}
-            {!sugestoes.length ? <span style={{ fontSize: 14, color: "#6B5A5E" }}>Nenhum horário livre nos próximos dias. Ajuste a Disponibilidade.</span> : null}
-          </div>
+          {!sugestoes.length ? <span style={{ fontSize: 14, color: "#6B5A5E" }}>Nenhum horário livre nos próximos dias. Ajuste a Disponibilidade.</span> : (
+            <>
+              <span className="rot">1. O dia</span>
+              <div className="chips dias-sug" role="group" aria-label="Dia">
+                {dias.map((d) => {
+                  const n = d.itens.filter((i) => sugs.includes(i.iso)).length;
+                  return (
+                    <button key={d.dia} type="button" className={diaSel === d.dia ? "chip on" : "chip"} aria-pressed={diaSel === d.dia} onClick={() => setDiaSel(d.dia)}>
+                      {d.dia}<small style={{ display: "block", fontSize: 12, fontWeight: 500, opacity: 0.8 }}>{n ? `${n} escolhido${n > 1 ? "s" : ""}` : `${d.itens.length} livre${d.itens.length > 1 ? "s" : ""}`}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="rot">2. O horário</span>
+              <div className="chips" role="group" aria-label="Horário">
+                {(dias.find((d) => d.dia === diaSel)?.itens || []).map((s) => {
+                  const on = sugs.includes(s.iso);
+                  const cheio = !on && sugs.length >= 3;
+                  return <button key={s.iso} type="button" className={on ? "chip on" : "chip"} aria-pressed={on} disabled={cheio} style={cheio ? { opacity: 0.45 } : undefined} onClick={() => setSugs(on ? sugs.filter((x) => x !== s.iso) : [...sugs, s.iso].sort())}>{s.hora}</button>;
+                })}
+              </div>
+              {sugs.length ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <span className="rot" style={{ marginRight: 4 }}>Escolhidos ({sugs.length}/3)</span>
+                  {sugestoes.filter((s) => sugs.includes(s.iso)).map((s) => (
+                    <button key={s.iso} type="button" className="mini2" onClick={() => setSugs(sugs.filter((x) => x !== s.iso))} aria-label={`Tirar ${s.rot}`}>{s.rot} ✕</button>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
           {sugs.length ? <div className="prev">{msgSug}</div> : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             <a href={sugs.length ? wa(p.whatsapp, msgSug) : undefined} aria-disabled={!sugs.length} target="_blank" rel="noopener" className="bt" style={sugs.length ? undefined : { opacity: 0.5, pointerEvents: "none" }}><Icone nome="whats" tam={18} />Enviar sugestão pelo WhatsApp</a>

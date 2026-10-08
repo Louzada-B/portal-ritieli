@@ -50,7 +50,6 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
   if (sel?.status === "aguardando") {
     const { regras, tomados, google: g } = await carregarAgenda(sb);
     sugestoes = horariosLivres({ config: regras.config, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] })
-      .slice(0, 12)
       .map((d) => ({ iso: d.toISOString(), rot: fmtQuando(d) }));
   }
 
