@@ -54,6 +54,16 @@ export async function conflitoLote(sb: SupabaseClient, inicios: Date[], durMin: 
     sb.from("bloqueios").select("inicio, fim, motivo").lt("inicio", new Date(jFim).toISOString()).gt("fim", new Date(jIni).toISOString()),
     sb.from("semana_padrao").select("dia_semana, ativo, inicio, fim, pausa_inicio, pausa_fim"),
   ]);
+  // Eventos do Google que são do próprio paciente (a série semanal e as avulsas) não contam como conflito.
+  const meus = new Set<string>();
+  if (ign.pacienteId) {
+    const [{ data: pa }, { data: av }] = await Promise.all([
+      sb.from("pacientes").select("google_evento_id").eq("id", ign.pacienteId).maybeSingle(),
+      sb.from("sessoes").select("google_evento_id").eq("paciente_id", ign.pacienteId).not("google_evento_id", "is", null),
+    ]);
+    if (pa?.google_evento_id) meus.add(pa.google_evento_id as string);
+    for (const x of av ?? []) meus.add(x.google_evento_id as string);
+  }
   const futuro = ts.some((t) => t + durMin * 60000 > Date.now());
   const g = futuro ? await ocupadosEntre(new Date(Math.max(jIni, Date.now() - 3600000)), new Date(jFim)).catch(() => null) : [];
   const limite = Date.now() - PRAZO_HORAS * 3600000;
@@ -74,7 +84,7 @@ export async function conflitoLote(sb: SupabaseClient, inicios: Date[], durMin: 
       return `Conflito de agenda: ${fmtQuando(new Date(t0))} está num bloqueio${b.motivo ? ` (${b.motivo})` : ""}.`;
     }
     if (g === null) return "A agenda do Google não respondeu, então não deu para conferir conflitos. Tente de novo.";
-    const bate = g.filter((x) => sobrepoe(t0, t1, x.inicio.getTime(), x.fim.getTime()) && !(ign.google && ign.google(x)));
+    const bate = g.filter((x) => sobrepoe(t0, t1, x.inicio.getTime(), x.fim.getTime()) && !(ign.google && ign.google(x)) && !(x.evento && meus.has(x.evento)));
     const ocupado = bate.find((x) => x.titulo) || bate[0];
     if (ocupado) return `Conflito de agenda: você tem ${ocupado.titulo ? `“${ocupado.titulo}”` : "um compromisso"} na agenda do Google em ${fmtQuando(ocupado.inicio)}, até ${fmtHoraCurta(ocupado.fim)}.`;
   }

@@ -254,8 +254,9 @@ function primeiraOcorrencia(dia: number, hora: string, aPartir: string) {
 
 // Fecha a série antiga (mantém o passado na agenda) e cria a nova a partir da próxima sessão.
 // novaSala=false reaproveita a sala do Meet, então o link continua o mesmo.
-async function refazerSerie(sb: Awaited<ReturnType<typeof supabaseServidor>>, p: Paciente, novaSala: boolean): Promise<"ok" | "sem_serie"> {
+async function refazerSerie(sb: Awaited<ReturnType<typeof supabaseServidor>>, p: Paciente, novaSala: boolean, fimAntigo?: string | null): Promise<"ok" | "sem_serie"> {
   const hoje = hojeISO();
+  const aPartir = [p.desde, p.retomado_em || "", hoje].sort().pop()!;
   let conferencia: unknown = undefined;
   if (p.google_evento_id) {
     const velho = await obterEvento(p.google_evento_id).catch(() => null);
@@ -264,10 +265,12 @@ async function refazerSerie(sb: Awaited<ReturnType<typeof supabaseServidor>>, p:
       conferencia = resto;
     }
     const inicioVelho = velho?.start?.dateTime ? isoLocal(new Date(velho.start.dateTime)) : hoje;
-    if (inicioVelho >= hoje) await apagarEvento(p.google_evento_id).catch(() => {});
-    else await mudarFimSerie(p.google_evento_id, somaDias(hoje, -1)).catch(() => {});
+    // A série antiga vai até o dia antes da nova começar (ou até o fim que já tinha, se for antes).
+    let corte = somaDias(aPartir, -1);
+    if (fimAntigo && fimAntigo < corte) corte = fimAntigo;
+    if (inicioVelho > corte) await apagarEvento(p.google_evento_id).catch(() => {});
+    else await mudarFimSerie(p.google_evento_id, corte).catch(() => {});
   }
-  const aPartir = [p.desde, p.retomado_em || "", hoje].sort().pop()!;
   const inicio = p.fixo_dia != null && p.fixo_hora ? primeiraOcorrencia(p.fixo_dia, p.fixo_hora.slice(0, 5), aPartir) : null;
   if (!inicio || (p.fim && isoLocal(inicio) > p.fim)) {
     await sb.from("pacientes").update({ google_evento_id: null, atualizado_em: new Date().toISOString() }).eq("id", p.id);
@@ -344,24 +347,42 @@ export async function encerrarPaciente(id: string, ultima: string): Promise<Resu
   return { ok: `Acompanhamento encerrado. A sessão semanal sai da agenda depois da última sessão.${aviso}` };
 }
 
-export async function reativarPaciente(id: string): Promise<Resultado> {
+// Reativa a partir de uma data de retomada (hoje ou depois), com o horário fixo escolhido.
+// As sessões de antes do encerramento ficam como estão; as novas começam na retomada.
+export async function reativarPaciente(id: string, r: { retomada: string; fixoDia: string; fixoHora: string }): Promise<Resultado> {
+  if (!DATA.test(r.retomada)) return { erro: "Escolha a data da retomada." };
+  if (r.retomada < hojeISO()) return { erro: "A retomada precisa ser hoje ou depois." };
+  const comum = validarComum({ valor: "", fixoDia: r.fixoDia, fixoHora: r.fixoHora });
+  if ("erro" in comum) return { erro: comum.erro };
   const sb = await supabaseServidor();
   const { data: antes } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!antes) return { erro: "Paciente não encontrado." };
-  if (antes.fixo_dia != null && antes.fixo_hora) {
-    const c = await conflitoFixo(sb, { id, fixo_dia: antes.fixo_dia, fixo_hora: antes.fixo_hora.slice(0, 5), desde: hojeISO() > antes.desde ? hojeISO() : antes.desde, fim: null });
-    if (c) return { erro: `${c} Mude o horário fixo antes de reativar.` };
+  if (antes.status === "ativo") return { erro: "O acompanhamento já está ativo." };
+  if (comum.fixoDia != null && comum.fixoHora) {
+    const c = await conflitoFixo(sb, { id, fixo_dia: comum.fixoDia, fixo_hora: comum.fixoHora, desde: r.retomada, fim: null, antigo: { dia: antes.fixo_dia, hora: antes.fixo_hora } });
+    if (c) return { erro: c };
   }
-  const { data: p } = await sb.from("pacientes").update({ status: "ativo", fim: null, retomado_em: hojeISO(), atualizado_em: new Date().toISOString() }).eq("id", id).select("*").single<Paciente>();
+  const { data: p } = await sb
+    .from("pacientes")
+    .update({ status: "ativo", fim: null, retomado_em: r.retomada, fixo_dia: comum.fixoDia, fixo_hora: comum.fixoHora, atualizado_em: new Date().toISOString() })
+    .eq("id", id)
+    .select("*")
+    .single<Paciente>();
   if (!p) return { erro: "Não deu para salvar. Tente de novo." };
   revalidatePath("/painel/pacientes");
   revalidatePath("/painel/sessoes");
-  if (!p.google_evento_id) return { ok: "Acompanhamento reativado." };
+  const quando = `a partir de ${r.retomada.split("-").reverse().join("/")}`;
+  if (comum.fixoDia == null) {
+    if (antes.google_evento_id) await sb.from("pacientes").update({ google_evento_id: null }).eq("id", id);
+    return { ok: `Acompanhamento reativado ${quando}, ainda sem horário fixo. Defina o horário em Editar dados quando combinar.` };
+  }
   try {
-    await refazerSerie(sb, p, false);
-    return { ok: "Acompanhamento reativado. A sessão semanal voltou para a agenda, com a mesma sala." };
-  } catch {
-    return { ok: "Acompanhamento reativado, mas a agenda do Google não respondeu. Gere a sala de novo." };
+    // A série antiga termina onde já terminava (no encerramento); a nova começa na retomada.
+    const r2 = await refazerSerie(sb, p, false, antes.fim);
+    return { ok: r2 === "ok" ? `Acompanhamento reativado ${quando}. A sessão semanal voltou para a agenda, com a mesma sala.` : `Acompanhamento reativado ${quando}.` };
+  } catch (e) {
+    if (e instanceof Error && e.message === "sem_google") return { ok: `Acompanhamento reativado ${quando}. Conecte o Google Agenda em Disponibilidade para a sessão semanal entrar na agenda.` };
+    return { ok: `Acompanhamento reativado ${quando}, mas a agenda do Google não respondeu. Use Conferir agenda do Google na ficha.` };
   }
 }
 

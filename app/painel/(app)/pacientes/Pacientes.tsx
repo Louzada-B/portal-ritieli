@@ -220,6 +220,14 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
   const [editando, setEditando] = useState(false);
   const [e, setE] = useState({ nome: p.nome, idade: p.idade ? String(p.idade) : "", whatsapp: fone(p.whatsapp), email: p.email || "", valor: p.valor != null ? String(p.valor / 100).replace(".", ",") : "", tipoValor: p.tipoValor, fixoDia: p.fixoDia != null ? String(p.fixoDia) : "", fixoHora: p.fixoHora || "", desde: p.desde, fim: p.fim || "" });
   const [encerrando, setEncerrando] = useState<string | null>(null);
+  const [reat, setReat] = useState<{ data: string; dia: string; hora: string } | null>(null);
+  // Retomada sugerida: o dia seguinte ao encerramento, ou hoje se ele já passou.
+  const abrirReat = () => {
+    const h = hojeBR();
+    const depoisFim = p.fim ? new Date(Date.parse(p.fim + "T12:00:00Z") + 86400000).toISOString().slice(0, 10) : h;
+    setReat({ data: depoisFim > h ? depoisFim : h, dia: p.fixoDia != null ? String(p.fixoDia) : "", hora: p.fixoHora || "" });
+    setEncerrando(null);
+  };
   const [novoResp, setNovoResp] = useState<null | { nome: string; parentesco: string; whatsapp: string; email: string; cpf: string; financeiro: boolean }>(null);
   const [envio, setEnvio] = useState<{ link: string; para: string; texto: string } | null>(null);
   const inf = p.tipo === "crianca";
@@ -430,9 +438,21 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         {p.status === "ativo" ? (
           <button type="button" className="bt3" disabled={pend} onClick={() => setEncerrando(hojeBR())}>Encerrar acompanhamento</button>
         ) : (
-          <button type="button" className="bt3" disabled={pend} onClick={() => iniciar(async () => av(await reativarPaciente(p.id)))}>Reativar acompanhamento</button>
+          <button type="button" className="bt3" disabled={pend} onClick={abrirReat}>Reativar acompanhamento</button>
         )}
       </div>
+      {reat ? (
+        <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <b style={{ fontSize: 16 }}>Reativar o acompanhamento</b>
+          <span style={{ fontSize: 14, color: "#5A3A41" }}>{p.fim ? `As sessões até o encerramento (${diaBR(p.fim)}) ficam como estão. ` : ""}As novas sessões começam na data da retomada, no dia e horário fixos abaixo. Antes de salvar, o painel confere a sua disponibilidade e qualquer conflito de agenda.</span>
+          <div className="fc" style={{ maxWidth: 260 }}><label htmlFor="reat-data">Retomar a partir de</label><input id="reat-data" type="date" value={reat.data} min={hojeBR()} onChange={(x) => setReat({ ...reat, data: x.target.value })} /></div>
+          <CamposFixo dia={reat.dia} hora={reat.hora} setDia={(v) => setReat({ ...reat, dia: v })} setHora={(v) => setReat({ ...reat, hora: v })} />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || !reat.data} onClick={() => iniciar(async () => { const r = await reativarPaciente(p.id, { retomada: reat.data, fixoDia: reat.dia, fixoHora: reat.hora }); av(r); if (r.ok) setReat(null); })}>{pend ? "Reativando…" : "Reativar"}</button>
+            <button type="button" className="bt3" onClick={() => setReat(null)}>Cancelar</button>
+          </div>
+        </div>
+      ) : null}
       {encerrando !== null ? (
         <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <b style={{ fontSize: 16 }}>Encerrar o acompanhamento</b>

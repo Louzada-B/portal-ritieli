@@ -36,8 +36,11 @@ export async function gerarSessoesDoMes(sb: SupabaseClient, ano: number, mes: nu
   const gera = (p: { status: string; fim: string | null; fixo_dia: number | null; fixo_hora: string | null }) => p.fixo_dia != null && !!p.fixo_hora && (p.status === "ativo" || !!p.fim);
   const sair = (futuras ?? []).filter((s) => {
     const p = porId.get(s.paciente_id as string);
-    if (!p || !gera(p)) return true;
+    if (!p) return true;
     const d = new Date(s.inicio as string);
+    // Antes do período atual (ex.: sessões até o encerramento, antes de uma retomada): ficam como estão.
+    if (dia(d) < [p.desde as string, (p.retomado_em as string) || ""].sort().pop()!) return false;
+    if (!gera(p)) return true;
     if (p.fim && dia(d) > p.fim) return true;
     if (s.remarcada_de) return false; // remarcada à mão: fica onde foi colocada
     const l = local(d);
