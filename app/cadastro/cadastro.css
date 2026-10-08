@@ -14,10 +14,14 @@
 .doc h3{font-family:Manrope,system-ui,sans-serif}
 .sala-c{display:flex;gap:10px;align-items:center;background:#F6E5E7;border-radius:16px;padding:14px 18px;font-weight:700;color:#3A1F25;word-break:break-all;text-decoration:none}
 @media print{
-  header,footer,.wa-flut,.ag-grid>div:first-child,.ag-passos,.ag-check,.ag-rodape,.so-tela{display:none!important}
-  .termo-box{max-height:none!important;overflow:visible!important;border:0!important}
-  .ag-card{box-shadow:none!important;padding:0!important}
-  section{background:#fff!important}
+  @page{margin:16mm}
+  html,body{background:#fff!important}
+  .pagina{min-height:0!important;display:block!important}
+  header,footer,.wa-flut,.ag-grid>div:first-child,.ag-passos,.ag-check,.ag-rodape,.so-tela,section>svg,section>.forma{display:none!important}
+  section,.rosado,.ag-card,.ag-corpo,.ok-final{background:#fff!important;box-shadow:none!important;padding:0!important;margin:0!important;min-height:0!important;overflow:visible!important}
+  .wrap.ag-grid{display:block!important;padding:0!important;max-width:none!important}
+  .termo-box{max-height:none!important;overflow:visible!important;border:0!important;padding:0!important;background:#fff!important}
 }
+
 .so-impressao{display:none}
 @media print{.so-tela{display:none!important}.so-impressao{display:block!important;text-align:left;align-self:stretch}.ag-card{background:#fff!important}}

@@ -15,9 +15,9 @@ const RELOGIO = (<><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
 const BAIXAR = (<><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5" /><path d="M5 19h14" /></>);
 const VIDEO = (<><rect x="3" y="6.5" width="12.5" height="11" rx="2" /><path d="M15.5 10.5l5-3v9l-5-3z" /></>);
 
-type Props = { token: string; estado: "ok" | "aceito" | "cancelado" | "invalido"; c: ConteudoTermo | null; quem: string; sala: string; whats: string };
+type Props = { token: string; estado: "ok" | "aceito" | "cancelado" | "invalido"; c: ConteudoTermo | null; quem: string; sala: string; online?: boolean; whats: string };
 
-export default function Aceite({ token, estado, c, quem, sala, whats }: Props) {
+export default function Aceite({ token, estado, c, quem, sala, online, whats }: Props) {
   const [ok, setOk] = useState(estado === "aceito");
   const [concordo, setConcordo] = useState(false);
   const [erro, setErro] = useState("");
@@ -64,6 +64,8 @@ export default function Aceite({ token, estado, c, quem, sala, whats }: Props) {
                   <a className="sala-c" href={sala} target="_blank" rel="noopener"><Ic d={VIDEO} />{sala.replace("https://", "")}</a>
                   <span style={{ fontSize: 13, color: "#8A7A7E", textAlign: "left" }}>É a mesma em todas as sessões. Guarde este link.</span>
                 </div>
+              ) : online ? (
+                <p className="so-tela" style={{ margin: 0, fontSize: 14, color: "#8A7A7E" }}>O link da sua sala de atendimento chega pelo WhatsApp antes da primeira sessão.</p>
               ) : null}
               <div className="so-tela" style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                 {c ? <button type="button" className="ag-voltar" onClick={() => window.print()} style={{ display: "inline-flex", gap: 8, alignItems: "center" }}><Ic d={BAIXAR} t={18} />Salvar cópia em PDF</button> : null}

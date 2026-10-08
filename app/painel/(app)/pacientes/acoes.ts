@@ -90,7 +90,7 @@ export async function criarPaciente(d: DadosNovo): Promise<Resultado> {
       .single();
     if (error) return { erro: "Não deu para salvar. Tente de novo." };
     revalidatePath("/painel/pacientes");
-    return { ok: "Paciente salvo.", id: data.id };
+    return { ok: `Paciente salvo.${await salaInicial(sb, data.id)}`, id: data.id };
   }
 
   const idade = parseInt(soDigitos(d.idade), 10);
@@ -112,7 +112,7 @@ export async function criarPaciente(d: DadosNovo): Promise<Resultado> {
   if (e2) return { erro: "O paciente foi salvo, mas o responsável não. Adicione na ficha." , id: pac.id };
   await sb.from("paciente_responsaveis").insert({ paciente_id: pac.id, responsavel_id: resp.id, parentesco: d.rParentesco.trim() || null, financeiro: true, legal: true, ordem: 1 });
   revalidatePath("/painel/pacientes");
-  return { ok: "Paciente salvo.", id: pac.id };
+  return { ok: `Paciente salvo.${await salaInicial(sb, pac.id)}`, id: pac.id };
 }
 
 export async function atualizarPaciente(id: string, d: { nome: string; idade: string; whatsapp: string; email: string; valor: string; tipoValor: "normal" | "social"; fixoDia: string; fixoHora: string; desde: string; fim: string }): Promise<Resultado> {
@@ -155,8 +155,8 @@ export async function atualizarPaciente(id: string, d: { nome: string; idade: st
   revalidatePath("/painel/pacientes");
   revalidatePath("/painel/sessoes");
 
-  // A sessão semanal na agenda acompanha o que mudou.
-  if (!atual.google_evento_id) return { ok: "Salvo." };
+  // A sessão semanal na agenda acompanha o que mudou (e nasce, se ainda não existia).
+  if (!atual.google_evento_id) return { ok: `Salvo.${novo.status === "ativo" ? await salaInicial(sb, id) : ""}` };
   const mudouFixo = atual.fixo_dia !== novo.fixo_dia || (atual.fixo_hora || "").slice(0, 5) !== (novo.fixo_hora || "").slice(0, 5) || atual.desde !== novo.desde;
   try {
     if (mudouFixo) {
@@ -281,6 +281,20 @@ async function refazerSerie(sb: Awaited<ReturnType<typeof supabaseServidor>>, p:
   });
   await sb.from("pacientes").update({ meet_link: ev.meet || p.meet_link, google_evento_id: ev.id, atualizado_em: new Date().toISOString() }).eq("id", p.id);
   return "ok";
+}
+
+// Com horário fixo definido, a sessão semanal e a sala do Meet já nascem junto com o cadastro:
+// o horário fica reservado no site e o link já existe para o termo e as mensagens.
+async function salaInicial(sb: Awaited<ReturnType<typeof supabaseServidor>>, id: string): Promise<string> {
+  const { data: p } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
+  if (!p || p.fixo_dia == null || !p.fixo_hora || p.google_evento_id) return "";
+  try {
+    const r = await refazerSerie(sb, p, true);
+    return r === "ok" ? " A sessão semanal e a sala do Meet já estão na sua agenda." : "";
+  } catch (e) {
+    if (e instanceof Error && e.message === "sem_google") return " Conecte o Google Agenda em Disponibilidade para criar a sala do Meet.";
+    return " A agenda do Google não respondeu: use Gerar link do Google Meet na ficha.";
+  }
 }
 
 // Cria a sessão semanal na agenda, com uma sala nova do Meet.

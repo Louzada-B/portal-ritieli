@@ -19,6 +19,7 @@ export default async function PaginaTermo({ params }: { params: Promise<{ token:
   let estado: "ok" | "aceito" | "cancelado" | "invalido" = "invalido";
   let c: ConteudoTermo | null = null;
   let sala = "";
+  let online = false;
   if (t) {
     estado = t.status === "aceito" ? "aceito" : t.status === "enviado" ? "ok" : "cancelado";
     try {
@@ -28,12 +29,13 @@ export default async function PaginaTermo({ params }: { params: Promise<{ token:
     }
     if (!c) estado = "invalido";
     const { data: p } = await supabaseAdmin().from("pacientes").select("meet_link, tipo").eq("id", t.paciente_id).single();
-    if (p?.tipo === "adulta" && p.meet_link) sala = p.meet_link;
+    online = p?.tipo === "adulta";
+    if (online && p?.meet_link) sala = p.meet_link;
   }
   const quem = c ? primeiroNome(c.tipo === "crianca" && c.responsavel ? c.responsavel.nome : c.nome) : "";
   return (
     <Moldura atual="">
-      <Aceite token={token} estado={estado} c={c} quem={quem} sala={sala} whats={linkWhatsApp("Olá, Ritieli! Preciso de um novo link do termo de consentimento.")} />
+      <Aceite token={token} estado={estado} c={c} quem={quem} sala={sala} online={online} whats={linkWhatsApp("Olá, Ritieli! Preciso de um novo link do termo de consentimento.")} />
     </Moldura>
   );
 }
