@@ -212,10 +212,9 @@ export async function moverOcorrencia(id: string, original: Date, novoInicio: Da
   ocupadosCache = null;
 }
 
-// Compromissos da agenda principal numa janela, lidos evento por evento.
-// Pega o que o "livre/ocupado" do Google às vezes deixa passar (ex.: evento marcado como
-// "Disponível"): qualquer compromisso com horário conta, menos os que ela recusou.
-// Eventos de dia inteiro (aniversários, lembretes) não bloqueiam.
+// Compromissos da agenda principal numa janela, lidos evento por evento (com o nome, para a mensagem).
+// Só bloqueia o que está como "Ocupado": eventos marcados como "Disponível" (lembretes) não contam,
+// nem os de dia inteiro, nem os convites que ela recusou.
 async function eventosOcupados(at: string, inicio: Date, fim: Date): Promise<Periodo[] | null> {
   const lista: Periodo[] = [];
   let pagina: string | undefined;
@@ -225,8 +224,8 @@ async function eventosOcupados(at: string, inicio: Date, fim: Date): Promise<Per
     const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${q}`, { headers: { Authorization: `Bearer ${at}` }, cache: "no-store" });
     if (!r.ok) return null;
     const j = await r.json();
-    for (const e of (j.items ?? []) as { status?: string; start?: { dateTime?: string }; end?: { dateTime?: string }; summary?: string; attendees?: { self?: boolean; responseStatus?: string }[] }[]) {
-      if (e.status === "cancelled" || !e.start?.dateTime || !e.end?.dateTime) continue;
+    for (const e of (j.items ?? []) as { status?: string; start?: { dateTime?: string }; end?: { dateTime?: string }; summary?: string; transparency?: string; attendees?: { self?: boolean; responseStatus?: string }[] }[]) {
+      if (e.status === "cancelled" || e.transparency === "transparent" || !e.start?.dateTime || !e.end?.dateTime) continue;
       if ((e.attendees ?? []).some((a) => a.self && a.responseStatus === "declined")) continue;
       lista.push({ inicio: new Date(e.start.dateTime), fim: new Date(e.end.dateTime), titulo: e.summary || undefined });
     }
