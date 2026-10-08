@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
-import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, mudarStatus, type DadosNovo } from "./acoes";
+import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, mudarStatus, excluirPaciente, type DadosNovo } from "./acoes";
 
 type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
@@ -342,8 +342,31 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           <button type="button" className="bt3" disabled={pend} onClick={() => iniciar(async () => av(await mudarStatus(p.id, "ativo")))}>Reativar acompanhamento</button>
         )}
       </div>
+      <ExcluirPaciente id={p.id} nome={p.nome} />
       <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. Prontuário, sessões e pagamentos entram nas próximas etapas.</p>
     </>
+  );
+}
+
+function ExcluirPaciente({ id, nome }: { id: string; nome: string }) {
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+  const [txt, setTxt] = useState("");
+  const [erro, setErro] = useState("");
+  const [pend, iniciar] = useTransition();
+  if (!aberto)
+    return <button type="button" className="mini2" style={{ alignSelf: "flex-start", color: "#A3322A", borderColor: "#F2C9D1" }} onClick={() => setAberto(true)}><Icone nome="lixo" tam={16} />Excluir paciente e dados</button>;
+  return (
+    <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <b style={{ fontSize: 16 }}>Excluir {nome} de vez?</b>
+      <span style={{ fontSize: 14, color: "#5A3A41" }}>Apaga o cadastro, a ficha, os termos e os responsáveis que não cuidam de outro paciente, e tira a sessão semanal da sua agenda. Não dá para desfazer. Use quando a pessoa pedir a exclusão dos dados.</span>
+      <div className="fc"><label htmlFor="ex-nome">Para confirmar, escreva o nome completo</label><input id="ex-nome" type="text" autoComplete="off" value={txt} onChange={(e) => setTxt(e.target.value)} placeholder={nome} /></div>
+      {erro ? <div className="aviso erro" role="alert">{erro}</div> : null}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <button type="button" className="bt" style={{ background: "#A3322A", width: "auto" }} disabled={pend || txt.trim().toLowerCase() !== nome.trim().toLowerCase()} onClick={() => iniciar(async () => { const r = await excluirPaciente(id, txt); if (r.erro) return setErro(r.erro); router.push("/painel/pacientes", { scroll: false }); })}>{pend ? "Excluindo…" : "Excluir de vez"}</button>
+        <button type="button" className="bt3" onClick={() => { setAberto(false); setTxt(""); setErro(""); }}>Cancelar</button>
+      </div>
+    </div>
   );
 }
 

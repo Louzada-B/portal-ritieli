@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
-import { criarEvento } from "../../../lib/google";
+import { criarEvento, apagarEvento } from "../../../lib/google";
 import { PRAZO_HORAS, type Pedido } from "../../../lib/dados";
 import { fmtQuando } from "../../../lib/agenda";
 
@@ -68,4 +68,18 @@ export async function recusarPedido(id: string): Promise<Resultado> {
   if (error || !count) return { erro: "Não deu para recusar. Talvez ele já tenha sido respondido." };
   revalidatePath("/painel", "layout");
   return { ok: "Pedido recusado. O horário voltou para o site." };
+}
+
+// Exclusão definitiva de um pedido já respondido (teste ou pedido da pessoa).
+// Se a conversa ainda não aconteceu, o evento também sai da agenda.
+export async function excluirPedido(id: string): Promise<Resultado> {
+  const sb = await supabaseServidor();
+  const { data: p } = await sb.from("pedidos").select("status, inicio, google_evento_id").eq("id", id).single();
+  if (!p) return { erro: "Pedido não encontrado." };
+  if (p.status === "aguardando") return { erro: "Responda o pedido antes de excluir." };
+  if (p.google_evento_id && new Date(p.inicio).getTime() > Date.now()) await apagarEvento(p.google_evento_id).catch(() => {});
+  const { error } = await sb.from("pedidos").delete().eq("id", id);
+  if (error) return { erro: "Não deu para excluir. Tente de novo." };
+  revalidatePath("/painel", "layout");
+  return { ok: "Pedido excluído." };
 }

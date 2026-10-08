@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Icone from "../../componentes/Icone";
-import { confirmarPedido, recusarPedido } from "./acoes";
+import { confirmarPedido, recusarPedido, excluirPedido } from "./acoes";
 import type { Pedido } from "../../../lib/dados";
 
 type Props = {
@@ -30,7 +31,8 @@ const wa = (w: string, texto: string) => {
 };
 
 export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes, voltar }: Props) {
-  const [acao, setAcao] = useState<"" | "sug" | "rec">("");
+  const router = useRouter();
+  const [acao, setAcao] = useState<"" | "sug" | "rec" | "exc">("");
   const [sugs, setSugs] = useState<string[]>([]);
   const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
   const [aviso, setAviso] = useState<string | undefined>();
@@ -148,6 +150,19 @@ export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes
           <span style={{ fontSize: 14, color: "#5A3A41" }}>O horário voltou para o site. Para avisar a pessoa, a mensagem já está pronta:</span>
           <div className="prev">{msgLib}</div>
           <div><a href={wa(p.whatsapp, msgLib)} target="_blank" rel="noopener" className="bt"><Icone nome="whats" tam={18} />Abrir no WhatsApp</a></div>
+        </div>
+      ) : null}
+      {p.status !== "aguardando" && acao !== "exc" ? (
+        <button type="button" className="mini2" style={{ alignSelf: "flex-start", color: "#A3322A", borderColor: "#F2C9D1" }} onClick={() => setAcao("exc")}><Icone nome="lixo" tam={16} />Excluir pedido</button>
+      ) : null}
+      {acao === "exc" ? (
+        <div className="caixa rec">
+          <b style={{ fontSize: 16 }}>Excluir este pedido de vez?</b>
+          <span style={{ fontSize: 14, color: "#5A3A41" }}>Apaga os dados do pedido. Se a conversa ainda não aconteceu, o evento sai da sua agenda. Não dá para desfazer.</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <button type="button" className="bt" disabled={pend} style={{ background: "#A3322A", width: "auto" }} onClick={() => iniciar(async () => { const r = await excluirPedido(p.id); if (r.erro) { setMsg({ t: r.erro, erro: true }); return setAcao(""); } router.push(voltar, { scroll: false }); })}>{pend ? "Excluindo…" : "Excluir pedido"}</button>
+            <button type="button" className="bt3" onClick={() => setAcao("")}>Cancelar</button>
+          </div>
         </div>
       ) : null}
     </section>

@@ -232,3 +232,28 @@ export async function mudarStatus(id: string, status: "ativo" | "encerrado"): Pr
   revalidatePath("/painel/pacientes");
   return { ok: status === "encerrado" ? "Acompanhamento encerrado. A sessão semanal saiu da sua agenda." : "Acompanhamento reativado." };
 }
+
+// Exclusão definitiva (pedido da própria pessoa ou cadastro de teste): tira a sessão
+// semanal da agenda e apaga ficha, termos, responsáveis só deste paciente e o cadastro.
+export async function excluirPaciente(id: string, confirmacao: string): Promise<Resultado> {
+  const sb = await supabaseServidor();
+  const { data: p } = await sb.from("pacientes").select("id, nome, google_evento_id").eq("id", id).single();
+  if (!p) return { erro: "Paciente não encontrado." };
+  if (confirmacao.trim().toLowerCase() !== p.nome.trim().toLowerCase()) return { erro: "Escreva o nome completo, igual ao cadastro, para confirmar." };
+  if (p.google_evento_id) await apagarEvento(p.google_evento_id).catch(() => {});
+
+  const { data: links } = await sb.from("paciente_responsaveis").select("responsavel_id").eq("paciente_id", id);
+  const ids = (links ?? []).map((l) => l.responsavel_id as string);
+  const { error } = await sb.from("pacientes").delete().eq("id", id);
+  if (error) return { erro: "Não deu para excluir. Tente de novo." };
+  if (ids.length) {
+    // Responsáveis que não cuidam de outro paciente saem junto.
+    const { data: outros } = await sb.from("paciente_responsaveis").select("responsavel_id").in("responsavel_id", ids);
+    const ficam = new Set((outros ?? []).map((o) => o.responsavel_id as string));
+    const sair = ids.filter((r) => !ficam.has(r));
+    if (sair.length) await sb.from("responsaveis").delete().in("id", sair);
+  }
+  revalidatePath("/painel/pacientes");
+  revalidatePath("/painel/termos");
+  return { ok: "Paciente e dados excluídos." };
+}
