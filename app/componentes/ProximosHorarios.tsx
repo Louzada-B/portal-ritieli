@@ -2,36 +2,49 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { agendaExemplo, rotas } from "../conteudo";
+import { rotas } from "../conteudo";
 
 type Horario = { rot: string; num: string; mes: string; hora: string };
+type Estado = { tipo: "carregando" } | { tipo: "fechada" } | { tipo: "vazia" } | { tipo: "ok"; lista: Horario[] };
 
-const NOMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-
-// Por enquanto calcula os próximos dias de atendimento com horários de exemplo.
-// Quando a agenda estiver ligada ao Google Agenda, os horários virão de lá.
-function proximos(): Horario[] {
-  const lista: Horario[] = [];
-  const d = new Date();
-  while (lista.length < 3) {
-    d.setDate(d.getDate() + 1);
-    if (agendaExemplo.diasDaSemana.includes(d.getDay())) {
-      const rot = NOMES[d.getDay()];
-      const num = String(d.getDate());
-      lista.push({ rot, num, mes: `${rot}, ${num} ${MESES[d.getMonth()]}`, hora: agendaExemplo.horarios[lista.length] });
-    }
-  }
-  return lista;
-}
-
+// Os três próximos dias com horário livre, lidos da agenda de verdade.
 export default function ProximosHorarios() {
-  const [lista, setLista] = useState<Horario[] | null>(null);
-  useEffect(() => setLista(proximos()), []);
+  const [estado, setEstado] = useState<Estado>({ tipo: "carregando" });
+
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/agenda/horarios", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!vivo) return;
+        if (!j.aberta) return setEstado({ tipo: "fechada" });
+        const lista: Horario[] = (j.dias ?? [])
+          .slice(0, 3)
+          .map((d: { rot: string; num: string; mes: string; horarios: { h: string; ocupado: boolean }[] }) => ({
+            rot: d.rot,
+            num: d.num,
+            mes: `${d.rot}, ${d.num} ${d.mes.slice(0, 3)}`,
+            hora: d.horarios.find((h) => !h.ocupado)?.h ?? "",
+          }));
+        setEstado(lista.length ? { tipo: "ok", lista } : { tipo: "vazia" });
+      })
+      .catch(() => vivo && setEstado({ tipo: "fechada" }));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  if (estado.tipo === "fechada" || estado.tipo === "vazia") {
+    return (
+      <p className="suave" style={{ margin: "8px 0 4px" }}>
+        {estado.tipo === "fechada" ? "Os horários livres aparecem aqui em breve." : "Sem horários livres nos próximos dias. Fale comigo pelo WhatsApp que a gente combina."}
+      </p>
+    );
+  }
 
   return (
     <div className="hor-lista">
-      {(lista ?? [null, null, null]).map((p, i) =>
+      {(estado.tipo === "ok" ? estado.lista : [null, null, null]).map((p, i) =>
         p ? (
           <Link key={i} href={rotas.agendar} className="hor-l">
             <span className="hor-d">
@@ -46,7 +59,7 @@ export default function ProximosHorarios() {
           </Link>
         ) : (
           <span key={i} className="hor-l vazio" aria-hidden="true" />
-        )
+        ),
       )}
     </div>
   );

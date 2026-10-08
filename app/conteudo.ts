@@ -156,10 +156,6 @@ export const agendar = {
 // Agenda da conversa inicial: segunda a sábado, das 8h às 12h.
 // Enquanto a agenda real (Google Agenda) não estiver ligada, a página mostra
 // os próximos dias úteis com horários de exemplo.
-export const agendaExemplo = {
-  diasDaSemana: [1, 2, 3, 4, 5, 6],
-  horarios: ["09:00", "10:00", "08:00"],
-};
 
 export const rodape = {
   frase: "Um espaço para você ser ouvida com calma e cuidado.",
