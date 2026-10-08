@@ -77,6 +77,7 @@ type Props = {
 
 export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: Props) {
   const [filtro, setFiltro] = useState<"todas" | "ag" | "pend" | "rec">("todas");
+  const [busca, setBusca] = useState("");
   const [form, setForm] = useState(false);
   const [r, setR] = useState({ pacienteId: pacientes[0]?.id || "", data: "", hora: pacientes[0]?.hora || "08:00", status: "agendada" as StatusSessao, valor: pacientes[0]?.valor != null ? String(pacientes[0].valor / 100).replace(".", ",") : "", pago: false });
   const [msg, setMsg] = useState<{ t: string; erro?: boolean; desfazer?: { id: string; e: Estado } } | null>(null);
@@ -108,7 +109,12 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
   const semRecibo = real.filter((l) => l.pago && !l.recibo);
   const ags = linhas.filter((l) => l.status === "agendada");
   const soma = (xs: Linha[]) => xs.reduce((a, l) => a + (l.valor || 0), 0);
-  const lista = filtro === "pend" ? aRec : filtro === "rec" ? semRecibo : filtro === "ag" ? ags : linhas;
+  // Busca pelo nome (sem acentos) e sempre em ordem de data, da mais antiga para a mais nova.
+  const sem = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const termo = sem(busca.trim());
+  const lista = (filtro === "pend" ? aRec : filtro === "rec" ? semRecibo : filtro === "ag" ? ags : linhas)
+    .filter((l) => !termo || sem(l.nome).includes(termo))
+    .sort((a, b) => a.inicio.localeCompare(b.inicio));
 
   const escolherPac = (id: string) => {
     const p = pacientes.find((x) => x.id === id);
@@ -276,10 +282,13 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
           <a href="https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/auditoria-fiscal/conformidade/perguntas-e-respostas-receita-saude" target="_blank" rel="noopener" className="bt2" style={{ width: "auto" }}><Icone nome="site" tam={18} />Abrir o Receita Saúde</a>
         </div>
 
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        <label className="busca"><Icone nome="busca" tam={18} /><span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Buscar paciente</span><input type="search" placeholder="Buscar pelo nome do paciente" value={busca} onChange={(e) => setBusca(e.target.value)} /></label>
         <div className="filtros" role="group" aria-label="Filtrar sessões">
           {([["todas", "Todas", linhas.length], ["ag", "Agendadas", ags.length], ["pend", "A receber", aRec.length], ["rec", "Recibo a emitir", semRecibo.length]] as const).map(([k, n, c]) => (
             <button key={k} type="button" className={filtro === k ? "fi on" : "fi"} aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{n} <b>{c}</b></button>
           ))}
+        </div>
         </div>
 
         <section className="card lista-s" style={{ padding: "20px 12px 8px" }}>
@@ -317,7 +326,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
               );
             })}
           </div>
-          {!lista.length ? <p style={{ margin: 0, padding: "24px 12px 28px", textAlign: "center", color: "#6B5A5E" }}><b style={{ display: "block", color: "#2F6A45", fontSize: 17, marginBottom: 4 }}>Nada por aqui.</b>{linhas.length ? "Nenhuma sessão nesta lista." : "Nenhuma sessão neste mês. As do horário fixo de cada paciente aparecem sozinhas."}</p> : null}
+          {!lista.length ? <p style={{ margin: 0, padding: "24px 12px 28px", textAlign: "center", color: "#6B5A5E" }}><b style={{ display: "block", color: "#2F6A45", fontSize: 17, marginBottom: 4 }}>Nada por aqui.</b>{linhas.length ? busca.trim() ? `Nenhuma sessão de "${busca.trim()}" nesta lista.` : "Nenhuma sessão nesta lista." : "Nenhuma sessão neste mês. As do horário fixo de cada paciente aparecem sozinhas."}</p> : null}
         </section>
       </main>
     </>
