@@ -5,11 +5,11 @@ import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { centavosDe, primeiroNome } from "../../../lib/formato";
 import { moverOcorrencia, criarEventoUnico, moverEvento, apagarEvento, situacaoOcorrencia, salaDoEvento } from "../../../lib/google";
 import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
-import { deLocal, fmtQuando } from "../../../lib/agenda";
+import { deLocal, fmtQuando, local } from "../../../lib/agenda";
 import { conflitoEm, mesmoPeriodo, DUR_SESSAO } from "../../../lib/conflitos";
-import type { StatusSessao } from "../../../lib/sessoes";
+import { gerarSessoesDoMes, type StatusSessao } from "../../../lib/sessoes";
 
-export type ResSessao = { erro?: string; ok?: string };
+export type ResSessao = { erro?: string; ok?: string; semDesfazer?: boolean };
 
 const STATUS: StatusSessao[] = ["agendada", "realizada", "falta", "cancelada"];
 type Sb = Awaited<ReturnType<typeof supabaseServidor>>;
@@ -36,7 +36,6 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
   const valor = d.valor.trim() ? centavosDe(d.valor) : null;
   if (d.valor.trim() && valor == null) return { erro: "Confira o valor." };
   const inicio = deLocal(+md[1], +md[2] - 1, +md[3], +mh[1], +mh[2]);
-  const cobrada = d.status === "realizada" || d.status === "falta";
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", d.pacienteId).single<Paciente>();
   if (!p) return { erro: "Paciente não encontrado." };
@@ -53,7 +52,7 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
       inicio: inicio.toISOString(),
       status: d.status,
       valor_centavos: valor,
-      pago_em: cobrada && d.pago ? new Date().toISOString() : null,
+      pago_em: d.status !== "cancelada" && d.pago ? new Date().toISOString() : null,
       origem: "manual",
     })
     .select("id")
@@ -74,7 +73,6 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
 // Cancelar libera o horário (na agenda do Google também); voltar de cancelada confere conflitos.
 export async function mudarSessao(id: string, o: { status: StatusSessao; pago: boolean; recibo: boolean }): Promise<ResSessao> {
   if (!STATUS.includes(o.status)) return { erro: "Situação inválida." };
-  const cobrada = o.status === "realizada" || o.status === "falta";
   const sb = await supabaseServidor();
   const { data: atual } = await sb.from("sessoes").select("*").eq("id", id).single();
   if (!atual) return { erro: "Sessão não encontrada." };
@@ -87,7 +85,8 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
   }
 
   const agora = new Date().toISOString();
-  const pago = cobrada && o.pago;
+  // Pagamento pode vir antes (antecipado) ou depois da sessão; só a cancelada não cobra.
+  const pago = o.status !== "cancelada" && o.pago;
   const recibo = pago && o.recibo;
   const mud: Record<string, unknown> = {
     status: o.status,
@@ -97,6 +96,21 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
   };
 
   let aviso = "";
+  let semDesfazer = false;
+  // Sessão já paga que é cancelada: o pagamento passa para a próxima sessão agendada ainda não paga.
+  if (cancelando && atual.pago_em) {
+    const { data: prox } = await sb.from("sessoes").select("id, inicio").eq("paciente_id", atual.paciente_id).eq("status", "agendada").is("pago_em", null).gt("inicio", atual.inicio).neq("id", id).order("inicio").limit(1).maybeSingle();
+    if (prox) {
+      await sb.from("sessoes").update({ pago_em: atual.pago_em, recibo_em: atual.recibo_em, atualizado_em: agora }).eq("id", prox.id);
+      aviso = ` O pagamento passou para a sessão de ${fmtQuando(new Date(prox.inicio)).replace(" · ", ", às ")}.`;
+      semDesfazer = true;
+    } else {
+      // Sem outra sessão marcada: o pagamento fica guardado nesta, como crédito.
+      mud.pago_em = atual.pago_em;
+      mud.recibo_em = atual.recibo_em;
+      aviso = " Ela já estava paga e não há outra sessão agendada: o pagamento ficou como crédito.";
+    }
+  }
   if ((cancelando || voltando) && inicio.getTime() > Date.now()) {
     const { data: p } = await sb.from("pacientes").select("*").eq("id", atual.paciente_id).single<Paciente>();
     try {
@@ -118,6 +132,10 @@ export async function mudarSessao(id: string, o: { status: StatusSessao; pago: b
 
   const { error } = await sb.from("sessoes").update(mud).eq("id", id);
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  if (aviso && cancelando) {
+    revalidatePath("/painel/sessoes");
+    return { ok: `Cancelamento registrado.${aviso}`, semDesfazer };
+  }
   revalidatePath("/painel/sessoes");
   return { ok: `Salvo.${aviso}` };
 }
@@ -188,4 +206,34 @@ export async function remarcarSessao(id: string, data: string, hora: string): Pr
   const quem = p.tipo === "crianca" ? `a sessão de ${primeiroNome(p.nome)}` : "nossa sessão";
   const texto = `Olá, ${primeiroNome(ct.nome)}! Aqui é a Ritieli. Combinado: ${quem} de ${antes} passa para ${depois}.${sala}`;
   return { ok: `Sessão remarcada.${aviso}`, para: ct.whatsapp || "", texto };
+}
+
+// Pagamento antecipado de várias sessões: marca como pagas as próximas sessões agendadas
+// do paciente (criando as dos próximos meses, se ainda não existem).
+export async function pagarAdiantado(pacienteId: string, quantas: number): Promise<ResSessao & { ids?: string[] }> {
+  const n = Math.floor(quantas);
+  if (!pacienteId) return { erro: "Escolha o paciente." };
+  if (!(n >= 1 && n <= 24)) return { erro: "Escolha de 1 a 24 sessões." };
+  const sb = await supabaseServidor();
+  const l = local(new Date());
+  for (let i = 0; i < 6; i++) await gerarSessoesDoMes(sb, l.ano + Math.floor((l.mes + i) / 12), (l.mes + i) % 12);
+  const { data: livres } = await sb.from("sessoes").select("id, inicio").eq("paciente_id", pacienteId).eq("status", "agendada").is("pago_em", null).gte("inicio", new Date(Date.now() - 12 * 3600000).toISOString()).order("inicio").limit(n);
+  if (!livres?.length) return { erro: "Não há sessões agendadas sem pagamento para esse paciente. Confira o horário fixo ou registre as sessões antes." };
+  const ids = livres.map((x) => x.id as string);
+  const { error } = await sb.from("sessoes").update({ pago_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }).in("id", ids);
+  if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  revalidatePath("/painel/sessoes");
+  const datas = livres.map((x) => fmtQuando(new Date(x.inicio as string)).split(" · ")[0]).join("; ");
+  const falta = n - ids.length;
+  return { ok: `Pagamento antecipado de ${ids.length} ${ids.length === 1 ? "sessão" : "sessões"}: ${datas}.${falta > 0 ? ` Só havia ${ids.length} agendada${ids.length > 1 ? "s" : ""}; as outras ${falta} entram quando forem marcadas.` : ""}`, ids };
+}
+
+// Desfaz um pagamento antecipado.
+export async function desfazerAdiantado(ids: string[]): Promise<ResSessao> {
+  if (!ids.length) return { ok: "Nada a desfazer." };
+  const sb = await supabaseServidor();
+  const { error } = await sb.from("sessoes").update({ pago_em: null, recibo_em: null, atualizado_em: new Date().toISOString() }).in("id", ids).eq("status", "agendada");
+  if (error) return { erro: "Não deu para desfazer. Tente de novo." };
+  revalidatePath("/painel/sessoes");
+  return { ok: "Desfeito." };
 }

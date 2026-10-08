@@ -24,7 +24,7 @@ export default function TermoDocumento({ c, publico = false, rodape }: { c: Cont
       <p>Tudo o que for conversado é sigiloso, conforme o Código de Ética Profissional do Psicólogo. O sigilo só pode ser quebrado nas situações previstas no Código, como risco grave à vida.</p>
       {inf ? <p>Os responsáveis recebem devolutivas sobre o processo, preservando, sempre que possível, o que a criança ou o adolescente compartilha em confiança.</p> : null}
       <h3>4. Valor e pagamento</h3>
-      <p>Valor por sessão: <D v={c.valor} ph="[valor]" />, pago por <D v={c.pagamento} ph="pix" />. O recibo é emitido pelo Receita Saúde.</p>
+      <p>Valor por sessão: <D v={c.valor} ph="[valor]" />, pago por <D v={c.pagamento} ph="pix" />. O pagamento pode ser feito após cada sessão ou antecipado, para várias sessões de uma vez. O recibo é emitido pelo Receita Saúde.</p>
       <h3>5. Faltas e cancelamentos</h3>
       <p>{publico ? c.faltas : <D v={c.faltas} ph="[política de faltas]" />}</p>
       <h3>6. Emergências</h3>
