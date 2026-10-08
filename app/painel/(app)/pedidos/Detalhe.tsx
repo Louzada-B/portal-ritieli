@@ -133,6 +133,7 @@ export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes
           <span style={{ fontSize: 14, color: "#3A1F25" }}>Agora é só mandar a confirmação. A mensagem já está pronta:</span>
           <div className="prev">{msgOk}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}><a href={wa(p.whatsapp, msgOk)} target="_blank" rel="noopener" className="bt"><Icone nome="whats" tam={18} />Abrir no WhatsApp</a></div>
+          <Link href={`/painel/pacientes?novo=1&pedido=${p.id}`} className="bt2" style={{ alignSelf: "flex-start", width: "auto" }}>Depois da conversa: cadastrar como paciente</Link>
           {p.meet_link ? (
             <span style={{ fontSize: 13, color: "#4F5B4E", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><Icone nome="video" tam={16} />Sala criada no Google Meet: <b>{p.meet_link.replace("https://", "")}</b>. O link já está na mensagem acima e fica salvo na ficha.</span>
           ) : null}

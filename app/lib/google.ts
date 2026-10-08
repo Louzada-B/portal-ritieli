@@ -1,34 +1,15 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { cifrar, decifrar } from "./cripto";
 import { supabaseAdmin } from "./supabase/admin";
 import { siteUrl } from "../site";
 import type { Periodo } from "./agenda";
 
 // Conexão com o Google Agenda da Ritieli: horários ocupados e eventos com Meet.
 // A autorização fica no banco criptografada com a CHAVE_CRIPTO.
+export { cifrar, decifrar };
 
 export const ESCOPOS = ["https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.freebusy"];
 export const redirectGoogle = () => `${siteUrl}/api/google/retorno`;
-
-function chave() {
-  const k = process.env.CHAVE_CRIPTO;
-  if (!k) throw new Error("CHAVE_CRIPTO ausente");
-  return createHash("sha256").update(k).digest();
-}
-
-export function cifrar(texto: string) {
-  const iv = randomBytes(12);
-  const c = createCipheriv("aes-256-gcm", chave(), iv);
-  const dados = Buffer.concat([c.update(texto, "utf8"), c.final()]);
-  return [iv, c.getAuthTag(), dados].map((b) => b.toString("base64")).join(".");
-}
-
-export function decifrar(pacote: string) {
-  const [iv, tag, dados] = pacote.split(".").map((p) => Buffer.from(p, "base64"));
-  const d = createDecipheriv("aes-256-gcm", chave(), iv);
-  d.setAuthTag(tag);
-  return Buffer.concat([d.update(dados), d.final()]).toString("utf8");
-}
 
 export function urlAutorizacao(estado: string) {
   const p = new URLSearchParams({
@@ -143,4 +124,32 @@ export async function apagarEvento(id: string) {
     headers: { Authorization: `Bearer ${at}` },
     cache: "no-store",
   });
+  ocupadosCache = null;
+}
+
+// Sessões semanais: evento que se repete toda semana no horário fixo, com sala do Meet.
+// O link é o mesmo em todas as sessões, e o evento bloqueia o horário na agenda do site.
+export async function criarEventoSemanal(p: { chave: string; titulo: string; inicio: Date; duracaoMin: number; descricao: string }) {
+  const con = await conexao();
+  if (!con) throw new Error("sem_google");
+  const at = await acesso(con);
+  const fim = new Date(p.inicio.getTime() + p.duracaoMin * 60000);
+  const r = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      summary: p.titulo,
+      description: p.descricao,
+      start: { dateTime: p.inicio.toISOString(), timeZone: "America/Sao_Paulo" },
+      end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" },
+      recurrence: ["RRULE:FREQ=WEEKLY"],
+      conferenceData: { createRequest: { requestId: p.chave, conferenceSolutionKey: { type: "hangoutsMeet" } } },
+      reminders: { useDefault: true },
+    }),
+    cache: "no-store",
+  });
+  const j = await r.json();
+  ocupadosCache = null;
+  if (!r.ok) throw new Error(`google semanal: ${j.error?.message || r.status}`);
+  return { id: j.id as string, meet: (j.hangoutLink as string) || null };
 }

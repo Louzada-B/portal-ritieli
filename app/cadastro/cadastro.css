@@ -1,0 +1,23 @@
+/* Ficha de cadastro e aceite do termo · estilos do esboço */
+.ag-card .grupo{display:flex;flex-direction:column;gap:14px;border-top:1px solid #F1E3E6;padding-top:18px;margin:0}
+.ag-card .grupo:first-of-type{border-top:0;padding-top:0}
+.ag-card .grupo-t{font-weight:700;font-size:16px;color:#3A1F25;margin:0}
+.ok-final{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:12px 0}
+.ok-final .sel{width:84px;height:84px;border-radius:50%;background:#7A2335;color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 12px rgba(122,35,53,.08)}
+.ag-erro{display:flex;gap:12px;align-items:flex-start;background:#FBE5E2;color:#A3322A;border-radius:18px;padding:14px 16px;font-size:14px;line-height:1.55}
+.termo-box{max-height:320px;overflow:auto;background:#F8F3F0;border-radius:18px;padding:18px 20px;font-size:14.5px;line-height:1.65;color:#3A1F25}
+.termo-box h3{margin:14px 0 4px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#7A2335}
+.termo-box p{margin:0 0 6px}
+.termo-box.doc{max-height:440px;font-family:Georgia,serif;background:#FFFFFF;border:1px solid #EFE3E5}
+.doc .doc-t{font-family:Manrope,system-ui,sans-serif;font-weight:700;font-size:17px;color:#7A2335;text-align:center;margin:0 0 2px}
+.doc .doc-s{font-family:Manrope,system-ui,sans-serif;font-size:12px;color:#8A7A7E;text-align:center;margin:0 0 14px}
+.doc h3{font-family:Manrope,system-ui,sans-serif}
+.sala-c{display:flex;gap:10px;align-items:center;background:#F6E5E7;border-radius:16px;padding:14px 18px;font-weight:700;color:#3A1F25;word-break:break-all;text-decoration:none}
+@media print{
+  header,footer,.wa-flut,.ag-grid>div:first-child,.ag-passos,.ag-check,.ag-rodape,.so-tela{display:none!important}
+  .termo-box{max-height:none!important;overflow:visible!important;border:0!important}
+  .ag-card{box-shadow:none!important;padding:0!important}
+  section{background:#fff!important}
+}
+.so-impressao{display:none}
+@media print{.so-tela{display:none!important}.so-impressao{display:block!important;text-align:left;align-self:stretch}.ag-card{background:#fff!important}}

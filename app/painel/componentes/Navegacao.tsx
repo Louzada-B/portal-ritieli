@@ -12,12 +12,12 @@ export const ITENS: Item[] = [
   { href: "/painel", nome: "Visão geral", curto: "Início", icone: "inicio" },
   { href: "/painel/pedidos", nome: "Pedidos", curto: "Pedidos", icone: "pedidos", contar: true },
   { href: "/painel/disponibilidade", nome: "Disponibilidade", curto: "Horários", icone: "horarios" },
-  { href: "#", nome: "Pacientes", curto: "Pacientes", icone: "pacientes", emBreve: true },
+  { href: "/painel/pacientes", nome: "Pacientes", curto: "Pacientes", icone: "pacientes" },
   { href: "#", nome: "Sessões e pagamentos", curto: "Sessões", icone: "sessoes", emBreve: true },
 ];
 const CONTEUDO: Item[] = [
   { href: "#", nome: "Escritos", curto: "Escritos", icone: "escritos", emBreve: true },
-  { href: "#", nome: "Termos", curto: "Termos", icone: "termos", emBreve: true },
+  { href: "/painel/termos", nome: "Termos", curto: "Termos", icone: "termos" },
 ];
 
 function ItemLat({ item, atual, n }: { item: Item; atual: boolean; n: number }) {
