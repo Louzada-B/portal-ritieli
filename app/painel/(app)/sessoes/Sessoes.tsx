@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { reais } from "../../../lib/formato";
 import type { StatusSessao } from "../../../lib/sessoes";
@@ -80,7 +80,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
   const [busca, setBusca] = useState("");
   const [form, setForm] = useState(false);
   const [r, setR] = useState({ pacienteId: pacientes[0]?.id || "", data: "", hora: pacientes[0]?.hora || "08:00", status: "agendada" as StatusSessao, valor: pacientes[0]?.valor != null ? String(pacientes[0].valor / 100).replace(".", ",") : "", pago: false });
-  const [msg, setMsg] = useState<{ t: string; erro?: boolean; desfazer?: { id: string; e: Estado } } | null>(null);
+  const [msg, setMsg] = useState<{ t: string; erro?: boolean; toast?: boolean; desfazer?: { id: string; e: Estado } } | null>(null);
   const [editVal, setEditVal] = useState<{ id: string; v: string } | null>(null);
   const [remarca, setRemarca] = useState<{ l: Linha; data: string; hora: string } | null>(null);
   const [envio, setEnvio] = useState<{ para: string; texto: string } | null>(null);
@@ -128,11 +128,18 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
       setMsg({ t: aviso, desfazer: { id: l.id, e: { status: l.status, pago: l.pago, recibo: l.recibo } } });
     });
 
+  // O aviso com Desfazer some sozinho depois de 10 segundos.
+  useEffect(() => {
+    if (!msg?.desfazer && !msg?.toast) return;
+    const t = setTimeout(() => setMsg(null), msg.desfazer ? 10000 : 4000);
+    return () => clearTimeout(t);
+  }, [msg]);
+
   const desfazer = () =>
     msg?.desfazer &&
     iniciar(async () => {
       const res = await mudarSessao(msg.desfazer!.id, msg.desfazer!.e);
-      setMsg(res.erro ? { t: res.erro, erro: true } : { t: "Desfeito." });
+      setMsg(res.erro ? { t: res.erro, erro: true } : { t: "Desfeito. A sessão voltou como estava.", toast: true });
     });
 
   const salvar = () =>
@@ -189,10 +196,14 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje }: 
           <button type="button" className="bt m-only" onClick={() => setForm(true)}><Icone nome="mais" tam={18} />Registrar sessão</button>
         </div>
 
-        {msg ? (
-          <div className={msg.erro ? "aviso erro" : "aviso ok"} role="status" style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-            <span>{msg.t}</span>
-            {msg.desfazer ? <button type="button" className="mini" disabled={pend} onClick={desfazer}>Desfazer</button> : null}
+        {msg && !msg.desfazer && !msg.toast ? (
+          <div className={msg.erro ? "aviso erro" : "aviso ok"} role="status">{msg.t}</div>
+        ) : null}
+        {/* Depois de marcar uma sessão, o aviso aparece embaixo da tela, perto de onde a pessoa está, com Desfazer. */}
+        {msg?.desfazer || msg?.toast ? (
+          <div className="toast" role="status" style={{ gap: 14 }}>
+            <span style={{ fontWeight: 500 }}>{msg.t}</span>
+            {msg.desfazer ? <button type="button" onClick={desfazer} disabled={pend} style={{ font: "inherit", fontSize: 14, fontWeight: 700, color: "#F2C9D1", background: "transparent", border: "1.5px solid rgba(242,201,209,.6)", borderRadius: 999, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}>Desfazer</button> : null}
           </div>
         ) : null}
 
