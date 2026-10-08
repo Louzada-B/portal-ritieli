@@ -93,7 +93,7 @@ export default async function PaginaTermos({ searchParams }: { searchParams: Pro
       <TopoCelular titulo="Termos" sub="Histórico e novos termos" pedidos={0} />
       <main className="conteudo">
         <Termos
-          key={`${sel?.id || ""}-${escolhido?.id || ""}-${q.aba || ""}`}
+          key={escolhido?.id || "sem-paciente"}
           hist={hist}
           selId={sel?.id || null}
           doc={doc}

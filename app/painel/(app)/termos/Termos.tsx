@@ -29,7 +29,7 @@ type Props = {
   abaInicial: "form" | "doc";
 };
 
-type Envio = { link: string; para: string; texto: string };
+type Envio = { link: string; para: string; texto: string; id?: string };
 
 const pillDe = (s: ItemHist["status"]) => (s === "aceito" ? "pill p-ok" : s === "enviado" ? "pill p-av" : "pill p-ne");
 
@@ -89,8 +89,7 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
       const r = await criarTermo(novo.id, { valor, tipoValor, plataforma: plat, faltas });
       av(r);
       if (r.erro) return;
-      setEnvio({ link: r.link!, para: r.para!, texto: r.texto! });
-      router.refresh();
+      setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, id: r.id });
     });
 
   const regNovo = "Sem assinatura: o aceite eletrônico pelo link fica registrado aqui, com data, hora e versão do termo.";
@@ -176,7 +175,12 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
                   <div className="fc"><label htmlFor="t-fal">Faltas e cancelamentos</label><textarea id="t-fal" value={faltas} onChange={(e) => setFaltas(e.target.value)} /><span style={{ fontSize: 13, color: "#8A7A7E" }}>Sua política padrão. Vale para todos os termos.</span></div>
 
                   {msg ? <div className={msg.erro ? "aviso erro" : "aviso ok"} role="status">{msg.t}</div> : null}
-                  {envio ? <CaixaEnvio e={envio} aoCopiar={() => av({ ok: "Link copiado." })} /> : (
+                  {envio ? (
+                    <>
+                      <CaixaEnvio e={envio} aoCopiar={() => av({ ok: "Link copiado." })} />
+                      {envio.id ? <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} onClick={() => { const id = envio.id; setTab("hist"); setAba("doc"); setEnvio(null); setMsg(null); irPara(`?t=${id}&aba=doc`); }}>Ver no histórico →</button> : null}
+                    </>
+                  ) : (
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <button type="button" className="bt" onClick={enviar} disabled={!temCpf || pend} style={{ width: "auto" }}><Icone nome="whats" tam={18} />{pend ? "Gerando…" : "Enviar para a paciente aceitar"}</button>
                     </div>
