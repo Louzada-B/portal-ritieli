@@ -189,15 +189,32 @@ export async function mudarFimSerie(id: string, ate: string | null) {
   ocupadosCache = null;
 }
 
+// Uma ocorrência da série, pelo horário original dela (mesmo se já foi movida ou cancelada).
+// O Google dá às ocorrências o id "<série>_<início original em UTC>"; se não achar assim,
+// procura entre as ocorrências próximas e confere o horário original exato.
+// Nunca devolve outra ocorrência no lugar: sem a certa, dá erro.
+const carimbo = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+type Instancia = { id: string; status?: string; start?: { dateTime?: string }; originalStartTime?: { dateTime?: string } };
+const mesmaHora = (iso: string | undefined, d: Date) => !!iso && Math.abs(new Date(iso).getTime() - d.getTime()) < 1000;
+
+export async function instanciaDaSerie(id: string, original: Date): Promise<Instancia> {
+  const direto = (await gcal(`events/${encodeURIComponent(`${id}_${carimbo(original)}`)}`).catch(() => null)) as Instancia | null;
+  if (direto && mesmaHora(direto.originalStartTime?.dateTime, original)) return direto;
+  const dia = 24 * 3600000;
+  const q = new URLSearchParams({ showDeleted: "true", maxResults: "2500", timeMin: new Date(original.getTime() - 120 * dia).toISOString(), timeMax: new Date(original.getTime() + 120 * dia).toISOString() });
+  const lista = await gcal(`events/${encodeURIComponent(id)}/instances?${q}`);
+  const inst = ((lista.items || []) as Instancia[]).find((x) => mesmaHora(x.originalStartTime?.dateTime, original));
+  if (!inst) throw new Error("sem_ocorrencia");
+  return inst;
+}
+
 // Move uma única ocorrência da série (as outras continuam iguais, com a mesma sala).
 export async function moverOcorrencia(id: string, original: Date, novoInicio: Date, duracaoMin: number) {
-  const lista = await gcal(`events/${encodeURIComponent(id)}/instances?originalStart=${encodeURIComponent(original.toISOString())}&showDeleted=false`);
-  const inst = (lista.items || [])[0];
-  if (!inst) throw new Error("sem_ocorrencia");
+  const inst = await instanciaDaSerie(id, original);
   const fim = new Date(novoInicio.getTime() + duracaoMin * 60000);
   await gcal(`events/${encodeURIComponent(inst.id)}`, {
     method: "PATCH",
-    body: JSON.stringify({ start: { dateTime: novoInicio.toISOString(), timeZone: "America/Sao_Paulo" }, end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" } }),
+    body: JSON.stringify({ status: "confirmed", start: { dateTime: novoInicio.toISOString(), timeZone: "America/Sao_Paulo" }, end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" } }),
   });
   ocupadosCache = null;
 }
@@ -248,11 +265,34 @@ export async function moverEvento(id: string, inicio: Date, duracaoMin: number) 
 
 // Cancela (ou devolve) uma única ocorrência da série semanal.
 export async function situacaoOcorrencia(id: string, original: Date, cancelar: boolean) {
-  const lista = await gcal(`events/${encodeURIComponent(id)}/instances?originalStart=${encodeURIComponent(original.toISOString())}&showDeleted=true`);
-  const inst = (lista.items || [])[0];
-  if (!inst) throw new Error("sem_ocorrencia");
+  const inst = await instanciaDaSerie(id, original);
   await gcal(`events/${encodeURIComponent(inst.id)}`, { method: "PATCH", body: JSON.stringify({ status: cancelar ? "cancelled" : "confirmed" }) });
   ocupadosCache = null;
+}
+
+// Deixa uma ocorrência exatamente como deve estar (no horário certo, ativa ou cancelada).
+// Devolve true quando precisou mudar algo.
+export async function acertarOcorrencia(id: string, original: Date, inicio: Date, cancelada: boolean, duracaoMin: number): Promise<boolean> {
+  const inst = await instanciaDaSerie(id, original);
+  const estaCancelada = inst.status === "cancelled";
+  if (cancelada) {
+    if (estaCancelada) return false;
+    await gcal(`events/${encodeURIComponent(inst.id)}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) });
+  } else {
+    if (!estaCancelada && mesmaHora(inst.start?.dateTime, inicio)) return false;
+    const fim = new Date(inicio.getTime() + duracaoMin * 60000);
+    await gcal(`events/${encodeURIComponent(inst.id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "confirmed", start: { dateTime: inicio.toISOString(), timeZone: "America/Sao_Paulo" }, end: { dateTime: fim.toISOString(), timeZone: "America/Sao_Paulo" } }),
+    });
+  }
+  ocupadosCache = null;
+  return true;
+}
+
+// Troca o título de um evento (ex.: o nome do paciente mudou).
+export async function renomearEvento(id: string, titulo: string) {
+  await gcal(`events/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ summary: titulo }) });
 }
 
 // Sala do Meet de um evento, para reaproveitar em outro.

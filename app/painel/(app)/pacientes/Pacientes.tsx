@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
-import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, type DadosNovo } from "./acoes";
+import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, type DadosNovo } from "./acoes";
 
 type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
@@ -159,8 +159,16 @@ const PG_S = (l: LinhaSessao): [string, string] =>
   : l.status === "agendada" ? (l.pago ? ["Pago antecipado", "pill p-ok"] : ["A pagar", "pill p-ne"])
   : l.pago ? ["Pago", "pill p-ok"] : ["Pendente", "pill p-av"];
 
-function BlocoSessoes({ nome, s }: { nome: string; s: NonNullable<NonNullable<Detalhe>["sessoes"]> }) {
+function BlocoSessoes({ id, nome, s }: { id: string; nome: string; s: NonNullable<NonNullable<Detalhe>["sessoes"]> }) {
   const r = s.resumo;
+  const router = useRouter();
+  const [pend, iniciar] = useTransition();
+  const [aviso, setAviso] = useState<{ t: string; erro?: boolean } | null>(null);
+  const acertar = () => iniciar(async () => {
+    const res = await acertarAgenda(id);
+    setAviso(res.erro ? { t: res.erro, erro: true } : { t: res.ok! });
+    if (res.ok) router.refresh();
+  });
   const dia = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short" }).format(new Date(iso)).replace(".", "");
   const situacao = r.devendo
     ? `Deve ${r.devendo} ${r.devendo === 1 ? "sessão" : "sessões"}${r.devendoValor ? ` · ${reais(r.devendoValor)}` : ""}`
@@ -192,7 +200,13 @@ function BlocoSessoes({ nome, s }: { nome: string; s: NonNullable<NonNullable<De
         {lista("Próximas", s.proximas)}
         {lista("Últimas", s.ultimas)}
       </div>
-      <Link href={`/painel/sessoes?busca=${encodeURIComponent(nome)}`} style={{ fontSize: 13, fontWeight: 700, alignSelf: "flex-start" }}>Ver todas em Sessões →</Link>
+      {aviso ? <div className={aviso.erro ? "aviso erro" : "aviso ok"} role="status">{aviso.t}</div> : null}
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+        <Link href={`/painel/sessoes?busca=${encodeURIComponent(nome)}`} style={{ fontSize: 13, fontWeight: 700 }}>Ver todas em Sessões →</Link>
+        <button type="button" className="mini2" onClick={acertar} disabled={pend} title="Confere a agenda do Google e deixa cada sessão igual ao painel">
+          <Icone nome="calendario" tam={14} />{pend ? "Conferindo a agenda…" : "Conferir agenda do Google"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -282,7 +296,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         </>
       )}
 
-      {det.sessoes ? <BlocoSessoes nome={p.nome} s={det.sessoes} /> : null}
+      {det.sessoes ? <BlocoSessoes key={p.id} id={p.id} nome={p.nome} s={det.sessoes} /> : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span className="rot">Ficha de cadastro</span>

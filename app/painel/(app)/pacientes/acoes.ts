@@ -5,7 +5,7 @@ import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { cifrar, decifrarOuVazio, novoToken } from "../../../lib/cripto";
 import { cpfValido, cpfFormatado, soDigitos, normalizarFone, centavosDe, primeiroNome, fixoTexto } from "../../../lib/formato";
 import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
-import { criarEventoSemanal, apagarEvento, obterEvento, mudarFimSerie } from "../../../lib/google";
+import { criarEventoSemanal, apagarEvento, obterEvento, mudarFimSerie, acertarOcorrencia, renomearEvento, moverEvento } from "../../../lib/google";
 import { local, deLocal } from "../../../lib/agenda";
 import { siteUrl } from "../../../site";
 import { conflitoFixo } from "../../../lib/conflitos";
@@ -154,6 +154,9 @@ export async function atualizarPaciente(id: string, d: { nome: string; idade: st
   if (error || !novo) return { erro: "Não deu para salvar. Tente de novo." };
   revalidatePath("/painel/pacientes");
   revalidatePath("/painel/sessoes");
+
+  // Nome novo: os eventos da agenda (série e avulsas que ainda vão acontecer) acompanham.
+  if (atual.nome !== novo.nome) await renomearNaAgenda(sb, novo).catch(() => {});
 
   // A sessão semanal na agenda acompanha o que mudou (e nasce, se ainda não existia).
   if (!atual.google_evento_id) return { ok: `Salvo.${novo.status === "ativo" ? await salaInicial(sb, id) : ""}` };
@@ -391,4 +394,46 @@ export async function excluirPaciente(id: string, confirmacao: string, prontuari
   revalidatePath("/painel/pacientes");
   revalidatePath("/painel/termos");
   return { ok: "Paciente e dados excluídos." };
+}
+
+async function renomearNaAgenda(sb: Awaited<ReturnType<typeof supabaseServidor>>, p: Paciente) {
+  const titulo = `Sessão · ${p.nome}`;
+  if (p.google_evento_id) await renomearEvento(p.google_evento_id, titulo).catch(() => {});
+  const { data: avulsas } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", p.id).eq("origem", "manual").gte("inicio", new Date().toISOString()).not("google_evento_id", "is", null);
+  for (const x of avulsas ?? []) await renomearEvento(x.google_evento_id as string, titulo).catch(() => {});
+}
+
+// Confere a agenda do Google contra as sessões do painel e acerta o que estiver diferente:
+// cada sessão do horário fixo no dia e hora certos, canceladas fora da agenda, e o nome em dia.
+export async function acertarAgenda(id: string): Promise<{ ok?: string; erro?: string }> {
+  const sb = await supabaseServidor();
+  const { data: p } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
+  if (!p) return { erro: "Paciente não encontrado." };
+  const { data: sess } = await sb.from("sessoes").select("id, inicio, status, origem, remarcada_de, google_evento_id").eq("paciente_id", id).order("inicio");
+  let mudou = 0;
+  let falhou = 0;
+  try {
+    await renomearNaAgenda(sb, p);
+    for (const s of sess ?? []) {
+      const inicio = new Date(s.inicio);
+      const cancelada = s.status === "cancelada";
+      if (s.origem === "fixo" && p.google_evento_id) {
+        const original = new Date(s.remarcada_de || s.inicio);
+        try {
+          if (await acertarOcorrencia(p.google_evento_id, original, inicio, cancelada, DURACAO)) mudou++;
+        } catch (e) {
+          if (e instanceof Error && e.message === "sem_google") throw e;
+          falhou++;
+        }
+      } else if (s.origem === "manual" && s.google_evento_id && !cancelada && inicio.getTime() > Date.now()) {
+        await moverEvento(s.google_evento_id, inicio, DURACAO).catch(() => { falhou++; });
+      }
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message === "sem_google") return { erro: "O Google Agenda não está conectado. Conecte em Disponibilidade." };
+    return { erro: "A agenda do Google não respondeu. Tente de novo em instantes." };
+  }
+  const extra = falhou ? ` ${falhou === 1 ? "Uma sessão não foi encontrada" : `${falhou} sessões não foram encontradas`} na série do Google (podem ser de fora do período dela).` : "";
+  if (!mudou) return { ok: `A agenda do Google já estava igual ao painel.${extra}` };
+  return { ok: `Agenda acertada: ${mudou === 1 ? "1 sessão corrigida" : `${mudou} sessões corrigidas`} no Google.${extra}` };
 }

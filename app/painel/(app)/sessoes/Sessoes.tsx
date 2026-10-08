@@ -37,7 +37,24 @@ const MSG: Record<string, string> = {
 };
 const HORAS = Array.from({ length: 15 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
 
-function Calendario({ valor, onEscolher, hoje }: { valor: string; onEscolher: (v: string) => void; hoje: { ano: number; mes: number; dia: number } }) {
+// Disponibilidade da semana, em minutos do dia (Painel → Disponibilidade).
+export type Expediente = { dia: number; ativo: boolean; ini: number; fim: number; pIni: number | null; pFim: number | null };
+const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+// Inícios possíveis de uma sessão de 50 min no dia escolhido (de hora em hora, fora da pausa).
+function horasDoDia(exp: Expediente[], data: string): string[] {
+  const [a, m, d] = data.split("-").map(Number);
+  if (!a) return [];
+  const e = exp.find((x) => x.dia === new Date(Date.UTC(a, m - 1, d)).getUTCDay());
+  if (!e || !e.ativo) return [];
+  const r: string[] = [];
+  for (let t = e.ini; t + 50 <= e.fim; t += 60) {
+    if (e.pIni != null && e.pFim != null && t < e.pFim && t + 50 > e.pIni) continue;
+    r.push(hm(t));
+  }
+  return r;
+}
+
+function Calendario({ valor, onEscolher, hoje, fechado }: { valor: string; onEscolher: (v: string) => void; hoje: { ano: number; mes: number; dia: number }; fechado?: (iso: string) => boolean }) {
   const [aberto, setAberto] = useState(false);
   const base = valor ? valor.split("-").map(Number) : [hoje.ano, hoje.mes + 1, hoje.dia];
   const [cal, setCal] = useState({ ano: base[0], mes: base[1] - 1 });
@@ -60,8 +77,9 @@ function Calendario({ valor, onEscolher, hoje }: { valor: string; onEscolher: (v
             {Array.from({ length: primeiro }, (_, i) => <span key={`v${i}`} className="cd vazio" />)}
             {Array.from({ length: nDias }, (_, i) => {
               const d = i + 1;
-              const cls = ["cd", valor === iso(d) ? "sel" : "", cal.ano === hoje.ano && cal.mes === hoje.mes && d === hoje.dia ? "hoje" : "", (primeiro + i) % 7 === 0 ? "dom" : ""].filter(Boolean).join(" ");
-              return <button key={d} type="button" className={cls} onClick={() => { onEscolher(iso(d)); setAberto(false); }}>{d}</button>;
+              const off = !!fechado && fechado(iso(d));
+              const cls = ["cd", valor === iso(d) ? "sel" : "", cal.ano === hoje.ano && cal.mes === hoje.mes && d === hoje.dia ? "hoje" : "", (primeiro + i) % 7 === 0 ? "dom" : "", off ? "off" : ""].filter(Boolean).join(" ");
+              return <button key={d} type="button" className={cls} disabled={off} onClick={() => { onEscolher(iso(d)); setAberto(false); }}>{d}</button>;
             })}
           </div>
         </div>
@@ -73,9 +91,10 @@ function Calendario({ valor, onEscolher, hoje }: { valor: string; onEscolher: (v
 type Props = {
   linhas: Linha[]; rotulo: string; ant: string; prox: string; pacientes: Pac[];
   hoje: { ano: number; mes: number; dia: number }; mesAtual: { ano: number; mes: number }; buscaInicial?: string;
+  expediente: Expediente[];
 };
 
-export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, buscaInicial }: Props) {
+export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, buscaInicial, expediente }: Props) {
   const [filtro, setFiltro] = useState<"todas" | "ag" | "pend" | "rec">("todas");
   const [busca, setBusca] = useState(buscaInicial || "");
   const [form, setForm] = useState(false);
@@ -91,12 +110,17 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
 
   const abrirRemarcar = (l: Linha) => {
     const d = loc(l.inicio);
-    setRemarca({ l, data: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`, hora: fmtHora(l.inicio) });
+    const data = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    const hs = horasDoDia(expediente, data);
+    const h = fmtHora(l.inicio);
+    setRemarca({ l, data, hora: hs.includes(h) ? h : hs[0] || "" });
     setEnvio(null);
     setMsg(null);
     setForm(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const hojeIso = `${hoje.ano}-${String(hoje.mes + 1).padStart(2, "0")}-${String(hoje.dia).padStart(2, "0")}`;
+  const horasRem = remarca ? horasDoDia(expediente, remarca.data) : [];
   const salvarRemarcar = () =>
     remarca &&
     iniciar(async () => {
@@ -254,11 +278,12 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
               <span style={{ fontSize: 14, color: "#5A3A41" }}><b>{curto(remarca.l.nome)}</b> · hoje marcada para {fmtData(remarca.l.inicio)}, {fmtHora(remarca.l.inicio)}. Só esta sessão muda: as próximas continuam no horário fixo.</span>
               <div className="fc"><span className="lb">Novo dia e horário</span>
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8, maxWidth: 460 }}>
-                  <Calendario valor={remarca.data} onEscolher={(v) => setRemarca({ ...remarca, data: v })} hoje={hoje} />
-                  <select value={remarca.hora} onChange={(e) => setRemarca({ ...remarca, hora: e.target.value })} aria-label="Novo horário">
-                    {(HORAS.includes(remarca.hora) ? HORAS : [...HORAS, remarca.hora].sort()).map((h) => <option key={h} value={h}>{h}</option>)}
+                  <Calendario valor={remarca.data} onEscolher={(v) => { const hs = horasDoDia(expediente, v); setRemarca({ ...remarca, data: v, hora: hs.includes(remarca.hora) ? remarca.hora : hs[0] || "" }); }} hoje={hoje} fechado={(v) => v < hojeIso || !horasDoDia(expediente, v).length} />
+                  <select value={remarca.hora} onChange={(e) => setRemarca({ ...remarca, hora: e.target.value })} aria-label="Novo horário" disabled={!horasRem.length}>
+                    {horasRem.length ? horasRem.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
                   </select>
                 </div>
+                <span style={{ fontSize: 13, color: "#8A7A7E" }}>{horasRem.length ? `Só aparecem os dias e horários da sua disponibilidade. Conflitos com outras sessões e com a agenda do Google são conferidos ao remarcar.` : "Nesse dia você não atende. Escolha outro dia no calendário."}</span>
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button type="button" className="bt" onClick={salvarRemarcar} disabled={pend} style={{ width: "auto" }}>{pend ? "Remarcando…" : "Remarcar sessão"}</button>

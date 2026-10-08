@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { deLocal, fmtQuando, local, type Periodo } from "./agenda";
+import { deLocal, fmtQuando, local, minutos, DIAS_LONGOS, type DiaSemana, type Periodo } from "./agenda";
 import { ocupadosEntre } from "./google";
 import { PRAZO_HORAS } from "./dados";
 
@@ -14,6 +14,23 @@ type Ignorar = {
   pacienteId?: string; // sessões do próprio paciente (ao mudar o horário fixo)
   google?: (p: Periodo) => boolean; // períodos do Google que são da própria coisa sendo mudada
 };
+
+// Disponibilidade da semana (Painel → Disponibilidade): a sessão inteira precisa caber
+// no expediente do dia, fora da pausa.
+const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+export function foraDoExpediente(semana: DiaSemana[], inicio: Date, durMin: number): string | null {
+  const l = local(inicio);
+  const d = semana.find((x) => x.dia_semana === l.semana);
+  const nome = DIAS_LONGOS[l.semana].toLowerCase().replace("sábado", "sábados").replace("domingo", "domingos").replace(/a$/, "as");
+  if (!d || !d.ativo) return `Fora da sua disponibilidade: você não atende ${l.semana === 0 || l.semana === 6 ? "aos" : "às"} ${nome}. Para atender nesse dia, abra o dia em Disponibilidade.`;
+  const m0 = l.h * 60 + l.min;
+  const ini = minutos(d.inicio);
+  const fim = minutos(d.fim);
+  const faixa = `das ${hm(ini)} às ${hm(fim)}`;
+  if (m0 < ini || m0 + durMin > fim) return `Fora da sua disponibilidade: ${l.semana === 0 || l.semana === 6 ? "aos" : "às"} ${nome} você atende ${faixa}, e a sessão precisa terminar até ${hm(fim)}.`;
+  if (d.pausa_inicio && d.pausa_fim && m0 < minutos(d.pausa_fim) && m0 + durMin > minutos(d.pausa_inicio)) return `Fora da sua disponibilidade: ${hm(minutos(d.pausa_inicio))}–${hm(minutos(d.pausa_fim))} é a sua pausa.`;
+  return null;
+}
 
 const curto = (n: string) => { const p = n.trim().split(/\s+/); return p.length > 1 ? `${p[0]} ${p[p.length - 1][0]}.` : p[0]; };
 const sobrepoe = (a0: number, a1: number, b0: number, b1: number) => a0 < b1 && a1 > b0;
@@ -31,10 +48,11 @@ export async function conflitoLote(sb: SupabaseClient, inicios: Date[], durMin: 
 
   const { data: cfg } = await sb.from("config_agenda").select("duracao_conversa_min").eq("id", 1).single();
   const durConversa = (cfg?.duracao_conversa_min as number) ?? 15;
-  const [{ data: sess }, { data: peds }, { data: blq }] = await Promise.all([
+  const [{ data: sess }, { data: peds }, { data: blq }, { data: semana }] = await Promise.all([
     sb.from("sessoes").select("id, paciente_id, inicio, pacientes(nome)").neq("status", "cancelada").lt("inicio", new Date(jFim).toISOString()).gt("inicio", new Date(jIni - DUR_SESSAO * 60000).toISOString()),
     sb.from("pedidos").select("id, nome, inicio, status, criado_em").in("status", ["aguardando", "confirmado"]).lt("inicio", new Date(jFim).toISOString()).gt("inicio", new Date(jIni - durConversa * 60000).toISOString()),
     sb.from("bloqueios").select("inicio, fim, motivo").lt("inicio", new Date(jFim).toISOString()).gt("fim", new Date(jIni).toISOString()),
+    sb.from("semana_padrao").select("dia_semana, ativo, inicio, fim, pausa_inicio, pausa_fim"),
   ]);
   const futuro = ts.some((t) => t + durMin * 60000 > Date.now());
   const g = futuro ? await ocupadosEntre(new Date(Math.max(jIni, Date.now() - 3600000)), new Date(jFim)).catch(() => null) : [];
@@ -46,6 +64,8 @@ export async function conflitoLote(sb: SupabaseClient, inicios: Date[], durMin: 
     if (s) return `Conflito de agenda: já existe a sessão de ${curto((s.pacientes as unknown as { nome: string } | null)?.nome || "outro paciente")} em ${fmtQuando(new Date(s.inicio))}.`;
     // No passado só importa não duplicar sessão; o resto vale para o que ainda vai acontecer.
     if (t1 < Date.now()) continue;
+    const fora = semana?.length ? foraDoExpediente(semana as DiaSemana[], new Date(t0), durMin) : null;
+    if (fora) return fora;
     const p = (peds ?? []).find((x) => x.id !== ign.pedidoId && (x.status === "confirmado" || new Date(x.criado_em).getTime() > limite) && sobrepoe(t0, t1, new Date(x.inicio).getTime(), new Date(x.inicio).getTime() + durConversa * 60000));
     if (p) return `Conflito de agenda: há uma conversa inicial ${p.status === "confirmado" ? "confirmada" : "pedida"} com ${curto(p.nome)} em ${fmtQuando(new Date(p.inicio))}.`;
     const b = (blq ?? []).find((x) => sobrepoe(t0, t1, new Date(x.inicio).getTime(), new Date(x.fim).getTime()));

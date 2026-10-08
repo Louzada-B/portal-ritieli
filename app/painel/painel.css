@@ -356,6 +356,7 @@
 .painel .cd.hoje{font-weight:800;color:#7A2335;box-shadow:inset 0 0 0 1.5px #E3A9B5}
 .painel .cd.sel{background:#7A2335;color:#FFFFFF}
 .painel .cd.dom{color:#B5A6A9}
+.painel .cd.off,.painel .cd:disabled{color:#CDBFC2;text-decoration:line-through;cursor:not-allowed;background:none}
 .painel .cd.vazio{cursor:default;background:none}
 .painel .fluxo{display:flex;gap:12px;align-items:flex-start;background:#FFFFFF;border-radius:20px;padding:16px 18px;font-size:14px;color:#5A3A41;line-height:1.55}
 .painel .fluxo b{color:#3A1F25}
