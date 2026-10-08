@@ -9,6 +9,10 @@ import Rodape from "./componentes/Rodape";
 import Triangulo from "./componentes/Triangulo";
 import { agendar, apresentacao, escritos, hero, infantil, informacoes, rotas } from "./conteudo";
 import foto from "../public/ritieli.webp";
+import { escritosPublicados } from "./lib/escritos";
+
+// O convite dos Escritos mostra o texto mais recente (atualiza a cada 5 minutos).
+export const revalidate = 300;
 
 const ICONES = {
   video: <><rect x="3" y="6" width="13" height="12" rx="2" /><path d="M16 10l5-3v10l-5-3" /></>,
@@ -16,7 +20,8 @@ const ICONES = {
   cartao: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></>,
 };
 
-export default function Inicio() {
+export default async function Inicio() {
+  const recente = (await escritosPublicados().catch(() => []))[0];
   return (
     <div className="pagina">
       <Cabecalho atual="/" />
@@ -162,16 +167,18 @@ export default function Inicio() {
 
         {/* Escritos */}
         <section id="conteudos" className="secao sem-topo">
-          <Link href={rotas.escritos} className="convite revela">
+          <Link href={recente ? `/escritos/${recente.slug}` : rotas.escritos} className="convite revela">
             <Forma cor="#F2C9D1" className="convite-forma" />
             <h2 className="convite-t">
               {escritos.titulo} <em>{escritos.destaque}</em>
             </h2>
             <p className="convite-p">{escritos.texto}</p>
-            <span className="convite-rec">
-              <span className="convite-rot">Mais recente</span>
-              <span className="convite-tit">{escritos.maisRecente}</span>
-            </span>
+            {recente ? (
+              <span className="convite-rec">
+                <span className="convite-rot">Mais recente</span>
+                <span className="convite-tit">{recente.titulo}</span>
+              </span>
+            ) : null}
             <span className="convite-cta">
               Ler os escritos <span aria-hidden="true">→</span>
             </span>

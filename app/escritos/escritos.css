@@ -1,0 +1,51 @@
+/* Escritos · lista e texto (do esboço) */
+.sub .capa.sem-foto .capa-p{color:inherit!important;text-shadow:none}
+.sub .ex-hero{position:relative}
+.sub .artigo .art-top{padding-top:56px;padding-bottom:48px;max-width:860px}
+.sub .artigo .voltar{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;text-decoration:none;color:#7A2335;min-height:44px}
+.sub .artigo .art-h1{margin:18px 0 0;font-weight:700;font-size:58px;line-height:1.06;letter-spacing:-0.03em;color:#7A2335}
+.sub .artigo .art-sub{margin:20px 0 0;font-size:21px;line-height:1.55;color:#5A3A41;max-width:700px}
+.sub .artigo .autora{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;margin-top:32px}
+.sub .artigo .autora img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:50% 20%}
+.sub .artigo .art-capa{aspect-ratio:21/8;border-radius:36px;padding:40px}
+.sub .artigo .corpo-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,700px) minmax(0,1fr);gap:0 48px;padding-top:64px;padding-bottom:40px}
+.sub .artigo .lateral{position:sticky;top:120px;align-self:start;display:flex;flex-direction:column;gap:12px;justify-self:end}
+.sub .artigo .lat-btn{width:46px;height:46px;border-radius:50%;border:1px solid #E2CCD0;background:#FFFFFF;color:#7A2335;display:flex;align-items:center;justify-content:center;cursor:pointer;font:inherit;font-weight:700;font-size:14px;text-decoration:none;padding:0}
+.sub .artigo .lat-btn:hover{border-color:#7A2335}
+.sub .artigo .lat-btn:focus-visible{outline:2px solid #7A2335;outline-offset:2px}
+.sub .artigo .corpo{color:#3A1F25;font-size:18px;line-height:1.75}
+.sub .artigo .corpo p{margin:0 0 1.2em}
+.sub .artigo .corpo h2{margin:1.8em 0 .6em;font-weight:700;font-size:30px;line-height:1.2;letter-spacing:-0.01em;color:#7A2335}
+.sub .artigo .corpo ul{margin:0 0 1.4em;padding-left:1.2em}
+.sub .artigo .corpo ul li{margin-bottom:.5em}
+.sub .artigo .corpo ul li::marker{color:#B0475D}
+.sub .artigo .corpo ol{margin:0 0 1.4em;padding:0;list-style:none;counter-reset:passo;display:flex;flex-direction:column;gap:18px}
+.sub .artigo .corpo ol li{counter-increment:passo;display:grid;grid-template-columns:44px minmax(0,1fr);gap:16px;align-items:start}
+.sub .artigo .corpo ol li::before{content:counter(passo);width:44px;height:44px;border-radius:50%;background:#F6E5E7;color:#7A2335;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sub .artigo .citacao{margin:1.6em 0;padding:8px 0;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-size:36px;line-height:1.2;color:#B0475D;text-align:center}
+.sub .artigo .exp{margin:1.8em 0;background:#F6E5E7;border-radius:28px;padding:32px;display:flex;flex-direction:column;gap:12px}
+.sub .artigo .aviso-t{margin-top:2em;padding-top:20px;border-top:1px solid #E2CCD0;font-size:14px;color:#74656A}
+.sub .artigo .bio{display:flex;flex-wrap:wrap;gap:24px 32px;align-items:center;background:#FFFFFF;border-radius:32px;padding:32px;margin-top:8px}
+.sub .artigo .bio img{width:96px;height:96px;border-radius:50%;object-fit:cover;object-position:50% 20%}
+.sub .artigo .bio .assina{font-family:'Mrs Saint Delafield','Instrument Serif',cursive;font-size:44px;line-height:1.25;color:#7A2335;padding:4px 10px 0 2px}
+.sub .rel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.sub .artigo .compartilha{display:none}
+.sub .comp-b{text-decoration:none;border:1px solid #E2CCD0;background:#FFFFFF;color:#7A2335;border-radius:999px;padding:10px 18px;font:inherit;font-weight:600;font-size:14px;min-height:44px;box-sizing:border-box;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.progresso{position:fixed;left:0;top:0;height:3px;background:#B0475D;z-index:60;transition:width .2s linear}
+@media (max-width:760px){
+  .sub .artigo .art-top{padding-top:28px;padding-bottom:28px}
+  .sub .artigo .art-h1{font-size:34px}
+  .sub .artigo .art-sub{font-size:17px}
+  .sub .artigo .art-capa{aspect-ratio:16/10;border-radius:24px;padding:22px}
+  .sub .artigo .corpo-wrap{grid-template-columns:minmax(0,1fr);padding-top:36px}
+  .sub .artigo .lateral{display:none}
+  .sub .artigo .compartilha{display:flex}
+  .sub .artigo .corpo{font-size:17px}
+  .sub .artigo .corpo h2{font-size:24px}
+  .sub .artigo .citacao{font-size:28px}
+  .sub .artigo .exp{padding:22px;border-radius:22px}
+  .sub .artigo .bio{padding:24px 20px;border-radius:24px}
+  .sub .rel{grid-template-columns:minmax(0,1fr);gap:16px}
+  .sub .destaque .capa{min-height:0!important;aspect-ratio:16/10}
+}
+@media (prefers-reduced-motion:reduce){.progresso{transition:none}}

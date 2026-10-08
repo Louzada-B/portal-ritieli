@@ -142,7 +142,6 @@ export const escritos = {
   titulo: "Textos para ler",
   destaque: "com calma.",
   texto: "Toda semana, um texto novo sobre ansiedade, depressão e o cuidado consigo.",
-  maisRecente: "Por que a ansiedade aparece justo na hora de descansar?",
 };
 
 export const agendar = {

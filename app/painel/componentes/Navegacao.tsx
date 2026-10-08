@@ -16,7 +16,7 @@ export const ITENS: Item[] = [
   { href: "/painel/sessoes", nome: "Sessões e pagamentos", curto: "Sessões", icone: "sessoes" },
 ];
 const CONTEUDO: Item[] = [
-  { href: "#", nome: "Escritos", curto: "Escritos", icone: "escritos", emBreve: true },
+  { href: "/painel/escritos", nome: "Escritos", curto: "Escritos", icone: "escritos" },
   { href: "/painel/termos", nome: "Termos", curto: "Termos", icone: "termos" },
 ];
 
@@ -46,7 +46,7 @@ function Lista({ pedidos, caminho }: { pedidos: number; caminho: string }) {
       <nav aria-label="Painel">
         {ITENS.map((i) => <ItemLat key={i.nome} item={i} atual={ativo(i.href)} n={pedidos} />)}
         <span className="lat-grupo">Conteúdo</span>
-        {CONTEUDO.map((i) => <ItemLat key={i.nome} item={i} atual={false} n={0} />)}
+        {CONTEUDO.map((i) => <ItemLat key={i.nome} item={i} atual={ativo(i.href)} n={0} />)}
       </nav>
     </>
   );
