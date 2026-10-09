@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { criarEvento, apagarEvento } from "../../../lib/google";
 import { PRAZO_HORAS, type Pedido } from "../../../lib/dados";
-import { fmtQuando } from "../../../lib/agenda";
+import { fmtQuando, fmtDiaLongo, fmtHora } from "../../../lib/agenda";
+import { emailConversaConfirmada, enviarUmaVez } from "../../../lib/emails";
 import { conflitoEm } from "../../../lib/conflitos";
 
-export type Resultado = { erro?: string; ok?: string; aviso?: string };
+export type Resultado = { erro?: string; ok?: string; aviso?: string; email?: "enviado" | "falhou" | "sem_link" };
 
 export async function confirmarPedido(id: string, novoInicio?: string): Promise<Resultado> {
   const sb = await supabaseServidor();
@@ -39,6 +40,7 @@ export async function confirmarPedido(id: string, novoInicio?: string): Promise<
   }
 
   let aviso: string | undefined;
+  let meet: string | null = null;
   try {
     const quem = p.para_quem === "filho" ? `${p.nome} (responsável, criança de ${p.idade_crianca} anos)` : p.nome;
     const ev = await criarEvento({
@@ -50,6 +52,7 @@ export async function confirmarPedido(id: string, novoInicio?: string): Promise<
     });
     if (ev) {
       await sb.from("pedidos").update({ meet_link: ev.meet, google_evento_id: ev.id }).eq("id", id);
+      meet = ev.meet ?? null;
       if (!ev.meet) aviso = "O evento foi para a sua agenda, mas o Google não criou a sala do Meet. Coloque o link na mensagem antes de enviar.";
     } else {
       aviso = "Sem o Google Agenda conectado, a sala do Meet não foi criada. Coloque o link da chamada na mensagem antes de enviar.";
@@ -57,8 +60,18 @@ export async function confirmarPedido(id: string, novoInicio?: string): Promise<
   } catch {
     aviso = "O horário está confirmado, mas o Google Agenda não respondeu. Crie a sala do Meet à mão e coloque o link na mensagem.";
   }
+
+  // E-mail de confirmação para a pessoa: só com a sala do Meet criada, para nunca sair sem o link.
+  let email: Resultado["email"] = "sem_link";
+  if (meet) {
+    const enviado = await enviarUmaVez(sb, "confirmacao_conversa", `${id}:${inicio.toISOString()}`, () =>
+      emailConversaConfirmada({ para: p.email, nome: p.nome, dia: fmtDiaLongo(inicio), hora: fmtHora(inicio), meet: meet!, minutos: cfg?.duracao_conversa_min ?? 15 }),
+    );
+    email = enviado ? "enviado" : "falhou";
+    if (!enviado) aviso = "O horário está confirmado, mas o e-mail de confirmação não saiu. Mande a mensagem pelo WhatsApp.";
+  }
   revalidatePath("/painel", "layout");
-  return { ok: `Confirmado para ${fmtQuando(inicio)}.`, aviso };
+  return { ok: `Confirmado para ${fmtQuando(inicio)}.${email === "enviado" ? " Enviei o e-mail de confirmação." : ""}`, aviso, email };
 }
 
 export async function recusarPedido(id: string): Promise<Resultado> {

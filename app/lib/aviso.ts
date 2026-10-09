@@ -2,7 +2,6 @@ import "server-only";
 import { siteUrl } from "../site";
 
 // Avisa a Ritieli por e-mail que chegou um pedido novo.
-// Sem domínio próprio, o Resend só entrega no e-mail da dona da conta, que é ela.
 // A mensagem da pessoa não vai no e-mail: fica só no painel.
 export async function avisarPedidoNovo(p: { nome: string; quando: string; paraFilho: boolean }) {
   const chave = process.env.RESEND_API_KEY;

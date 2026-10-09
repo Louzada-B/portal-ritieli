@@ -116,7 +116,7 @@ export async function criarPaciente(d: DadosNovo): Promise<Resultado> {
   return { ok: `Paciente salvo.${await salaInicial(sb, pac.id)}`, id: pac.id };
 }
 
-export async function atualizarPaciente(id: string, d: { nome: string; idade: string; whatsapp: string; email: string; valor: string; tipoValor: "normal" | "social"; fixoDia: string; fixoHora: string; desde: string; fim: string }): Promise<Resultado> {
+export async function atualizarPaciente(id: string, d: { nome: string; idade: string; whatsapp: string; email: string; valor: string; tipoValor: "normal" | "social"; fixoDia: string; fixoHora: string; desde: string; fim: string; lembretes: boolean }): Promise<Resultado> {
   if (d.nome.trim().length < 2) return { erro: "Escreva o nome." };
   const comum = validarComum(d);
   if ("erro" in comum) return { erro: comum.erro };
@@ -147,6 +147,7 @@ export async function atualizarPaciente(id: string, d: { nome: string; idade: st
       fixo_hora: comum.fixoHora,
       desde: per.desde,
       fim: per.fim,
+      lembretes_email: d.lembretes,
       atualizado_em: new Date().toISOString(),
     })
     .eq("id", id)

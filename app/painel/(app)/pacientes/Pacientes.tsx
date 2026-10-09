@@ -11,7 +11,7 @@ type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
   cpfFinal: string | null; temNascimento: boolean; temEmergencia: boolean; valor: number | null; tipoValor: "normal" | "social";
   fixoDia: number | null; fixoHora: string | null; meet: string | null; status: "ativo" | "encerrado"; desde: string; fim: string | null; fichaEm: string | null;
-  escola: string | null; cidade: string | null;
+  escola: string | null; cidade: string | null; lembretes: boolean;
   selo?: { t: string; cls: string } | null;
   cad: { ficha: string; termo: string; fichaTxt: string; termoTxt: string; etiqueta: string; cls: string; pendente: boolean };
 };
@@ -222,7 +222,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
   const [edP, setEdP] = useState<null | { nascimento: string; eNome: string; eTelefone: string }>(null);
   const [cpfNovo, setCpfNovo] = useState("");
   const [editando, setEditando] = useState(false);
-  const [e, setE] = useState({ nome: p.nome, idade: p.idade ? String(p.idade) : "", whatsapp: fone(p.whatsapp), email: p.email || "", valor: p.valor != null ? String(p.valor / 100).replace(".", ",") : "", tipoValor: p.tipoValor, fixoDia: p.fixoDia != null ? String(p.fixoDia) : "", fixoHora: p.fixoHora || "", desde: p.desde, fim: p.fim || "" });
+  const [e, setE] = useState({ nome: p.nome, idade: p.idade ? String(p.idade) : "", whatsapp: fone(p.whatsapp), email: p.email || "", valor: p.valor != null ? String(p.valor / 100).replace(".", ",") : "", tipoValor: p.tipoValor, fixoDia: p.fixoDia != null ? String(p.fixoDia) : "", fixoHora: p.fixoHora || "", desde: p.desde, fim: p.fim || "", lembretes: p.lembretes });
   const [encerrando, setEncerrando] = useState<string | null>(null);
   const [reat, setReat] = useState<{ data: string; dia: string; hora: string } | null>(null);
   // Retomada sugerida: o dia seguinte ao encerramento, ou hoje se ele já passou.
@@ -273,6 +273,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
             <div className="fc"><label htmlFor="e-tv">Tipo de valor</label><select id="e-tv" value={e.tipoValor} onChange={(x) => setE({ ...e, tipoValor: x.target.value as "normal" | "social" })}><option value="normal">Valor normal</option><option value="social">Valor social</option></select></div>
           </div>
           <CamposFixo dia={e.fixoDia} hora={e.fixoHora} setDia={(v) => setE({ ...e, fixoDia: v })} setHora={(v) => setE({ ...e, fixoHora: v })} />
+          <label className="chk"><input type="checkbox" checked={e.lembretes} onChange={() => setE({ ...e, lembretes: !e.lembretes })} /><span>Enviar lembretes por e-mail (sessão, ficha, termo)</span></label>
           {p.status === "ativo" ? <CamposPeriodo desde={e.desde} fim={e.fim} setDesde={(v) => setE({ ...e, desde: v })} setFim={(v) => setE({ ...e, fim: v })} /> : null}
           {edP ? (
             <>
@@ -308,6 +309,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
                 <div className="dado"><span className="di"><Icone nome="email" tam={18} /></span><span><span className="l">E-mail</span><b style={{ wordBreak: "break-all" }}>{p.email || "—"}</b></span></div>
               </>
             ) : null}
+            <div className="dado"><span className="di"><Icone nome="email" tam={18} /></span><span><span className="l">Lembretes por e-mail</span><b>{!p.lembretes ? "Desligados" : (inf ? det.responsaveis.some((r) => r.email) || p.email : p.email) ? "Ligados" : "Ligados, mas falta um e-mail"}</b></span></div>
             <div className="dado"><span className="di"><Icone nome="termos" tam={18} /></span><span><span className="l">Ficha de cadastro</span><b>{fichaTxt}</b></span></div>
             <div className="dado"><span className="di"><Icone nome="escudo" tam={18} /></span><span><span className="l">Termo de consentimento</span><b>{termoTxt}</b></span></div>
           </div>

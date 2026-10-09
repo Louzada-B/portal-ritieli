@@ -15,7 +15,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
   const sb = await supabaseServidor();
   const { data } = await sb
     .from("pacientes")
-    .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, fim, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto")
+    .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, fim, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto, lembretes_email")
     .order("nome");
   const todos = (data ?? []) as Paciente[];
   const cads = await cadastrosDe(sb, todos);
@@ -94,6 +94,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     fim: p.fim,
     selo: selo(p.id),
     fichaEm: p.ficha_em,
+    lembretes: p.lembretes_email !== false,
     cad: cads.get(p.id)!,
     escola: p.escola,
     cidade: p.cidade,

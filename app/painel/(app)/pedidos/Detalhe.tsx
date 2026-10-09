@@ -15,6 +15,7 @@ type Props = {
   status: [string, string];
   sugestoes: { iso: string; rot: string }[];
   voltar: string;
+  emailEm: string | null; // quando o e-mail de confirmação saiu
 };
 
 const primeiro = (n: string) => n.trim().split(/\s+/)[0];
@@ -30,7 +31,7 @@ const wa = (w: string, texto: string) => {
   return `https://wa.me/${d.startsWith("55") && d.length > 11 ? d : "55" + d}?text=${encodeURIComponent(texto)}`;
 };
 
-export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes, voltar }: Props) {
+export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes, voltar, emailEm }: Props) {
   const router = useRouter();
   const [acao, setAcao] = useState<"" | "sug" | "rec" | "exc">("");
   const [sugs, setSugs] = useState<string[]>([]);
@@ -163,9 +164,16 @@ export default function Detalhe({ p, quando, recebido, aceite, status, sugestoes
       {p.status === "confirmado" ? (
         <div className="caixa ok">
           <b style={{ fontSize: 16, color: "#2F6A45", display: "flex", gap: 8, alignItems: "center" }}><Icone nome="ok" tam={18} />Horário confirmado e reservado na agenda</b>
-          <span style={{ fontSize: 14, color: "#3A1F25" }}>Agora é só mandar a confirmação. A mensagem já está pronta:</span>
+          {emailEm ? (
+            <>
+              <span style={{ fontSize: 14, color: "#3A1F25", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><Icone nome="email" tam={16} />E-mail de confirmação enviado para <b style={{ wordBreak: "break-all" }}>{p.email}</b> em {emailEm}, com o link da chamada.</span>
+              <span style={{ fontSize: 13, color: "#6B5A5E" }}>No dia da conversa, às 8h, a pessoa recebe um lembrete por e-mail (se você confirmou antes desse dia). Se quiser avisar também pelo WhatsApp, a mensagem está pronta:</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 14, color: "#3A1F25" }}>O e-mail de confirmação não saiu. Mande a confirmação pelo WhatsApp, a mensagem já está pronta:</span>
+          )}
           <div className="prev">{msgOk}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}><a href={wa(p.whatsapp, msgOk)} target="_blank" rel="noopener" className="bt"><Icone nome="whats" tam={18} />Abrir no WhatsApp</a></div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}><a href={wa(p.whatsapp, msgOk)} target="_blank" rel="noopener" className={emailEm ? "bt2" : "bt"} style={emailEm ? { width: "auto" } : undefined}><Icone nome="whats" tam={18} />Abrir no WhatsApp</a></div>
           <Link href={`/painel/pacientes?novo=1&pedido=${p.id}`} className="bt2" style={{ alignSelf: "flex-start", width: "auto" }}>Depois da conversa: cadastrar como paciente</Link>
           {p.meet_link ? (
             <span style={{ fontSize: 13, color: "#4F5B4E", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><Icone nome="video" tam={16} />Sala criada no Google Meet: <b>{p.meet_link.replace("https://", "")}</b>. O link já está na mensagem acima e fica salvo na ficha.</span>

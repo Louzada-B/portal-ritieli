@@ -24,6 +24,7 @@ export type Paciente = {
   status: "ativo" | "encerrado";
   desde: string;
   fim: string | null;
+  lembretes_email?: boolean; // recebe lembretes automáticos por e-mail
   retomado_em: string | null;
   pedido_id: string | null;
   ficha_em: string | null;

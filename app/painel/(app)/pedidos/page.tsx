@@ -53,6 +53,13 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
       .map((d) => ({ iso: d.toISOString(), rot: fmtQuando(d) }));
   }
 
+  // E-mail de confirmação já enviado para a pessoa? (só quando o pedido está confirmado)
+  let emailEm: string | null = null;
+  if (sel?.status === "confirmado") {
+    const { data: env } = await sb.from("envios_email").select("enviado_em").eq("tipo", "confirmacao_conversa").like("chave", `${sel.id}:%`).limit(1).maybeSingle();
+    if (env) emailEm = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(env.enviado_em));
+  }
+
   const esperando = conta("aguardando");
   return (
     <>
@@ -99,6 +106,7 @@ export default async function Pedidos({ searchParams }: { searchParams: Promise<
                 aceite={new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(sel.aceite_politica_em))}
                 status={sel.status === "aguardando" ? [prazo(sel).txt, prazo(sel).urg ? "pill p-ur" : "pill p-av"] : ST[sel.status]}
                 sugestoes={sugestoes}
+                emailEm={emailEm}
               />
             ) : null}
           </div>
