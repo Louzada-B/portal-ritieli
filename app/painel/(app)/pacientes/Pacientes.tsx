@@ -22,6 +22,7 @@ type Detalhe = {
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
   temProntuario?: boolean;
+  guarda?: { motivo: "encerrar" | "prazo"; ate: string | null } | null;
   sessoes?: { resumo: ResumoSessoes; ultimas: LinhaSessao[]; proximas: LinhaSessao[] };
 } | null;
 type PedidoBase = { id: string; nome: string; whatsapp: string; email: string; para_quem: "mim" | "filho"; idade_crianca: number | null } | null;
@@ -489,7 +490,13 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           </div>
         </div>
       ) : null}
-      <ExcluirPaciente id={p.id} nome={p.nome} temProntuario={!!det.temProntuario} />
+      {det.guarda ? (
+        <div className="aviso" role="status" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <b>{det.guarda.motivo === "prazo" ? `Prontuário guardado até ${diaBR(det.guarda.ate!)}` : "Prontuário com guarda obrigatória"}</b>
+          <span>{det.guarda.motivo === "prazo" ? "São 5 anos depois do encerramento do acompanhamento. A exclusão do paciente e dos dados fica liberada depois dessa data." : "O prontuário deve ser guardado por 5 anos depois do encerramento. Para poder excluir no futuro, encerre o acompanhamento e espere o prazo. Até lá, o paciente fica aqui, sem sessões novas."}</span>
+          <Link href={`/painel/prontuario/${p.id}`} style={{ fontSize: 13, fontWeight: 700 }}>Abrir o prontuário →</Link>
+        </div>
+      ) : <ExcluirPaciente id={p.id} nome={p.nome} temProntuario={!!det.temProntuario} />}
       <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário fica numa área à parte, com criptografia de ponta a ponta.</p>
     </>
   );

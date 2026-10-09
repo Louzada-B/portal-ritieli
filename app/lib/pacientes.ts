@@ -71,3 +71,16 @@ export function contatoPrincipal(p: Paciente, resps: Responsavel[]) {
   if (p.tipo === "crianca" && resps[0]) return { nome: resps[0].nome, whatsapp: resps[0].whatsapp, email: resps[0].email };
   return { nome: p.nome, whatsapp: p.whatsapp, email: p.email };
 }
+
+// Guarda do prontuário: mínimo de 5 anos depois do encerramento (Resolução CFP 001/2009).
+export type GuardaProntuario = { motivo: "encerrar" | "prazo"; ate: string | null };
+
+export function guardaProntuario(p: { status: string; fim: string | null }, temProntuario: boolean): GuardaProntuario | null {
+  if (!temProntuario) return null;
+  if (p.status !== "encerrado" || !p.fim) return { motivo: "encerrar", ate: null };
+  const d = new Date(p.fim + "T12:00:00Z");
+  d.setUTCFullYear(d.getUTCFullYear() + 5);
+  const ate = d.toISOString().slice(0, 10);
+  const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+  return hoje < ate ? { motivo: "prazo", ate } : null;
+}

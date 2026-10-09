@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { cifrar, decifrarOuVazio, novoToken } from "../../../lib/cripto";
 import { cpfValido, cpfFormatado, soDigitos, normalizarFone, fone, centavosDe, primeiroNome, fixoTexto } from "../../../lib/formato";
-import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
+import { responsaveisDe, contatoPrincipal, guardaProntuario, type Paciente } from "../../../lib/pacientes";
 import { criarEventoSemanal, apagarEvento, obterEvento, mudarFimSerie, acertarOcorrencia, renomearEvento, moverEvento } from "../../../lib/google";
 import { local, deLocal } from "../../../lib/agenda";
 import { siteUrl } from "../../../site";
@@ -397,7 +397,7 @@ export async function reativarPaciente(id: string, r: { retomada: string; fixoDi
 // semanal da agenda e apaga ficha, termos, responsáveis só deste paciente e o cadastro.
 export async function excluirPaciente(id: string, confirmacao: string, prontuarioGuardado = false): Promise<Resultado> {
   const sb = await supabaseServidor();
-  const { data: p } = await sb.from("pacientes").select("id, nome, google_evento_id, series_antigas").eq("id", id).single();
+  const { data: p } = await sb.from("pacientes").select("id, nome, status, fim, google_evento_id, series_antigas").eq("id", id).single();
   if (!p) return { erro: "Paciente não encontrado." };
   if (confirmacao.trim().toLowerCase() !== p.nome.trim().toLowerCase()) return { erro: "Escreva o nome completo, igual ao cadastro, para confirmar." };
   const [{ count: nEvo }, { count: nSec }, { data: anexos }] = await Promise.all([
@@ -406,6 +406,9 @@ export async function excluirPaciente(id: string, confirmacao: string, prontuari
     sb.from("prontuario_anexos").select("caminho").eq("paciente_id", id),
   ]);
   const temProntuario = (nEvo ?? 0) + (nSec ?? 0) + (anexos?.length ?? 0) > 0;
+  const guarda = guardaProntuario({ status: p.status as string, fim: (p.fim as string | null) ?? null }, temProntuario);
+  if (guarda?.motivo === "encerrar") return { erro: "Este paciente tem prontuário, que precisa ser guardado por 5 anos depois do encerramento. Encerre o acompanhamento primeiro." };
+  if (guarda?.motivo === "prazo") return { erro: `O prontuário deve ser guardado até ${guarda.ate!.split("-").reverse().join("/")} (5 anos depois do encerramento). A exclusão fica liberada depois dessa data.` };
   if (temProntuario && !prontuarioGuardado) return { erro: "Exporte e guarde o prontuário antes de excluir." };
   if (anexos?.length) await sb.storage.from("prontuario").remove(anexos.map((a) => a.caminho as string));
   if (p.google_evento_id) await apagarEvento(p.google_evento_id).catch(() => {});

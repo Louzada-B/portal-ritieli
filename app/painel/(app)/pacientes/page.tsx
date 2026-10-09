@@ -1,5 +1,5 @@
 import { supabaseServidor } from "../../../lib/supabase/servidor";
-import { responsaveisDe, type Paciente, type Termo } from "../../../lib/pacientes";
+import { responsaveisDe, guardaProntuario, type Paciente, type Termo } from "../../../lib/pacientes";
 import { type Pedido } from "../../../lib/dados";
 import { TopoCelular } from "../../componentes/Navegacao";
 import Pacientes from "./Pacientes";
@@ -62,6 +62,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
         };
       })(),
       temProntuario: (nEvo ?? 0) + (nSec ?? 0) + (nAnx ?? 0) > 0,
+      guarda: guardaProntuario(sel, (nEvo ?? 0) + (nSec ?? 0) + (nAnx ?? 0) > 0),
     };
   }
 
