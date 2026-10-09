@@ -8,7 +8,7 @@ import TermoDocumento from "../../../componentes/TermoDocumento";
 import { centavosDe, reais, waLink } from "../../../lib/formato";
 import type { ConteudoTermo } from "../../../lib/termoTexto";
 import { criarTermo, reenviarTermo, cancelarTermo } from "./acoes";
-import { verCpf, linkFicha } from "../pacientes/acoes";
+import { verCpf, linkFicha, marcarEnviado } from "../pacientes/acoes";
 
 export type ItemHist = { id: string; pac: string; tipo: string; enviado: string; status: "enviado" | "aceito" | "cancelado"; st: string; reg: string; como: string };
 export type PacNovo = {
@@ -29,17 +29,17 @@ type Props = {
   abaInicial: "form" | "doc";
 };
 
-type Envio = { link: string; para: string; texto: string; id?: string };
+type Envio = { link: string; para: string; texto: string; id?: string; tipo?: "ficha" | "termo"; ref?: string };
 
 const pillDe = (s: ItemHist["status"]) => (s === "aceito" ? "pill p-ok" : s === "enviado" ? "pill p-av" : "pill p-ne");
 
-function CaixaEnvio({ e, aoCopiar }: { e: Envio; aoCopiar: () => void }) {
+function CaixaEnvio({ e, aoCopiar, aoEnviar }: { e: Envio; aoCopiar: () => void; aoEnviar: () => void }) {
   return (
     <div className="caixa ok" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <span style={{ fontSize: 14, color: "#3A1F25" }}>A mensagem já está pronta:</span>
       <div className="prev">{e.texto}</div>
       <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {e.para ? <a href={waLink(e.para, e.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto" }}><Icone nome="whats" tam={18} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado: copie o link.</span>}
+        {e.para ? <a href={waLink(e.para, e.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto" }} onClick={() => { if (e.tipo && e.ref) marcarEnviado(e.tipo, e.ref).then(aoEnviar); }}><Icone nome="whats" tam={18} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado: copie o link.</span>}
         <button type="button" className="mini2" onClick={() => navigator.clipboard?.writeText(e.link).then(aoCopiar)}>Copiar link</button>
       </span>
     </div>
@@ -89,7 +89,7 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
       const r = await criarTermo(novo.id, { valor, tipoValor, plataforma: plat, faltas });
       av(r);
       if (r.erro) return;
-      setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, id: r.id });
+      setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, id: r.id, tipo: "termo", ref: r.id });
     });
 
   const regNovo = "Sem assinatura: o aceite eletrônico pelo link fica registrado aqui, com data, hora e versão do termo.";
@@ -160,7 +160,7 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
                       <b style={{ fontSize: 15, color: "#A3322A" }}>O cadastro ainda não tem CPF.</b>
                       <span style={{ fontSize: 14, color: "#5A3A41" }}>O termo só pode ser gerado depois que {inf ? "o responsável preencher" : "a paciente preencher"} a ficha de cadastro. Assim que a ficha chegar, os dados aparecem aqui sozinhos.</span>
                       {envio ? null : (
-                        <button type="button" className="bt2" style={{ alignSelf: "flex-start", width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await linkFicha(novo.id); if (r.erro) return av(r); setEnvio({ link: r.link!, para: r.para!, texto: r.texto! }); })}><Icone nome="whats" tam={18} />Reenviar a ficha de cadastro</button>
+                        <button type="button" className="bt2" style={{ alignSelf: "flex-start", width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await linkFicha(novo.id); if (r.erro) return av(r); setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, tipo: "ficha", ref: r.ref }); })}><Icone nome="whats" tam={18} />Reenviar a ficha de cadastro</button>
                       )}
                     </div>
                   ) : null}
@@ -177,7 +177,7 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
                   {msg ? <div className={msg.erro ? "aviso erro" : "aviso ok"} role="status">{msg.t}</div> : null}
                   {envio ? (
                     <>
-                      <CaixaEnvio e={envio} aoCopiar={() => av({ ok: "Link copiado." })} />
+                      <CaixaEnvio e={envio} aoCopiar={() => av({ ok: "Link copiado." })} aoEnviar={() => router.refresh()} />
                       {envio.id ? <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} onClick={() => { const id = envio.id; setTab("hist"); setAba("doc"); setEnvio(null); setMsg(null); irPara(`?t=${id}&aba=doc`); }}>Ver no histórico →</button> : null}
                     </>
                   ) : (
@@ -200,14 +200,14 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
                   <button type="button" className="bt2" onClick={() => window.print()} style={{ width: "auto", minHeight: 40, padding: "8px 14px", fontSize: 14 }}><Icone nome="baixar" tam={16} />Baixar PDF</button>
                   {rec.status === "enviado" ? (
                     <>
-                      <button type="button" className="bt2" disabled={pend} onClick={() => iniciar(async () => { const r = await reenviarTermo(rec.id); av(r); if (r.link) setEnvio({ link: r.link, para: r.para!, texto: r.texto! }); })} style={{ width: "auto", minHeight: 40, padding: "8px 14px", fontSize: 14 }}><Icone nome="reenviar" tam={16} />Reenviar link</button>
+                      <button type="button" className="bt2" disabled={pend} onClick={() => iniciar(async () => { const r = await reenviarTermo(rec.id); av(r); if (r.link) setEnvio({ link: r.link, para: r.para!, texto: r.texto!, tipo: "termo", ref: r.id }); })} style={{ width: "auto", minHeight: 40, padding: "8px 14px", fontSize: 14 }}><Icone nome="reenviar" tam={16} />Reenviar link</button>
                       <button type="button" className="bt3" disabled={pend} onClick={() => { if (window.confirm("Cancelar este termo? O link deixa de valer.")) iniciar(async () => { const r = await cancelarTermo(rec.id); av(r); setEnvio(null); router.refresh(); }); }} style={{ minHeight: 40, fontSize: 14 }}>Cancelar termo</button>
                     </>
                   ) : null}
                 </span>
               </div>
               {msg ? <div className={msg.erro ? "aviso erro" : "aviso ok"} role="status">{msg.t}</div> : null}
-              {envio ? <CaixaEnvio e={envio} aoCopiar={() => av({ ok: "Link copiado." })} /> : null}
+              {envio ? <CaixaEnvio e={envio} aoCopiar={() => av({ ok: "Link copiado." })} aoEnviar={() => router.refresh()} /> : null}
             </>
           ) : null}
 

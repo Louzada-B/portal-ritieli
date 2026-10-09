@@ -6,6 +6,7 @@ import Pacientes from "./Pacientes";
 import { gerarSessoesDoMes, resumir, type Sessao } from "../../../lib/sessoes";
 import { local, fmtDiaCurto, fmtHora } from "../../../lib/agenda";
 import { reais } from "../../../lib/formato";
+import { cadastrosDe } from "../../../lib/cadastro";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, fim, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto")
     .order("nome");
   const todos = (data ?? []) as Paciente[];
+  const cads = await cadastrosDe(sb, todos);
   const sel = q.id ? todos.find((p) => p.id === q.id) : undefined;
 
   // Com a ficha aberta, garante as sessões do horário fixo dos próximos meses (para contar as próximas).
@@ -91,6 +93,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     fim: p.fim,
     selo: selo(p.id),
     fichaEm: p.ficha_em,
+    cad: cads.get(p.id)!,
     escola: p.escola,
     cidade: p.cidade,
   }));

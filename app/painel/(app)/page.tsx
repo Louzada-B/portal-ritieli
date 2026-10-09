@@ -5,6 +5,7 @@ import { carregarAgenda, periodos, PRAZO_HORAS, type Pedido } from "../../lib/da
 import { horariosLivres, fmtHora, fmtDiaLongo, fmtQuando, local } from "../../lib/agenda";
 import { TopoCelular } from "../componentes/Navegacao";
 import Icone from "../componentes/Icone";
+import { cadastrosDe } from "../../lib/cadastro";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,10 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     carregarAgenda(sb),
     supabaseAdmin().from("google_conexao").select("id").eq("id", 1).maybeSingle(),
   ]);
+  const { data: pacs } = await sb.from("pacientes").select("id, ficha_em").eq("status", "ativo");
+  const cads = await cadastrosDe(sb, pacs ?? []);
+  const faltaFicha = [...cads.values()].filter((c) => c.ficha !== "preenchida").length;
+  const faltaTermo = [...cads.values()].filter((c) => c.ficha === "preenchida" && c.termo !== "aceito").length;
   const aguardando = (ags ?? []) as Pedido[];
   const confirmadas = (confs ?? []) as Pedido[];
   const livres7 = horariosLivres({ config: { ...regras.config, janela_dias: 7 }, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] });
@@ -44,6 +49,16 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
             </div>
             <Link href="/painel/pedidos" className="bt" style={{ position: "relative" }}>Ver pedidos <span aria-hidden="true">→</span></Link>
           </div>
+        ) : null}
+
+        {faltaFicha + faltaTermo > 0 ? (
+          <Link href="/painel/pacientes?f=cadastro" className="faixa">
+            <span style={{ display: "flex", flexDirection: "column" }}>
+              <b>{faltaFicha + faltaTermo === 1 ? "1 paciente com cadastro pendente" : `${faltaFicha + faltaTermo} pacientes com cadastro pendente`}</b>
+              <span className="d">{[faltaFicha ? `${faltaFicha} sem a ficha preenchida` : "", faltaTermo ? `${faltaTermo} sem o termo aceito` : ""].filter(Boolean).join(" · ")}</span>
+            </span>
+            <span className="bt2" style={{ minHeight: 40, padding: "8px 14px", fontSize: 14 }}>Ver quem falta <span aria-hidden="true">→</span></span>
+          </Link>
         ) : null}
 
         <div className="nums">

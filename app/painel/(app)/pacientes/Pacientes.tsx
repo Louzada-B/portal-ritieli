@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
-import { criarPaciente, atualizarPaciente, linkFicha, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, type DadosNovo } from "./acoes";
+import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, verPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, type DadosNovo } from "./acoes";
 
 type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
@@ -13,6 +13,7 @@ type Item = {
   fixoDia: number | null; fixoHora: string | null; meet: string | null; status: "ativo" | "encerrado"; desde: string; fim: string | null; fichaEm: string | null;
   escola: string | null; cidade: string | null;
   selo?: { t: string; cls: string } | null;
+  cad: { ficha: string; termo: string; fichaTxt: string; termoTxt: string; etiqueta: string; cls: string; pendente: boolean };
 };
 type LinhaSessao = { id: string; quando: string; status: "agendada" | "realizada" | "falta" | "cancelada"; pago: boolean; recibo: boolean };
 type ResumoSessoes = { realizadas: number; faltas: number; proximas: number; pagasFrente: number; pagasFrenteAte: string | null; devendo: number; devendoValor: number; credito: number; creditoValor: number; recibos: number };
@@ -212,6 +213,7 @@ function BlocoSessoes({ id, nome, s }: { id: string; nome: string; s: NonNullabl
 }
 
 function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
+  const router = useRouter();
   const [pend, iniciar] = useTransition();
   const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
   const [cpfs, setCpfs] = useState<Record<string, string>>({});
@@ -229,7 +231,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
     setEncerrando(null);
   };
   const [novoResp, setNovoResp] = useState<null | { nome: string; parentesco: string; whatsapp: string; email: string; cpf: string; financeiro: boolean }>(null);
-  const [envio, setEnvio] = useState<{ link: string; para: string; texto: string } | null>(null);
+  const [envio, setEnvio] = useState<{ link: string; para: string; texto: string; ref?: string } | null>(null);
   const inf = p.tipo === "crianca";
   const av = (r: { erro?: string; ok?: string }) => setMsg(r.erro ? { t: r.erro, erro: true } : r.ok ? { t: r.ok } : null);
 
@@ -241,14 +243,8 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       setCpfs({ ...cpfs, [id]: r.valor! });
     });
 
-  const fichaTxt = p.fichaEm
-    ? `Preenchida em ${dataBR(p.fichaEm)}`
-    : det.ficha
-      ? new Date(det.ficha.expira_em).getTime() > Date.now()
-        ? `Link enviado em ${dataBR(det.ficha.criado_em)} · aguardando`
-        : "Link expirado · envie de novo"
-      : "Ainda não enviada";
-  const termoTxt = det.termo ? (det.termo.status === "aceito" ? `Aceito em ${dataBR(det.termo.aceito_em!)}` : det.termo.status === "enviado" ? `Enviado em ${dataBR(det.termo.enviado_em)} · aguardando` : "Cancelado") : "Ainda não enviado";
+  const fichaTxt = p.cad.fichaTxt;
+  const termoTxt = p.cad.termoTxt;
 
   return (
     <>
@@ -304,6 +300,21 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         </>
       )}
 
+      {p.status === "ativo" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="rot">Cadastro</span>
+          <div className="cad-g">
+            <div className="cad-p"><span className="l">1 · Ficha de cadastro</span><span className={p.cad.ficha === "preenchida" ? "pill p-ok" : p.cad.ficha === "aguardando" ? "pill p-av" : "pill p-ur"}>{p.cad.fichaTxt}</span></div>
+            <div className="cad-p"><span className="l">2 · Termo de consentimento</span><span className={p.cad.termo === "aceito" ? "pill p-ok" : p.cad.termo === "aguardando" ? "pill p-av" : p.cad.termo === "depois" ? "pill p-ne" : "pill p-ur"}>{p.cad.termoTxt}</span></div>
+          </div>
+          {p.cad.ficha === "preenchida" && p.cad.termo !== "aceito" ? (
+            <Link href={det.termo && det.termo.status === "enviado" ? `/painel/termos?t=${det.termo.id}&aba=doc` : `/painel/termos?paciente=${p.id}`} className="mini2" style={{ alignSelf: "flex-start" }}>
+              {p.cad.termo === "sem" ? "Gerar o termo" : p.cad.termo === "nao_enviado" ? "Abrir o termo e mandar" : "Ver o termo ou reenviar"} <span aria-hidden="true">→</span>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
       {det.sessoes ? <BlocoSessoes key={p.id} id={p.id} nome={p.nome} s={det.sessoes} /> : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -314,12 +325,12 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
             <>
               <div className="prev" style={{ fontSize: 14 }}>{envio.texto}</div>
               <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {envio.para ? <a href={waLink(envio.para, envio.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto", minHeight: 40, padding: "9px 16px", fontSize: 14 }}><Icone nome="whats" tam={16} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado: copie o link.</span>}
+                {envio.para ? <a href={waLink(envio.para, envio.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto", minHeight: 40, padding: "9px 16px", fontSize: 14 }} onClick={() => { if (envio.ref) marcarEnviado("ficha", envio.ref).then(() => router.refresh()); }}><Icone nome="whats" tam={16} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado: copie o link.</span>}
                 <button type="button" className="mini2" onClick={() => navigator.clipboard?.writeText(envio.link).then(() => av({ ok: "Link copiado." }))}>Copiar link</button>
               </span>
             </>
           ) : (
-            <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={() => iniciar(async () => { const r = await linkFicha(p.id); if (r.erro) return av(r); setEnvio({ link: r.link!, para: r.para!, texto: r.texto! }); })}>
+            <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={() => iniciar(async () => { const r = await linkFicha(p.id); if (r.erro) return av(r); setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, ref: r.ref }); })}>
               <Icone nome="whats" tam={16} />{p.fichaEm ? "Enviar a ficha de novo" : det.ficha ? "Enviar a ficha de novo" : "Enviar ficha pelo WhatsApp"}
             </button>
           )}
@@ -505,8 +516,8 @@ export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroI
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState(filtroInicial);
   const [abrirNovo, setAbrirNovo] = useState(novo);
-  const FILTROS: [string, string][] = [["ativo", "Em acompanhamento"], ["crianca", "Crianças e adolescentes"], ["encerrado", "Encerrados"]];
-  const passa = (p: Item, f: string) => (f === "ativo" ? p.status === "ativo" : f === "crianca" ? p.status === "ativo" && p.tipo === "crianca" : p.status === "encerrado");
+  const FILTROS: [string, string][] = [["ativo", "Em acompanhamento"], ["cadastro", "Cadastro pendente"], ["crianca", "Crianças e adolescentes"], ["encerrado", "Encerrados"]];
+  const passa = (p: Item, f: string) => (f === "ativo" ? p.status === "ativo" : f === "cadastro" ? p.status === "ativo" && p.cad.pendente : f === "crianca" ? p.status === "ativo" && p.tipo === "crianca" : p.status === "encerrado");
   const vis = useMemo(() => lista.filter((p) => passa(p, filtro) && (!busca || p.nome.toLowerCase().includes(busca.toLowerCase()))), [lista, filtro, busca]);
   const sel = selId ? lista.find((p) => p.id === selId) : undefined;
 
@@ -528,7 +539,7 @@ export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroI
               <span className="tx">
                 <span style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{p.nome}</b><span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>{p.selo ? <span className={p.selo.cls}>{p.selo.t}</span> : null}<span className={p.tipo === "crianca" ? "pill p-in" : "pill p-on"}>{p.tipo === "crianca" ? "Criança" : "Adulta"}</span></span></span>
                 <span className="q">{fixoTexto(p.fixoDia, p.fixoHora)}</span>
-                <span className="m">{p.fichaEm ? "Ficha preenchida" : "Ficha pendente"}{p.valor != null ? ` · ${reais(p.valor)}` : ""}</span>
+                <span className="m">{p.status === "ativo" ? <span className={p.cad.cls}>{p.cad.etiqueta}</span> : "Encerrado"}{p.valor != null ? ` · ${reais(p.valor)}` : ""}</span>
               </span>
             </Link>
           ))}

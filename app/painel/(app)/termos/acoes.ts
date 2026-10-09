@@ -87,7 +87,7 @@ export async function reenviarTermo(id: string): Promise<ResTermo> {
   const c = contatoPrincipal(p, resps);
   const link = `${siteUrl}/termo/${token}`;
   const texto = `Olá, ${primeiroNome(c.nome)}! Aqui é a Ritieli. Segue de novo o link do termo de consentimento, para ler com calma e aceitar quando puder: ${link}`;
-  return { ok: "Link novo gerado. O anterior deixou de valer.", link, para: c.whatsapp || "", texto };
+  return { ok: "Link novo gerado. O anterior deixou de valer.", id, link, para: c.whatsapp || "", texto };
 }
 
 export async function cancelarTermo(id: string): Promise<ResTermo> {

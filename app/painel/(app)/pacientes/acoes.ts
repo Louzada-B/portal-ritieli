@@ -11,7 +11,7 @@ import { siteUrl } from "../../../site";
 import { conflitoFixo } from "../../../lib/conflitos";
 import { serieDaSessao, guardarSerieAntiga } from "../../../lib/serie";
 
-export type Resultado = { erro?: string; ok?: string; id?: string; link?: string; para?: string; texto?: string; valor?: string };
+export type Resultado = { erro?: string; ok?: string; id?: string; link?: string; para?: string; texto?: string; valor?: string; ref?: string };
 
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -185,11 +185,13 @@ export async function linkFicha(id: string): Promise<Resultado> {
   const resps = await responsaveisDe(sb, id);
   const c = contatoPrincipal(p, resps);
   const { token, hash } = novoToken();
-  const { error } = await sb.from("fichas").insert({ paciente_id: id, token_hash: hash, expira_em: new Date(Date.now() + 7 * 86400000).toISOString() });
-  if (error) return { erro: "Não deu para gerar o link. Tente de novo." };
+  const { data: nova, error } = await sb.from("fichas").insert({ paciente_id: id, token_hash: hash, expira_em: new Date(Date.now() + 7 * 86400000).toISOString() }).select("id").single();
+  if (error || !nova) return { erro: "Não deu para gerar o link. Tente de novo." };
+  revalidatePath("/painel/pacientes");
+  revalidatePath("/painel");
   const link = `${siteUrl}/cadastro/${token}`;
   const texto = `Olá, ${primeiroNome(c.nome)}! Aqui é a Ritieli. Para organizarmos o início do acompanhamento, preencha a ficha de cadastro neste link pessoal (leva uns 3 minutos e vale por 7 dias): ${link}`;
-  return { ok: "Link gerado.", link, para: c.whatsapp || "", texto };
+  return { ok: "Link gerado.", link, para: c.whatsapp || "", texto, ref: nova.id };
 }
 
 export async function verCpf(id: string, quem: "paciente" | "responsavel"): Promise<Resultado> {
@@ -467,4 +469,18 @@ export async function acertarAgenda(id: string): Promise<{ ok?: string; erro?: s
   const extra = falhou ? ` ${falhou === 1 ? "Uma sessão não foi encontrada" : `${falhou} sessões não foram encontradas`} na série do Google (podem ser de fora do período dela).` : "";
   if (!mudou) return { ok: `A agenda do Google já estava igual ao painel.${extra}` };
   return { ok: `Agenda acertada: ${mudou === 1 ? "1 sessão corrigida" : `${mudou} sessões corrigidas`} no Google.${extra}` };
+}
+
+// Marca que o link da ficha ou do termo foi aberto no WhatsApp (o envio em si é manual).
+export async function marcarEnviado(tipo: "ficha" | "termo", ref: string): Promise<Resultado> {
+  const sb = await supabaseServidor();
+  const agora = new Date().toISOString();
+  const { error } = tipo === "ficha"
+    ? await sb.from("fichas").update({ enviada_em: agora }).eq("id", ref)
+    : await sb.from("termos").update({ link_enviado_em: agora }).eq("id", ref);
+  if (error) return { erro: "Não deu para marcar como enviado." };
+  revalidatePath("/painel/pacientes");
+  revalidatePath("/painel/termos");
+  revalidatePath("/painel");
+  return { ok: "Marcado como enviado." };
 }

@@ -17,7 +17,7 @@ export default async function PaginaTermos({ searchParams }: { searchParams: Pro
   const q = await searchParams;
   const sb = await supabaseServidor();
   const [{ data: termos }, { data: pacs }, { data: cfg }] = await Promise.all([
-    sb.from("termos").select("id, paciente_id, resumo, status, enviado_em, aceito_em, aceite_nome, conteudo_cripto, pacientes(nome)").order("enviado_em", { ascending: false }),
+    sb.from("termos").select("id, paciente_id, resumo, status, enviado_em, aceito_em, aceite_nome, link_enviado_em, conteudo_cripto, pacientes(nome)").order("enviado_em", { ascending: false }),
     sb.from("pacientes").select("*").eq("status", "ativo").order("nome"),
     sb.from("config_agenda").select("politica_faltas").eq("id", 1).single(),
   ]);
@@ -35,14 +35,14 @@ export default async function PaginaTermos({ searchParams }: { searchParams: Pro
       id: t.id,
       pac: curto(nome),
       tipo: t.resumo,
-      enviado: `Enviado em ${dia(t.enviado_em)}`,
+      enviado: t.link_enviado_em ? `Enviado em ${dia(t.link_enviado_em)}` : t.status === "enviado" ? "Falta mandar o link" : `Criado em ${dia(t.enviado_em)}`,
       status: t.status,
-      st: t.status === "aceito" ? `Aceito em ${dia(t.aceito_em!, true)}` : t.status === "enviado" ? "Aguardando aceite" : "Cancelado",
+      st: t.status === "aceito" ? `Aceito em ${dia(t.aceito_em!, true)}` : t.status === "enviado" ? (t.link_enviado_em ? "Aguardando aceite" : "Falta mandar o link") : "Cancelado",
       reg:
         t.status === "aceito"
           ? `Aceito eletronicamente por ${t.aceite_nome} em ${longo(t.aceito_em!)}, pelo link pessoal enviado por WhatsApp. Registro guardado com data, hora e versão do termo.`
           : t.status === "enviado"
-            ? "Aguardando o aceite eletrônico. Quando a paciente aceitar pelo link, a data e a hora aparecem aqui."
+            ? (t.link_enviado_em ? "" : "O link ainda não foi aberto no WhatsApp. Toque em Reenviar link para gerar a mensagem e mandar. ") + "Aguardando o aceite eletrônico. Quando a paciente aceitar pelo link, a data e a hora aparecem aqui."
             : "Termo cancelado. O link deixou de valer.",
       como: t.status === "aceito" ? (t.resumo.startsWith("Infantil") ? "Aceite online pela responsável" : "Aceite online") : "Link enviado pelo WhatsApp",
     };
