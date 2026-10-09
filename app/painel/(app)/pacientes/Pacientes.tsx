@@ -273,9 +273,22 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           </div>
           <CamposFixo dia={e.fixoDia} hora={e.fixoHora} setDia={(v) => setE({ ...e, fixoDia: v })} setHora={(v) => setE({ ...e, fixoHora: v })} />
           {p.status === "ativo" ? <CamposPeriodo desde={e.desde} fim={e.fim} setDesde={(v) => setE({ ...e, desde: v })} setFim={(v) => setE({ ...e, fim: v })} /> : null}
+          {edP ? (
+            <>
+              <div className="fc-g">
+                <div className="fc"><label htmlFor="ep-nasc">Nascimento{inf ? " da criança" : ""}</label><input id="ep-nasc" type="text" inputMode="numeric" placeholder="dd/mm/aaaa" value={edP.nascimento} onChange={(x) => setEdP({ ...edP, nascimento: x.target.value })} /></div>
+                <div></div>
+              </div>
+              <div className="fc-g">
+                <div className="fc"><label htmlFor="ep-en">Contato de emergência · nome</label><input id="ep-en" type="text" placeholder="Nome e parentesco" value={edP.eNome} onChange={(x) => setEdP({ ...edP, eNome: x.target.value })} /></div>
+                <div className="fc"><label htmlFor="ep-et">Contato de emergência · telefone</label><input id="ep-et" type="tel" placeholder="(51) 90000-0000" value={edP.eTelefone} onChange={(x) => setEdP({ ...edP, eTelefone: fone(x.target.value) })} /></div>
+              </div>
+              <span style={{ fontSize: 13, color: "#6B5A5E", marginTop: -6 }}>Nascimento e contato de emergência ficam criptografados. Deixe em branco para apagar.</span>
+            </>
+          ) : null}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" className="bt" style={{ width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await atualizarPaciente(p.id, e); av(r); if (r.ok) setEditando(false); })}>Salvar</button>
-            <button type="button" className="bt3" onClick={() => setEditando(false)}>Cancelar</button>
+            <button type="button" className="bt" style={{ width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await atualizarPaciente(p.id, e); if (r.erro) return av(r); if (edP) { const r2 = await salvarPessoais(p.id, edP); if (r2.erro) return av(r2); setPessoais(null); } av(r); setEditando(false); router.refresh(); })}>Salvar</button>
+            <button type="button" className="bt3" onClick={() => { setEditando(false); setEdP(null); }}>Cancelar</button>
           </div>
         </div>
       ) : (
@@ -297,7 +310,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
             <div className="dado"><span className="di"><Icone nome="termos" tam={18} /></span><span><span className="l">Ficha de cadastro</span><b>{fichaTxt}</b></span></div>
             <div className="dado"><span className="di"><Icone nome="escudo" tam={18} /></span><span><span className="l">Termo de consentimento</span><b>{termoTxt}</b></span></div>
           </div>
-          <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} onClick={() => setEditando(true)}>Editar dados</button>
+          <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={() => iniciar(async () => { const v = await verPessoais(p.id); const i = v.emergencia.lastIndexOf(" · "); setEdP({ nascimento: v.nascimento, eNome: i >= 0 ? v.emergencia.slice(0, i) : v.emergencia, eTelefone: i >= 0 ? v.emergencia.slice(i + 3) : "" }); setEditando(true); })}>Editar dados</button>
         </>
       )}
 
@@ -359,42 +372,22 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         </div>
       ) : null}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span className="rot">Dados da ficha</span>
-        <div className="cofre" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-          {edP ? (
-            <>
-              <div className="fc-g" style={{ width: "100%" }}>
-                <div className="fc"><label htmlFor="ep-nasc">Nascimento{inf ? " da criança" : ""}</label><input id="ep-nasc" type="text" inputMode="numeric" placeholder="dd/mm/aaaa" value={edP.nascimento} onChange={(x) => setEdP({ ...edP, nascimento: x.target.value })} /></div>
-              </div>
-              <div className="fc-g" style={{ width: "100%" }}>
-                <div className="fc"><label htmlFor="ep-en">Contato de emergência · nome</label><input id="ep-en" type="text" placeholder="Nome e parentesco" value={edP.eNome} onChange={(x) => setEdP({ ...edP, eNome: x.target.value })} /></div>
-                <div className="fc"><label htmlFor="ep-et">Contato de emergência · telefone</label><input id="ep-et" type="tel" placeholder="(51) 90000-0000" value={edP.eTelefone} onChange={(x) => setEdP({ ...edP, eTelefone: fone(x.target.value) })} /></div>
-              </div>
-              <span style={{ fontSize: 13, color: "#6B5A5E" }}>Deixe em branco para apagar.</span>
-              <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button type="button" className="bt" style={{ width: "auto", minHeight: 40, padding: "9px 16px", fontSize: 14 }} disabled={pend} onClick={() => iniciar(async () => { const r = await salvarPessoais(p.id, edP); av(r); if (r.erro) return; setPessoais({ nascimento: edP.nascimento.trim(), emergencia: edP.eNome.trim() || edP.eTelefone.trim() ? `${edP.eNome.trim()} · ${edP.eTelefone.trim()}` : "" }); setEdP(null); router.refresh(); })}>Salvar</button>
-                <button type="button" className="bt3" style={{ minHeight: 40, fontSize: 14 }} onClick={() => setEdP(null)}>Cancelar</button>
-              </span>
-            </>
-          ) : (
-            <>
-              {pessoais ? (
-                <>
-                  {pessoais.nascimento ? <span><b>Nascimento:</b> {pessoais.nascimento}</span> : <span><b>Nascimento:</b> não informado</span>}
-                  {pessoais.emergencia ? <span><b>Contato de emergência:</b> {pessoais.emergencia}</span> : <span><b>Contato de emergência:</b> não informado</span>}
-                  {p.escola ? <span><b>Escola:</b> {p.escola}</span> : null}
-                  {p.cidade ? <span><b>Cidade:</b> {p.cidade}</span> : null}
-                </>
-              ) : <span style={{ fontSize: 14, color: "#5A3A41" }}>{p.temNascimento || p.temEmergencia ? "Nascimento e contato de emergência ficam guardados com criptografia." : "Ainda não informados. A pessoa preenche na ficha, ou você pode digitar aqui."}</span>}
-              <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {p.temNascimento || p.temEmergencia ? <button type="button" className="mini2" onClick={() => iniciar(async () => setPessoais(pessoais ? null : await verPessoais(p.id)))}><Icone nome="olho" tam={16} />{pessoais ? "Esconder" : "Ver"}</button> : null}
-                <button type="button" className="mini2" disabled={pend} onClick={() => iniciar(async () => { const v = pessoais || (await verPessoais(p.id)); const i = v.emergencia.lastIndexOf(" · "); setPessoais(v); setEdP({ nascimento: v.nascimento, eNome: i >= 0 ? v.emergencia.slice(0, i) : v.emergencia, eTelefone: i >= 0 ? v.emergencia.slice(i + 3) : "" }); })}>Editar</button>
-              </span>
-            </>
-          )}
+      {p.temNascimento || p.temEmergencia ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="rot">Dados da ficha</span>
+          <div className="cofre" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+            {pessoais ? (
+              <>
+                {pessoais.nascimento ? <span><b>Nascimento:</b> {pessoais.nascimento}</span> : null}
+                {pessoais.emergencia ? <span><b>Contato de emergência:</b> {pessoais.emergencia}</span> : null}
+                {p.escola ? <span><b>Escola:</b> {p.escola}</span> : null}
+                {p.cidade ? <span><b>Cidade:</b> {p.cidade}</span> : null}
+              </>
+            ) : <span style={{ fontSize: 14, color: "#5A3A41" }}>Nascimento e contato de emergência ficam guardados com criptografia. Para corrigir, use Editar dados.</span>}
+            <button type="button" className="mini2" onClick={() => iniciar(async () => setPessoais(pessoais ? null : await verPessoais(p.id)))}><Icone nome="olho" tam={16} />{pessoais ? "Esconder" : "Ver"}</button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {inf ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
