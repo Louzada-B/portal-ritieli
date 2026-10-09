@@ -91,7 +91,7 @@
 .painel .chip{font:inherit;font-size:14px;font-weight:600;color:#3A1F25;background:#FFFFFF;border:1px solid #E2CCD0;border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer}
 .painel .chip.on{background:#3A1F25;border-color:#3A1F25;color:#FFFFFF}
 .painel .caixa textarea{font:inherit;font-size:15px;border:1px solid #E2CCD0;border-radius:14px;padding:12px 14px;min-height:80px;resize:vertical;background:#FFFFFF;color:#3A1F25}
-.painel .prev{background:#FFFFFF;border-radius:14px;padding:12px 14px;font-size:14px;color:#3A1F25;line-height:1.55}
+.painel .prev{background:#FFFFFF;border-radius:14px;padding:12px 14px;font-size:14px;color:#3A1F25;line-height:1.55;min-width:0;max-width:100%;box-sizing:border-box;white-space:pre-wrap;overflow-wrap:anywhere}
 .painel .voltar-m{display:none}
 .painel .disp{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
 .painel .dias{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column}
@@ -280,7 +280,7 @@
 .painel .nota{display:flex;gap:12px;align-items:flex-start;background:#F8F3F0;border-radius:16px;padding:14px 16px;font-size:13px;line-height:1.55;color:#5A3A41}
 .painel .nota svg{flex:0 0 auto;color:#7A2335;margin-top:1px}
 .painel .sec-t{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px}
-.painel .resp{background:#F8F3F0;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.painel .resp{background:#F8F3F0;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0;box-sizing:border-box}
 .painel .resp .lin{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:#3A1F25}
 .painel .resp .lin span{display:inline-flex;gap:6px;align-items:center}
 .painel .resp .lin svg{color:#9A5A67}
@@ -339,6 +339,27 @@
 .painel .mini{font:inherit;font-size:13px;font-weight:700;color:#7A2335;background:#FFFFFF;border:1.5px solid #E2CCD0;border-radius:999px;padding:6px 12px;min-height:34px;cursor:pointer;white-space:nowrap}
 .painel .mini:hover{border-color:#C98C99}
 .painel .cel{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* Estados da sessão: cada um é tocável e abre só as opções dele */
+.painel .est{font:inherit;font-size:12px;font-weight:700;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-sizing:border-box}
+.painel button.est:hover:not(:disabled){filter:brightness(.96)}
+.painel button.est:disabled{opacity:.6;cursor:default}
+.painel .est-s{font-size:10px;opacity:.7}
+.painel .est-w{position:relative;display:inline-block;min-width:0}
+.painel .est-fundo{position:fixed;inset:0;z-index:55;background:transparent}
+.painel .est-menu{max-height:80vh;overflow-y:auto;position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:240px;background:#FFFFFF;border-radius:18px;box-shadow:0 24px 48px -16px rgba(58,31,37,.35),0 0 0 1px #F1E3E6;padding:8px;display:flex;flex-direction:column;gap:2px;box-sizing:border-box}
+.painel .est-dir .est-menu{left:auto;right:0}
+.painel .est-t{padding:6px 14px 10px;display:flex;flex-direction:column;border-bottom:1px solid #F1E3E6;margin-bottom:6px}
+.painel .est-t b{font-size:15px;color:#3A1F25}
+.painel .est-t small{font-size:13px;color:#8A7A7E}
+.painel .est-menu button{font:inherit;font-size:15px;font-weight:600;text-align:left;background:none;border:0;border-radius:12px;padding:10px 14px;min-height:44px;color:#3A1F25;cursor:pointer;display:flex;gap:10px;align-items:center}
+.painel .est-menu button:hover:not(:disabled){background:#F8F3F0}
+.painel .est-menu button.atual{background:#FBEDEF;color:#7A2335;font-weight:800;cursor:default}
+.painel .est-menu button.perigo{color:#A3322A}
+.painel .est-menu button:disabled{opacity:.5;cursor:default}
+.painel .est-menu .ck{width:16px;flex:0 0 16px;color:#7A2335}
+.painel .est-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.painel .est-g .est-w{display:block}
+.painel .est-g .est{width:100%;min-height:44px;padding:6px 8px;border-radius:14px;font-size:13px;line-height:1.2;text-align:center;white-space:normal}
 .painel .cards-s{display:none}
 .painel .m-only{display:none!important}
 .painel .cal-w{position:relative}
@@ -450,6 +471,9 @@
   .painel .tab-s{display:none}
   .painel .lista-s{background:transparent!important;padding:0!important}
   .painel .cards-s{display:flex;flex-direction:column;gap:10px}
+  .painel .est-fundo{background:rgba(58,31,37,.45);z-index:90}
+  .painel .est-w .est-menu,.painel .est-dir .est-menu{position:fixed;left:0;right:0;top:auto;bottom:0;z-index:100;min-width:0;border-radius:24px 24px 0 0;padding:14px 12px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -20px 50px -10px rgba(58,31,37,.4);max-height:85vh;overflow-y:auto}
+  .painel .est-menu button{min-height:52px;font-size:16px}
   .painel .mes{align-self:stretch;justify-content:space-between;flex:1 1 100%}
   .painel .m-only{display:inline-flex!important;width:100%}
   .painel .d-only{display:none}

@@ -33,6 +33,8 @@ const MSG: Record<string, string> = {
   falta: "Falta registrada. Pela sua política, ela é cobrada como sessão.",
   cancelada: "Cancelamento com antecedência registrado, sem cobrança.",
   pago: "Pagamento registrado. Agora falta o recibo.",
+  agendada: "A sessão voltou para agendada.",
+  desrecibo: "Recibo desmarcado: voltou para \"a emitir\".",
   despago: "Pagamento desmarcado: a sessão voltou para \"a pagar\".",
   recibo: "Recibo marcado como emitido.",
 };
@@ -111,6 +113,13 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
   const [remarca, setRemarca] = useState<{ l: Linha; data: string; hora: string } | null>(null);
   const [envio, setEnvio] = useState<{ para: string; texto: string } | null>(null);
   const [pend, iniciar] = useTransition();
+  const [menu, setMenu] = useState<{ id: string; q: "sessao" | "pag" | "rec" } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const f = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(null); };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [menu]);
 
   const abrirRemarcar = (l: Linha) => {
     const d = loc(l.inicio);
@@ -202,35 +211,65 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
       setR({ ...r, data: "" });
     });
 
-  const acoes = (l: Linha, longo: boolean) => {
-    const ag = l.status === "agendada";
-    // Pagar vale antes (antecipado) ou depois da sessão.
-    const podePagar = l.status !== "cancelada" && !l.pago;
-    const podeEmitir = l.status !== "cancelada" && l.pago && !l.recibo;
-    const podeDespagar = l.status !== "cancelada" && l.pago;
-    const despagar = podeDespagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: false, recibo: false }, l.recibo ? `${MSG.despago} O recibo também foi desmarcado.` : MSG.despago)}>Desmarcar pago</button> : null;
+  // Cada estado da sessão é tocável e abre só as opções dele (folha no celular, menu no computador).
+  type Op = { t: string; f: () => void; atual?: boolean; perigo?: boolean };
+  const opSessao = (l: Linha): Op[] => {
+    const st = l.status;
+    const ops: Op[] = [
+      { t: "Agendada", atual: st === "agendada", f: () => mudar(l, { status: "agendada", pago: l.pago, recibo: l.recibo }, MSG.agendada) },
+      { t: "Realizada", atual: st === "realizada", f: () => mudar(l, { status: "realizada", pago: l.pago, recibo: l.recibo }, l.pago ? "Sessão marcada como realizada. Ela já estava paga." : MSG.realizada) },
+      { t: "Faltou", atual: st === "falta", f: () => mudar(l, { status: "falta", pago: l.pago, recibo: l.recibo }, MSG.falta) },
+      { t: "Cancelou com 24h", atual: st === "cancelada", f: () => mudar(l, { status: "cancelada", pago: false, recibo: false }, MSG.cancelada) },
+    ];
+    if (st === "agendada") ops.push({ t: "Remarcar", f: () => abrirRemarcar(l) });
     // Excluir só a sessão registrada à mão, agendada e sem pagamento (para não sumir com dinheiro recebido).
-    const excluir = l.manual && l.status === "agendada" && !l.pago ? <button type="button" className="mini" disabled={pend} onClick={() => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); })} aria-label="Excluir sessão registrada">Excluir</button> : null;
-    const sessao = ag ? (
-      <>
-        <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "realizada", pago: l.pago, recibo: l.recibo }, l.pago ? "Sessão marcada como realizada. Ela já estava paga." : MSG.realizada)}>Realizada</button>
-        <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "falta", pago: l.pago, recibo: l.recibo }, MSG.falta)}>Faltou</button>
-        <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: "cancelada", pago: false, recibo: false }, MSG.cancelada)}>{longo ? "Cancelou com 24h" : "Cancelou"}</button>
-        <button type="button" className="mini" disabled={pend} onClick={() => abrirRemarcar(l)}>Remarcar</button>
-      </>
-    ) : null;
-    return {
-      ag, podePagar, podeEmitir, tem: ag || podePagar || podeEmitir || podeDespagar || !!excluir, sessao, despagar, excluir,
-      nodos: (
-        <>
-          {sessao}
-          {podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}
-          {podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>{longo ? "Marcar recibo emitido" : "Marcar emitido"}</button> : null}
-          {despagar}
-          {excluir}
-        </>
-      ),
-    };
+    if (l.manual && st === "agendada" && !l.pago) ops.push({ t: "Excluir sessão", perigo: true, f: () => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); }) });
+    return ops;
+  };
+  const opPag = (l: Linha): Op[] | null => {
+    if (l.status === "cancelada") return null;
+    return l.pago
+      ? [{ t: l.recibo ? "Desmarcar pago e recibo" : "Desmarcar pago", f: () => mudar(l, { status: l.status, pago: false, recibo: false }, l.recibo ? `${MSG.despago} O recibo também foi desmarcado.` : MSG.despago) }]
+      : [{ t: "Marcar pago", f: () => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago) }];
+  };
+  const opRec = (l: Linha): Op[] | null => {
+    if (l.status === "cancelada" || !l.pago) return null;
+    return l.recibo
+      ? [{ t: "Desmarcar recibo emitido", f: () => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.desrecibo) }]
+      : [{ t: "Marcar recibo emitido", f: () => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo) }];
+  };
+  const chip = (l: Linha, q: "sessao" | "pag" | "rec", texto: string, cls: string, ops: Op[] | null, titulo: string) => {
+    if (!ops) return <span className={`est ${cls}`}>{texto}</span>;
+    const aberto = menu?.id === l.id && menu.q === q;
+    return (
+      <span className={`est-w${q === "rec" ? " est-dir" : ""}`}>
+        <button type="button" className={`est ${cls}`} disabled={pend} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setMenu(aberto ? null : { id: l.id, q })}>
+          <span>{texto}</span><span className="est-s" aria-hidden="true">▾</span>
+        </button>
+        {aberto ? (
+          <>
+            <span className="est-fundo" onClick={() => setMenu(null)} />
+            <span className="est-menu" role="menu" aria-label={titulo}>
+              <span className="est-t"><b>{titulo}</b><small>{curto(l.nome)} · {fmtData(l.inicio)}, {fmtHora(l.inicio)}</small></span>
+              {ops.map((o) => (
+                <button key={o.t} type="button" role="menuitem" className={`${o.atual ? "atual" : ""}${o.perigo ? " perigo" : ""}`} disabled={pend} onClick={() => { setMenu(null); if (!o.atual) o.f(); }}>
+                  <span className="ck" aria-hidden="true">{o.atual ? "✓" : ""}</span>{o.t}
+                </button>
+              ))}
+            </span>
+          </>
+        ) : null}
+      </span>
+    );
+  };
+  const estados = (l: Linha) => {
+    const [pt, pc] = pg(l);
+    const [rt, rcc] = rc(l);
+    return [
+      chip(l, "sessao", ST_TXT[l.status], ST_CLS[l.status], opSessao(l), "Situação da sessão"),
+      chip(l, "pag", pt, pc, opPag(l), "Pagamento"),
+      chip(l, "rec", rt, rcc, opRec(l), "Recibo"),
+    ];
   };
 
 
@@ -406,17 +445,15 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
             <thead><tr><th>Data</th><th>Paciente</th><th>Sessão</th><th>Valor</th><th>Pagamento</th><th>Recibo</th></tr></thead>
             <tbody>
               {lista.map((l) => {
-                const a = acoes(l, false);
-                const [pt, pc] = pg(l);
-                const [rt, rcc] = rc(l);
+                const [e1, e2, e3] = estados(l);
                 return (
                   <tr key={l.id}>
                     <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{fmtData(l.inicio)}</td>
                     <td><span className="pac"><b>{curto(l.nome)}</b><small>{tipoTxt(l)}</small></span></td>
-                    <td><span className="cel"><span className={ST_CLS[l.status]}>{ST_TXT[l.status]}</span>{a.sessao}</span></td>
+                    <td>{e1}</td>
                     <td className="v">{valorCel(l)}</td>
-                    <td><span className="cel"><span className={pc}>{pt}</span>{a.podePagar ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: false }, MSG.pago)}>Marcar pago</button> : null}{a.despagar}</span></td>
-                    <td><span className="cel"><span className={rcc}>{rt}</span>{a.podeEmitir ? <button type="button" className="mini" disabled={pend} onClick={() => mudar(l, { status: l.status, pago: true, recibo: true }, MSG.recibo)}>Marcar emitido</button> : null}{a.excluir}</span></td>
+                    <td>{e2}</td>
+                    <td>{e3}</td>
                   </tr>
                 );
               })}
@@ -424,15 +461,12 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
           </table>
           <div className="cards-s">
             {lista.map((l) => {
-              const a = acoes(l, true);
-              const [pt, pc] = pg(l);
-              const [rt, rcc] = rc(l);
+              const [e1, e2, e3] = estados(l);
               return (
-                <div className="cs" key={l.id}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}><span className="pac"><b>{curto(l.nome)}</b><small>{fmtData(l.inicio)} · {tipoTxt(l)}</small></span><b>{valorCel(l)}</b></div>
-                  <div className="cel"><span className={ST_CLS[l.status]}>{ST_TXT[l.status]}</span><span className={pc}>{pt}</span><span className={rcc}>{rt}</span></div>
-                  {a.tem ? <div className="cel">{a.nodos}</div> : null}
-                </div>
+              <div className="cs" key={l.id}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}><span className="pac"><b>{curto(l.nome)}</b><small>{fmtData(l.inicio)} · {tipoTxt(l)}</small></span><b>{valorCel(l)}</b></div>
+                <div className="est-g">{e1}{e2}{e3}</div>
+              </div>
               );
             })}
           </div>
