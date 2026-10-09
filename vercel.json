@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["gru1"],
-  "crons": [{ "path": "/api/cron/lembretes", "schedule": "0 11 * * *" }]
+  "crons": [
+    { "path": "/api/cron/lembretes", "schedule": "0 11 * * *" },
+    { "path": "/api/cron/manter-supabase", "schedule": "0 12 * * *" }
+  ]
 }
