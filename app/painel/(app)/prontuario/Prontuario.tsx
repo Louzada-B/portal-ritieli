@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { supabaseNavegador } from "../../../lib/supabase/navegador";
 import * as cofre from "./cofre";
-import { salvarChave, registrarAcesso, salvarEvolucao, salvarCorrecao, salvarSecao, registrarAnexo } from "./acoes";
+import { salvarChave, registrarAcesso, salvarEvolucao, salvarCorrecao, salvarSecao, registrarAnexo, excluirAnexo } from "./acoes";
 
 type Evo = { id: string; data: string; rotulo: string; cripto: string; reg: string; correcoes: { id: string; cripto: string; quando: string }[] };
 type Props = {
@@ -362,10 +362,13 @@ export default function Prontuario(props: Props) {
                   <label className="bt2" style={{ width: "auto", minHeight: 40, padding: "8px 14px", fontSize: 14, cursor: "pointer" }}><Icone nome="mais" tam={16} />{pend ? "Enviando…" : "Anexar arquivo"}<input type="file" style={{ display: "none" }} onChange={(e) => { anexar(e.target.files?.[0]); e.target.value = ""; }} /></label>
                 </div>
                 {anexos.map((a) => (
-                  <button type="button" className="anx" key={a.id} onClick={() => baixar(a)} style={{ font: "inherit", textAlign: "left", border: 0, cursor: "pointer", color: "inherit" }}>
-                    <span className="ai"><Icone nome="baixar" tam={18} /></span>
-                    <span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: 15, wordBreak: "break-word" }}>{a.nome}</b><span style={{ fontSize: 13, color: "#8A7A7E" }}>{tipoArq(a.tipo)} · {tam(a.tamanho)} · {a.quando}</span></span>
-                  </button>
+                  <div className="anx" key={a.id}>
+                    <button type="button" onClick={() => baixar(a)} style={{ font: "inherit", textAlign: "left", border: 0, background: "none", padding: 0, cursor: "pointer", color: "inherit", display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
+                      <span className="ai"><Icone nome="baixar" tam={18} /></span>
+                      <span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", fontSize: 15, wordBreak: "break-word" }}>{a.nome}</b><span style={{ fontSize: 13, color: "#8A7A7E" }}>{tipoArq(a.tipo)} · {tam(a.tamanho)} · {a.quando}</span></span>
+                    </button>
+                    <button type="button" aria-label={`Excluir o anexo ${a.nome}`} title="Excluir anexo" disabled={pend} onClick={() => { if (window.confirm(`Excluir o anexo "${a.nome}"?\n\nO arquivo é apagado de vez e não dá para recuperar.`)) iniciar(async () => { const r = await excluirAnexo(paciente.id, a.id); av(r); if (!r.erro) router.refresh(); }); }} style={{ flex: "0 0 auto", width: 40, height: 40, borderRadius: "50%", border: "1.5px solid #E2CCD0", background: "#FFFFFF", color: "#A3322A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Icone nome="fechar" tam={16} /></button>
+                  </div>
                 ))}
                 {!anexos.length ? <span style={{ fontSize: 14, color: "#6B5A5E" }}>Nenhum anexo ainda.</span> : null}
                 <span style={{ fontSize: 13, color: "#8A7A7E" }}>Materiais de testes psicológicos ficam aqui, com o mesmo sigilo do prontuário. O arquivo é criptografado antes de sair do seu aparelho (até 15 MB).</span>

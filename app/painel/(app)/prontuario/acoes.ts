@@ -80,3 +80,17 @@ export async function registrarAnexo(pacienteId: string, d: { caminho: string; m
   revalidatePath(`/painel/prontuario/${pacienteId}`);
   return { ok: "Anexo guardado, criptografado." };
 }
+
+// Exclui o anexo: o arquivo cifrado no armazenamento e o registro. Fica no registro de acessos.
+export async function excluirAnexo(pacienteId: string, anexoId: string): Promise<Res> {
+  const sb = await supabaseServidor();
+  const { data: a } = await sb.from("prontuario_anexos").select("id, caminho").eq("id", anexoId).eq("paciente_id", pacienteId).maybeSingle();
+  if (!a) return { erro: "Anexo não encontrado." };
+  const { error: e1 } = await sb.storage.from("prontuario").remove([a.caminho as string]);
+  if (e1) return { erro: "Não deu para excluir o arquivo. Tente de novo." };
+  const { error: e2 } = await sb.from("prontuario_anexos").delete().eq("id", anexoId);
+  if (e2) return { erro: "Não deu para excluir o anexo. Tente de novo." };
+  await registrarAcesso(pacienteId, "Excluiu anexo");
+  revalidatePath(`/painel/prontuario/${pacienteId}`);
+  return { ok: "Anexo excluído." };
+}
