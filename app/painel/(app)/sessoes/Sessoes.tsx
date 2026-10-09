@@ -236,7 +236,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
 
   const pg = (l: Linha) =>
     l.status === "cancelada" ? (l.pago ? ["Crédito", "pill p-av"] : ["Sem cobrança", "pill p-ne"])
-    : l.status === "agendada" ? (l.pago ? ["Pago antecipado", "pill p-ok"] : ["A pagar", "pill p-ne"])
+    : l.status === "agendada" ? (l.pago ? ["Pago", "pill p-ok"] : ["A pagar", "pill p-ne"])
     : l.pago ? ["Pago", "pill p-ok"] : ["Pendente", "pill p-av"];
   const rc = (l: Linha) =>
     l.status === "cancelada" || !l.pago ? (l.status === "realizada" || l.status === "falta" ? ["Aguarda pagamento", "pill p-ne"] : ["—", "pill p-ne"])
@@ -377,7 +377,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
 
         <div className="nums">
           <div className="num"><span className="rot">Sessões cobradas</span><b>{real.length}</b><span className="l">realizadas e faltas</span></div>
-          <div className="num"><span className="rot">Recebido</span><b>{reais(soma(pagas)) || "R$ 0"}</b><span className="l">Pix{pagas.some((l) => l.status === "agendada") ? ", com antecipados" : ""}</span></div>
+          <div className="num"><span className="rot">Recebido</span><b>{reais(soma(pagas)) || "R$ 0"}</b><span className="l">Pix</span></div>
           <div className="num"><span className="rot">A receber</span><b>{reais(soma(aRec)) || "R$ 0"}</b><span className="l">{aRec.length} {aRec.length === 1 ? "sessão pendente" : "sessões pendentes"}</span></div>
           <div className="num"><span className="rot">Recibos</span><b>{semRecibo.length}</b><span className="l">a emitir no Receita Saúde</span></div>
         </div>

@@ -156,7 +156,7 @@ function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () =
 const ST_S: Record<LinhaSessao["status"], [string, string]> = { agendada: ["Agendada", "pill p-on"], realizada: ["Realizada", "pill p-ok"], falta: ["Falta", "pill p-ur"], cancelada: ["Cancelada", "pill p-ne"] };
 const PG_S = (l: LinhaSessao): [string, string] =>
   l.status === "cancelada" ? (l.pago ? ["Crédito", "pill p-av"] : ["Sem cobrança", "pill p-ne"])
-  : l.status === "agendada" ? (l.pago ? ["Pago antecipado", "pill p-ok"] : ["A pagar", "pill p-ne"])
+  : l.status === "agendada" ? (l.pago ? ["Pago", "pill p-ok"] : ["A pagar", "pill p-ne"])
   : l.pago ? ["Pago", "pill p-ok"] : ["Pendente", "pill p-av"];
 
 function BlocoSessoes({ id, nome, s }: { id: string; nome: string; s: NonNullable<NonNullable<Detalhe>["sessoes"]> }) {
