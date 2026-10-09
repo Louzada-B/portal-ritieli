@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { cifrar, decifrarOuVazio, novoToken } from "../../../lib/cripto";
-import { cpfValido, cpfFormatado, soDigitos, normalizarFone, centavosDe, primeiroNome, fixoTexto } from "../../../lib/formato";
+import { cpfValido, cpfFormatado, soDigitos, normalizarFone, fone, centavosDe, primeiroNome, fixoTexto } from "../../../lib/formato";
 import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
 import { criarEventoSemanal, apagarEvento, obterEvento, mudarFimSerie, acertarOcorrencia, renomearEvento, moverEvento } from "../../../lib/google";
 import { local, deLocal } from "../../../lib/agenda";
@@ -483,4 +483,29 @@ export async function marcarEnviado(tipo: "ficha" | "termo", ref: string): Promi
   revalidatePath("/painel/termos");
   revalidatePath("/painel");
   return { ok: "Marcado como enviado." };
+}
+
+// Corrige nascimento e contato de emergência (ficam criptografados; em branco apaga).
+export async function salvarPessoais(id: string, d: { nascimento: string; eNome: string; eTelefone: string }): Promise<Resultado> {
+  const nasc = d.nascimento.trim();
+  if (nasc) {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(nasc);
+    const [dd, mm, aa] = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+    const dt = new Date(Date.UTC(aa, mm - 1, dd));
+    if (!m || dt.getUTCDate() !== dd || dt.getUTCMonth() !== mm - 1 || aa < 1900 || dt.getTime() > Date.now()) return { erro: "Confira a data de nascimento (dd/mm/aaaa)." };
+  }
+  const nome = d.eNome.trim();
+  const tel = d.eTelefone.trim();
+  let emergencia: string | null = null;
+  if (nome || tel) {
+    if (nome.length < 2) return { erro: "Escreva o nome do contato de emergência." };
+    const n = normalizarFone(tel);
+    if (!n) return { erro: "Confira o telefone do contato de emergência, com DDD." };
+    emergencia = `${nome} · ${fone(n)}`;
+  }
+  const sb = await supabaseServidor();
+  const { error } = await sb.from("pacientes").update({ nascimento_cripto: nasc ? cifrar(nasc) : null, emergencia_cripto: emergencia ? cifrar(emergencia) : null }).eq("id", id);
+  if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  revalidatePath("/painel/pacientes");
+  return { ok: "Dados da ficha salvos." };
 }
