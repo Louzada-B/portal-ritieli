@@ -17,7 +17,7 @@ export default function Pagina() {
 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: '1 1 520px', minWidth: '0' }}>
 <h1 className="h1">Política de <em>privacidade.</em></h1>
 <p className="intro" style={{ maxWidth: '640px' }}>Cuidar de você também é cuidar das suas informações. Aqui explico, de forma simples, quais dados este site recebe, por que e como eles são protegidos.</p>
-<span style={{ fontSize: '14px', color: '#74656A' }}>Atualizada em 8 de outubro de 2026</span>
+<span style={{ fontSize: '14px', color: '#74656A' }}>Atualizada em 9 de outubro de 2026</span>
 </div>
 </div>
 </section>
@@ -60,6 +60,7 @@ export default function Pagina() {
 <h2 id="para-que">Para que usamos</h2>
 <ul>
 <li>Agendar e confirmar as conversas e sessões e enviar avisos sobre elas. Se um pedido de conversa não for respondido em 48 horas, o horário é liberado automaticamente.</li>
+<li>Usar o e-mail informado para enviar a confirmação da conversa inicial e, a quem está em acompanhamento, lembretes de sessão e de documentos pendentes. Quem preferir não receber esses lembretes é só avisar.</li>
 <li>Realizar o atendimento psicológico e manter o prontuário.</li>
 <li>Emitir recibos e cumprir obrigações fiscais.</li>
 <li>Responder às suas mensagens e dúvidas.</li>
@@ -72,10 +73,10 @@ export default function Pagina() {
 <h2 id="compartilha">Com quem compartilhamos</h2>
 <p>Seus dados não são vendidos nem cedidos para fins comerciais. Eles passam apenas por serviços necessários para o atendimento:</p>
 <ul>
-<li><strong>Supabase</strong>, banco de dados onde ficam guardados os pedidos de agendamento, com servidores em São Paulo.</li>
+<li><strong>Supabase</strong>, banco de dados onde ficam guardados os pedidos de agendamento e os dados do acompanhamento (o prontuário é guardado criptografado), com servidores em São Paulo.</li>
 <li><strong>Google Agenda e Google Meet</strong>, para registrar a conversa na agenda da psicóloga e criar a sala da videochamada. As sessões não são gravadas.</li>
 <li><strong>Cloudflare Turnstile</strong>, que confere se o formulário de agendamento foi enviado por uma pessoa, e não por um robô.</li>
-<li><strong>Resend</strong>, que envia à psicóloga o aviso de pedido novo, só com o nome e o horário.</li>
+<li><strong>Resend</strong>, que envia os e-mails automáticos: o aviso de pedido novo para a psicóloga, só com o nome e o horário, e, para você, a confirmação da conversa e os lembretes. Esses e-mails não trazem informações clínicas.</li>
 <li><strong>WhatsApp</strong>, para confirmações e mensagens.</li>
 <li><strong>Receita Federal</strong>, por meio do Receita Saúde, para a emissão de recibos.</li>
 <li><strong>Vercel</strong>, serviço de hospedagem do site.</li>
