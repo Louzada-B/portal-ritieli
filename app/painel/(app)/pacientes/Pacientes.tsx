@@ -6,6 +6,8 @@ import { useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
 import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, verPessoais, salvarPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, type DadosNovo } from "./acoes";
+import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
+import type { AcessoInfo } from "../../../lib/pacienteAcesso";
 
 type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
@@ -18,6 +20,7 @@ type Item = {
 type LinhaSessao = { id: string; quando: string; status: "agendada" | "realizada" | "falta" | "cancelada"; pago: boolean; recibo: boolean };
 type ResumoSessoes = { realizadas: number; faltas: number; proximas: number; pagasFrente: number; pagasFrenteAte: string | null; devendo: number; devendoValor: number; credito: number; creditoValor: number; recibos: number };
 type Detalhe = {
+  acessos: AcessoInfo[];
   responsaveis: { id: string; nome: string; whatsapp: string | null; email: string | null; cpfFinal: string | null; parentesco: string | null; financeiro: boolean }[];
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
@@ -29,6 +32,36 @@ type PedidoBase = { id: string; nome: string; whatsapp: string; email: string; p
 
 const dataBR = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso));
 const mesAno = (iso: string) => new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(iso + "T12:00:00Z"));
+
+function BlocoAcesso({ quem, email, acesso, pend, criar, reenviar, alternar }: {
+  quem: string; email: string | null; acesso?: AcessoInfo; pend: boolean;
+  criar: () => void; reenviar: (id: string) => void; alternar: (id: string, ativo: boolean) => void;
+}) {
+  const estado = !acesso ? null : !acesso.ativo ? { t: "Desativado", c: "pill p-ur" } : acesso.senhaPropria ? { t: "Ativo", c: "pill p-ok" } : { t: "Aguardando o primeiro acesso", c: "pill p-av" };
+  return (
+    <div className="resp">
+      <span style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <b style={{ fontSize: 15 }}>{quem}</b>
+        {estado ? <span className={estado.c}>{estado.t}</span> : <span className="pill p-in">Sem acesso</span>}
+      </span>
+      <span style={{ fontSize: 14, color: "#5A3A41" }}>
+        {acesso ? `Login: ${acesso.email}` : email ? `E-mail: ${email}` : "Sem e-mail no cadastro. Complete em Editar dados."}
+        {acesso?.ultimoAcesso ? ` · Último acesso: ${dataBR(acesso.ultimoAcesso)}` : acesso ? " · Ainda não entrou" : ""}
+        {acesso?.provisoriaVale ? " · Senha provisória válida" : ""}
+      </span>
+      <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {!acesso ? (
+          <button type="button" className="mini2" disabled={pend || !email} onClick={criar}>Criar acesso e enviar senha</button>
+        ) : (
+          <>
+            {acesso.ativo ? <button type="button" className="mini2" disabled={pend} onClick={() => reenviar(acesso.id)}>Reenviar senha provisória</button> : null}
+            <button type="button" className="mini2" disabled={pend} onClick={() => alternar(acesso.id, !acesso.ativo)}>{acesso.ativo ? "Desativar" : "Reativar"}</button>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
 
 function Aviso({ m }: { m: { t: string; erro?: boolean } | null }) {
   return m ? <div className={m.erro ? "aviso erro" : "aviso ok"} role="status">{m.t}</div> : null;
@@ -456,8 +489,18 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span className="rot">Área da paciente e exercício da semana</span>
-        <div className="resp"><span style={{ fontSize: 14, color: "#5A3A41" }}>Entram junto com o domínio próprio, porque a senha provisória chega por e-mail.</span></div>
+        <span className="rot">Área da paciente</span>
+        {p.status !== "ativo" ? (
+          <div className="resp"><span style={{ fontSize: 14, color: "#5A3A41" }}>O acesso fica desligado enquanto o acompanhamento está encerrado. Ao reativar, o login volta a funcionar.</span></div>
+        ) : inf ? (
+          det.responsaveis.length ? det.responsaveis.map((r) => {
+            const a = det.acessos.find((x) => x.responsavelId === r.id);
+            return <BlocoAcesso key={r.id} quem={`${r.nome}${r.parentesco ? ` (${r.parentesco})` : ""}`} email={r.email} acesso={a} pend={pend} criar={() => iniciar(async () => av(await criarAcesso(p.id, r.id)))} reenviar={(id) => iniciar(async () => av(await reenviarSenha(id)))} alternar={(id, ativo) => iniciar(async () => av(await alternarAcesso(id, ativo)))} />;
+          }) : <div className="resp"><span style={{ fontSize: 14, color: "#5A3A41" }}>Cadastre um responsável com e-mail para liberar o acesso. O login é dele(a) e mostra os filhos ligados a ele(a).</span></div>
+        ) : (
+          <BlocoAcesso quem={p.nome} email={p.email} acesso={det.acessos[0]} pend={pend} criar={() => iniciar(async () => av(await criarAcesso(p.id, null)))} reenviar={(id) => iniciar(async () => av(await reenviarSenha(id)))} alternar={(id, ativo) => iniciar(async () => av(await alternarAcesso(id, ativo)))} />
+        )}
+        <span style={{ fontSize: 13, color: "#8A7A7E" }}>A senha provisória vai por e-mail, vale 24 horas e é trocada no primeiro acesso. O acesso se desliga sozinho quando o acompanhamento é encerrado. O exercício da semana entra em breve.</span>
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>

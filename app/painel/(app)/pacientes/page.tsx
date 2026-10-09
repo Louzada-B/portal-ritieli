@@ -7,6 +7,7 @@ import { gerarSessoesDoMes, resumir, type Sessao } from "../../../lib/sessoes";
 import { local, fmtDiaCurto, fmtHora } from "../../../lib/agenda";
 import { reais } from "../../../lib/formato";
 import { cadastrosDe } from "../../../lib/cadastro";
+import { acessosDoPaciente } from "../../../lib/pacienteAcesso";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,9 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
       sb.from("prontuario_secoes").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
       sb.from("prontuario_anexos").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
     ]);
+    const acessos = await acessosDoPaciente(sel.id, resps.map((r) => r.id));
     detalhe = {
+      acessos,
       responsaveis: resps.map((r) => ({ id: r.id, nome: r.nome, whatsapp: r.whatsapp, email: r.email, cpfFinal: r.cpf_final, parentesco: r.parentesco, financeiro: r.financeiro })),
       ficha: fichas?.[0] ?? null,
       termo: (termos?.[0] as Termo | undefined) ?? null,

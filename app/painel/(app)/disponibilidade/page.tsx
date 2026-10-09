@@ -4,13 +4,15 @@ import { carregarAgenda, periodos } from "../../../lib/dados";
 import { horariosLivres, local, deLocal, fmtDiaCurto, fmtHora, fmtDiaLongo } from "../../../lib/agenda";
 import { TopoCelular } from "../../componentes/Navegacao";
 import FormDisponibilidade from "./FormDisponibilidade";
+import FormPix from "./FormPix";
 
 export default async function Disponibilidade({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const { google } = await searchParams;
   const sb = await supabaseServidor();
-  const [{ regras, tomados, google: g }, { data: con }] = await Promise.all([
+  const [{ regras, tomados, google: g }, { data: con }, { data: pix }] = await Promise.all([
     carregarAgenda(sb),
     supabaseAdmin().from("google_conexao").select("email, bloquear_site, enviar_eventos").eq("id", 1).maybeSingle(),
+    sb.from("config_agenda").select("pix_chave, pix_nome, pix_cidade").eq("id", 1).single(),
   ]);
 
   const livres = horariosLivres({ config: regras.config, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] });
@@ -54,6 +56,7 @@ export default async function Disponibilidade({ searchParams }: { searchParams: 
       <TopoCelular titulo="Horários" sub="Disponibilidade da agenda" pedidos={0} />
       <main className="conteudo">
         <FormDisponibilidade semana={regras.semana} config={regras.config} bloqueios={bloqueios} previa={previa} google={googleInfo} />
+        <FormPix chave={pix?.pix_chave || ""} nome={pix?.pix_nome || "Ritieli Hermes"} cidade={pix?.pix_cidade || "Porto Alegre"} />
       </main>
     </>
   );

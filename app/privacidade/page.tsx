@@ -53,6 +53,7 @@ export default function Pagina() {
 <li><strong>No agendamento:</strong> nome, telefone (WhatsApp), e-mail, o horário escolhido, a idade da criança ou do adolescente (quando a conversa é sobre um filho ou filha) e a mensagem, se você quiser escrever uma.</li>
 <li><strong>Nas conversas pelo WhatsApp:</strong> as mensagens que você enviar.</li>
 <li><strong>Durante o acompanhamento:</strong> as informações registradas no prontuário psicológico, que é obrigatório, e os dados necessários para emitir recibos, como nome e CPF.</li>
+<li><strong>Na área da paciente:</strong> o e-mail de acesso, uma senha que só você conhece (guardada de forma irreversível, nunca em texto aberto), a data do último acesso e os pedidos de remarcação ou cancelamento que você fizer. Telefone, cidade e contato de emergência que você atualizar ali ficam no seu cadastro. As anotações clínicas da terapia não aparecem nessa área.</li>
 <li><strong>Na navegação:</strong> informações técnicas básicas, como tipo de dispositivo e páginas visitadas, usadas apenas para manter o site funcionando.</li>
 </ul>
 <p>Informações sobre saúde emocional são consideradas <strong>dados sensíveis</strong> pela LGPD e recebem cuidado redobrado.</p>
@@ -61,6 +62,7 @@ export default function Pagina() {
 <ul>
 <li>Agendar e confirmar as conversas e sessões e enviar avisos sobre elas. Se um pedido de conversa não for respondido em 48 horas, o horário é liberado automaticamente.</li>
 <li>Usar o e-mail informado para enviar a confirmação da conversa inicial e, a quem está em acompanhamento, lembretes de sessão e de documentos pendentes. Quem preferir não receber esses lembretes é só avisar.</li>
+<li>Liberar o seu acesso à área da paciente (sessões, link da chamada, pagamentos por Pix e dados). O acesso é desativado quando o acompanhamento termina.</li>
 <li>Realizar o atendimento psicológico e manter o prontuário.</li>
 <li>Emitir recibos e cumprir obrigações fiscais.</li>
 <li>Responder às suas mensagens e dúvidas.</li>
@@ -90,7 +92,7 @@ export default function Pagina() {
 <p>Usamos serviços com conexão criptografada, acesso restrito por senha e, no prontuário, apenas a psicóloga tem acesso. Nenhum sistema é 100% invulnerável, mas adotamos as medidas razoáveis para proteger suas informações. Se houver algum incidente que possa trazer risco a você, você será avisada.</p>
 
 <h2 id="cookies">Cookies</h2>
-<p>Este site usa apenas os cookies essenciais para funcionar. Não usamos cookies de publicidade. Se, no futuro, passarmos a usar ferramentas de medição de visitas, esta política será atualizada e você poderá escolher se aceita.</p>
+<p>Este site usa apenas os cookies essenciais para funcionar. Na área da paciente, um cookie de sessão mantém você conectada (por 12 horas, ou 30 dias se você marcar “manter conectada”) e é apagado quando você sai. Não usamos cookies de publicidade. Se, no futuro, passarmos a usar ferramentas de medição de visitas, esta política será atualizada e você poderá escolher se aceita.</p>
 
 <h2 id="direitos">Seus direitos</h2>
 <p>Pela LGPD, você pode a qualquer momento:</p>

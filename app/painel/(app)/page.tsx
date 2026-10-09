@@ -6,6 +6,7 @@ import { horariosLivres, fmtHora, fmtDiaLongo, fmtQuando, local } from "../../li
 import { TopoCelular } from "../componentes/Navegacao";
 import Icone from "../componentes/Icone";
 import { cadastrosDe } from "../../lib/cadastro";
+import PedidosPaciente, { type PedidoLinha } from "../componentes/PedidosPaciente";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,11 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const cads = await cadastrosDe(sb, pacs ?? []);
   const faltaFicha = [...cads.values()].filter((c) => c.ficha !== "preenchida").length;
   const faltaTermo = [...cads.values()].filter((c) => c.ficha === "preenchida" && c.termo !== "aceito").length;
+  const { data: pp } = await sb.from("pedidos_paciente").select("id, paciente_id, sessao_inicio, tipo, mensagem, pacientes(nome)").is("resolvido_em", null).order("criado_em");
+  const pedidosPac: PedidoLinha[] = (pp ?? []).map((x) => {
+    const pac = x.pacientes as unknown as { nome: string } | { nome: string }[] | null;
+    return { id: x.id as string, pacienteId: x.paciente_id as string, nome: (Array.isArray(pac) ? pac[0]?.nome : pac?.nome) || "Paciente", quando: fmtQuando(new Date(x.sessao_inicio as string)), tipo: x.tipo as "remarcar" | "cancelar", mensagem: (x.mensagem as string | null) ?? null };
+  });
   const aguardando = (ags ?? []) as Pedido[];
   const confirmadas = (confs ?? []) as Pedido[];
   const livres7 = horariosLivres({ config: { ...regras.config, janela_dias: 7 }, semana: regras.semana, bloqueios: periodos(regras.bloqueios), ocupados: [...tomados, ...g.periodos] });
@@ -50,6 +56,8 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
             <Link href="/painel/pedidos" className="bt" style={{ position: "relative" }}>Ver pedidos <span aria-hidden="true">→</span></Link>
           </div>
         ) : null}
+
+        {pedidosPac.length ? <PedidosPaciente itens={pedidosPac} /> : null}
 
         {faltaFicha + faltaTermo > 0 ? (
           <Link href="/painel/pacientes?f=cadastro" className="faixa">

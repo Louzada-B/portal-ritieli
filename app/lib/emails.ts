@@ -163,6 +163,29 @@ export function emailTermoPendente(d: { para: string; nome: string; paciente?: s
   );
 }
 
+// Senha provisória da área da paciente: vale 24 horas e só serve para o primeiro acesso (ou para recuperar o acesso).
+export function emailSenhaProvisoria(d: { para: string; nome: string; senha: string; primeiraVez: boolean }) {
+  const caixa = `<span style="display:inline-block;background:#F6E5E7;color:#7A2335;border-radius:12px;padding:12px 18px;font-family:Menlo,Consolas,monospace;font-size:22px;font-weight:700;letter-spacing:.08em">${esc(d.senha)}</span>`;
+  return paraPessoa(
+    d.para,
+    d.primeiraVez ? "Seu acesso à área da paciente" : "Sua senha provisória",
+    moldura({
+      etiqueta: "Área da paciente",
+      titulo: d.primeiraVez ? `Boas-vindas, ${primeiroNome(d.nome)}!` : `Olá, ${primeiroNome(d.nome)}!`,
+      paragrafos: [
+        d.primeiraVez
+          ? `A ${esc(contato.nome)} criou o seu acesso à área da paciente, onde ficam as suas sessões, o link da chamada e os pagamentos.`
+          : `Você pediu uma senha provisória para entrar na área da paciente.`,
+        `Entre com este e-mail e a senha provisória abaixo. Ela vale por <b>24 horas</b> e, ao entrar, você cria a sua própria senha.`,
+        caixa,
+        `Não compartilhe esta senha com ninguém. Se você não pediu isto, pode ignorar este e-mail.`,
+      ],
+      botao: { texto: "Entrar na área da paciente", url: `${siteUrl}/area-da-paciente/entrar` },
+      rodape: RODAPE_PACIENTE,
+    }),
+  );
+}
+
 // ---------- para a Ritieli (sem dado clínico) ----------
 
 export function emailParaRitieli(d: { assunto: string; titulo: string; nome: string; texto: string; caminho: string }) {

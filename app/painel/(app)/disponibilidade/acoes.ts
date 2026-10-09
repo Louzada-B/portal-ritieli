@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { deLocal, minutos } from "../../../lib/agenda";
+import { ehAdmin } from "../../../lib/sessao";
 
 export type DiaForm = { dia_semana: number; ativo: boolean; inicio: string; fim: string; pausa: boolean; pausa_inicio: string; pausa_fim: string };
 export type Resultado = { erro?: string; ok?: string };
@@ -107,4 +108,19 @@ export async function desconectarGoogle(): Promise<Resultado> {
   (await import("../../../lib/google")).limparCacheGoogle();
   revalidatePath("/painel/disponibilidade");
   return { ok: "Google Agenda desconectada." };
+}
+
+// Chave Pix que a paciente vê na área dela (copia e cola). Nunca vai para o site público.
+export async function salvarPix(d: { chave: string; nome: string; cidade: string }): Promise<Resultado> {
+  if (!(await ehAdmin())) return { erro: "Sessão expirada. Entre de novo no painel." };
+  const chave = (d.chave || "").trim();
+  const nome = (d.nome || "").trim();
+  const cidade = (d.cidade || "").trim();
+  if (chave && (/\s/.test(chave) || chave.length > 77)) return { erro: "A chave Pix não pode ter espaços e vai até 77 caracteres. Telefone: +55 e o número, sem espaços." };
+  if (chave && (!nome || !cidade)) return { erro: "Preencha também o nome e a cidade que aparecem no Pix." };
+  const sb = await supabaseServidor();
+  const { error } = await sb.from("config_agenda").update({ pix_chave: chave || null, pix_nome: nome || "Ritieli Hermes", pix_cidade: cidade || "Porto Alegre" }).eq("id", 1);
+  if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  revalidatePath("/painel/disponibilidade");
+  return { ok: chave ? "Chave Pix salva. A paciente já vê o código na área dela." : "Chave Pix removida. A paciente verá o aviso para pedir a chave." };
 }
