@@ -78,8 +78,8 @@ export default async function Sessoes({ searchParams }: { searchParams: Promise<
       <section className="card" style={{ marginTop: 20 }} aria-labelledby="sh-t">
         <div className="card-h">
           <h2 className="card-t" id="sh-t">Histórico</h2>
-          <div className="chips" role="group" aria-label="Filtrar histórico">
-            {FILTROS.map((f) => <Link key={f.id} className={f.id === filtro ? "chip on" : "chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }} href={`${ROTA}/sessoes?${varios ? `p=${p.id}&` : ""}f=${f.id}`}>{f.t}</Link>)}
+          <div className="pa-chips" role="group" aria-label="Filtrar histórico">
+            {FILTROS.map((f) => <Link key={f.id} className={f.id === filtro ? "pa-chip on" : "pa-chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }} href={`${ROTA}/sessoes?${varios ? `p=${p.id}&` : ""}f=${f.id}`}>{f.t}</Link>)}
           </div>
         </div>
         {historico.length ? (

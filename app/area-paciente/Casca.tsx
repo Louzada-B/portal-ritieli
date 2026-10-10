@@ -20,9 +20,9 @@ export default function Casca({ ctx, aba, children }: { ctx: Contexto; aba: Aba;
   const href = (caminho: string, id = ctx.atual.id) => `${ROTA}${caminho}${varios ? `?p=${id}` : ""}`;
   return (
     <div className="pac raiz">
-      <header className="topo">
-        <div className="topo-in">
-          <Link href={href("")} className="marca"><span className="ass">{contato.nome}</span><span className="sub">Área da(o) paciente</span></Link>
+      <header className="pa-topo">
+        <div className="pa-topo-in">
+          <Link href={href("")} className="pmarca"><span className="ass">{contato.nome}</span><span className="sub">Área da(o) paciente</span></Link>
           <nav className="abas" aria-label="Áreas">
             {ABAS.map((a) => <Link key={a.id} href={href(a.caminho)} className={a.id === aba ? "atual" : undefined} aria-current={a.id === aba ? "page" : undefined}>{a.texto}</Link>)}
           </nav>
@@ -36,12 +36,12 @@ export default function Casca({ ctx, aba, children }: { ctx: Contexto; aba: Aba;
 
       <div className="wrap">
         {varios ? (
-          <div className="chips" style={{ paddingTop: 20 }} role="group" aria-label="Acompanhamento de">
-            {ctx.pacientes.map((p) => <Link key={p.id} href={href(ABAS.find((a) => a.id === aba)!.caminho, p.id)} className={p.id === ctx.atual.id ? "chip on" : "chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>{primeiroNome(p.nome)}</Link>)}
+          <div className="pa-chips" style={{ paddingTop: 20 }} role="group" aria-label="Acompanhamento de">
+            {ctx.pacientes.map((p) => <Link key={p.id} href={href(ABAS.find((a) => a.id === aba)!.caminho, p.id)} className={p.id === ctx.atual.id ? "pa-chip on" : "pa-chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>{primeiroNome(p.nome)}</Link>)}
           </div>
         ) : null}
         {children}
-        <footer className="rodape">
+        <footer className="pa-rodape">
           <span>Precisa falar com a {primeiroNome(contato.nome)}? <a href={linkWhatsApp()} target="_blank" rel="noopener">WhatsApp</a> ou <a href={`mailto:${contato.email}`}>{contato.email}</a>.</span>
           <span>Este espaço não é canal de emergência. Em crise, ligue 188 (CVV) ou 192 (SAMU). · <Link href="/privacidade">Política de privacidade</Link></span>
         </footer>

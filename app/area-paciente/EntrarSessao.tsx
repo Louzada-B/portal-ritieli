@@ -21,7 +21,7 @@ export default function EntrarSessao({ meet, inicio }: { meet: string | null; in
       ) : (
         <button type="button" className="bt" disabled><Icone nome="video" tam={20} />Entrar na sessão</button>
       )}
-      {!livre ? <span className="dica">O botão libera 10 minutos antes do horário.</span> : null}
+      {!livre ? <span className="pa-dica">O botão libera 10 minutos antes do horário.</span> : null}
     </>
   );
 }
