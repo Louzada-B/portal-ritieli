@@ -2,10 +2,11 @@ import Casca from "./Casca";
 import EntrarSessao from "./EntrarSessao";
 import PedidoSessao from "./PedidoSessao";
 import PagamentoAberto from "./Pagamento";
+import RespostasPedido from "./RespostasPedido";
 import { CartaoInstalar } from "../componentes/Pwa";
 import { exigirAcesso } from "../lib/pacienteAuth";
 import { supabaseAdmin } from "../lib/supabase/admin";
-import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe, devidasDe, modalidadeDe } from "../lib/pacienteDados";
+import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe, devidasDe, modalidadeDe, respostasDosPedidos } from "../lib/pacienteDados";
 import { fmtDiaLongo, fmtHora, local } from "../lib/agenda";
 import { primeiroNome } from "../lib/formato";
 import { linkWhatsApp } from "../conteudo";
@@ -16,7 +17,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const ctx = await exigirAcesso((await searchParams).p);
   const p = ctx.atual;
   const sb = supabaseAdmin();
-  const [sessoes, pedidos, pix] = await Promise.all([sessoesDoPaciente(sb, p.id), pedidosDoPaciente(sb, p.id), configPix(sb)]);
+  const [sessoes, pedidos, pix, respostas] = await Promise.all([sessoesDoPaciente(sb, p.id), pedidosDoPaciente(sb, p.id), configPix(sb), respostasDosPedidos(sb, p.id)]);
   const agora = Date.now();
   const futuras = sessoes.filter((s) => s.status === "agendada" && new Date(s.inicio).getTime() >= agora - 3600000);
   const prox = futuras[0];
@@ -35,6 +36,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       </div>
 
       <CartaoInstalar variante="paciente" className="card pa-instalar" />
+
+      <RespostasPedido itens={respostas} />
 
       <div className="grade1">
         <section className="card prox" aria-labelledby="px-t">

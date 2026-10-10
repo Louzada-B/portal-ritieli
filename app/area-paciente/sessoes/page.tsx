@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Casca from "../Casca";
+import RespostasPedido from "../RespostasPedido";
 import PedidoSessao from "../PedidoSessao";
 import { exigirAcesso, ROTA } from "../../lib/pacienteAuth";
 import { supabaseAdmin } from "../../lib/supabase/admin";
-import { sessoesDoPaciente, pedidosDoPaciente, modalidadeDe } from "../../lib/pacienteDados";
+import { sessoesDoPaciente, pedidosDoPaciente, modalidadeDe, respostasDosPedidos } from "../../lib/pacienteDados";
 import { fmtDiaLongo, fmtHora, local } from "../../lib/agenda";
 import { fixoTexto } from "../../lib/formato";
 import { linkWhatsApp } from "../../conteudo";
@@ -23,7 +24,7 @@ export default async function Sessoes({ searchParams }: { searchParams: Promise<
   const ctx = await exigirAcesso(q.p);
   const p = ctx.atual;
   const sb = supabaseAdmin();
-  const [sessoes, pedidos] = await Promise.all([sessoesDoPaciente(sb, p.id), pedidosDoPaciente(sb, p.id)]);
+  const [sessoes, pedidos, respostas] = await Promise.all([sessoesDoPaciente(sb, p.id), pedidosDoPaciente(sb, p.id), respostasDosPedidos(sb, p.id)]);
   const agora = Date.now();
   const filtro = FILTROS.find((x) => x.id === q.f)?.id ?? "todas";
   const proximas = sessoes.filter((s) => s.status === "agendada" && new Date(s.inicio).getTime() >= agora - 3600000);
@@ -41,6 +42,8 @@ export default async function Sessoes({ searchParams }: { searchParams: Promise<
   return (
     <Casca ctx={ctx} aba="sessoes">
       <div className="pag-h"><h1>Suas <em>sessões.</em></h1><p>{p.fixo_dia != null ? `Horário combinado: ${fixoTexto(p.fixo_dia, p.fixo_hora)}.` : "Horário a combinar com a Ritieli."}</p></div>
+
+      <RespostasPedido itens={respostas} />
 
       <section className="card" aria-labelledby="sp-t">
         <h2 className="card-t" id="sp-t">Próximas</h2>

@@ -71,3 +71,31 @@ export function devidasDe(sessoes: Sessao[], padrao: number | null): Devida[] {
 
 // Modalidade de uma sessão: a marcada para ela, ou o padrão do paciente (adulta: online; criança: presencial).
 export const modalidadeDe = (s: Pick<Sessao, "modalidade">, tipo: "adulta" | "crianca"): "online" | "presencial" => s.modalidade ?? (tipo === "crianca" ? "presencial" : "online");
+
+// Respostas da Ritieli aos pedidos (últimos 7 dias): a paciente vê o resultado na própria área, além do e-mail.
+export type RespostaPedido = { id: string; tipo: "remarcar" | "cancelar"; resultado: "confirmado" | "recusado"; sessaoInicio: string; novoInicio: string | null };
+
+export async function respostasDosPedidos(sb: SupabaseClient, pacienteId: string): Promise<RespostaPedido[]> {
+  const desde = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data } = await sb
+    .from("pedidos_paciente")
+    .select("id, tipo, resultado, sessao_inicio, sessao_id, resolvido_em")
+    .eq("paciente_id", pacienteId)
+    .not("resultado", "is", null)
+    .gte("resolvido_em", desde)
+    .order("resolvido_em", { ascending: false });
+  const lista = data ?? [];
+  const ids = lista.filter((x) => x.tipo === "remarcar" && x.resultado === "confirmado" && x.sessao_id).map((x) => x.sessao_id as string);
+  const novos = new Map<string, string>();
+  if (ids.length) {
+    const { data: ses } = await sb.from("sessoes").select("id, inicio").in("id", ids);
+    for (const s of ses ?? []) novos.set(s.id as string, s.inicio as string);
+  }
+  return lista.map((x) => ({
+    id: x.id as string,
+    tipo: x.tipo as "remarcar" | "cancelar",
+    resultado: x.resultado as "confirmado" | "recusado",
+    sessaoInicio: x.sessao_inicio as string,
+    novoInicio: x.sessao_id ? novos.get(x.sessao_id as string) ?? null : null,
+  }));
+}
