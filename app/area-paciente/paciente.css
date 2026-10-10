@@ -210,3 +210,5 @@
 .pac .pix-qr{display:flex;flex-direction:column;gap:6px;align-items:center;max-width:200px;font-size:12px;color:#6B5A5E;text-align:center}
 .pac .pix-qr img{border-radius:12px;background:#FFFFFF;padding:6px}
 .pac .pix-cod{display:flex;flex-direction:column;gap:10px;flex:1 1 220px;min-width:0}
+.pac .pa-aguarda{font-size:13px;color:#6B5A5E}
+.pac .prox .pa-aguarda{color:#F6E5E7}
