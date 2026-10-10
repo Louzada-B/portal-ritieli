@@ -10,8 +10,8 @@ export default function PedidosPaciente({ itens }: { itens: PedidoLinha[] }) {
   const [pend, iniciar] = useTransition();
   return (
     <section className="card">
-      <h2 className="card-t">Pedidos das pacientes</h2>
-      <span style={{ fontSize: 13, color: "#8A7A7E" }}>Feitos na área da paciente. Combine com ela, ajuste em Sessões e marque como resolvido.</span>
+      <h2 className="card-t">Pedidos de pacientes</h2>
+      <span style={{ fontSize: 13, color: "#8A7A7E" }}>Feitos na área da(o) paciente. Combine com ela, ajuste em Sessões e marque como resolvido.</span>
       <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
         {itens.map((x) => (
           <li key={x.id} style={{ background: "#F8F3F0", borderRadius: 14, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>

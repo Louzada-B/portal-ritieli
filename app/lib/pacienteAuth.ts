@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "./supabase/admin";
 
-// Login da área da paciente. É separado do login do painel (não usa o Supabase Auth):
+// Login da área da(o) paciente. É separado do login do painel (não usa o Supabase Auth):
 // quem entra aqui nunca recebe uma sessão que valha no painel ou direto no banco.
 // Senhas e códigos de sessão ficam no banco só como hash. Tudo que a paciente vê é
 // buscado pelo servidor, sempre filtrado pelos pacientes que o login dela pode ver.

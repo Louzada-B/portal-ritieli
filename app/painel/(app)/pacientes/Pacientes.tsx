@@ -489,7 +489,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span className="rot">Área da paciente</span>
+        <span className="rot">Área da(o) paciente</span>
         {p.status !== "ativo" ? (
           <div className="resp"><span style={{ fontSize: 14, color: "#5A3A41" }}>O acesso fica desligado enquanto o acompanhamento está encerrado. Ao reativar, o login volta a funcionar.</span></div>
         ) : inf ? (

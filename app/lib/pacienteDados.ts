@@ -5,7 +5,7 @@ import { local } from "./agenda";
 import type { ConteudoTermo } from "./termoTexto";
 import { decifrarOuVazio } from "./cripto";
 
-// Dados que a área da paciente mostra. Tudo sai do servidor, sempre pelo id do paciente já liberado ao login.
+// Dados que a área da(o) paciente mostra. Tudo sai do servidor, sempre pelo id do paciente já liberado ao login.
 
 export type PedidoPac = { id: string; sessao_id: string | null; sessao_inicio: string; tipo: "remarcar" | "cancelar"; criado_em: string; resolvido_em: string | null };
 

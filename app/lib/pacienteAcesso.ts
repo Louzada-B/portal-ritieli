@@ -2,7 +2,7 @@ import "server-only";
 import { supabaseAdmin } from "./supabase/admin";
 import { ehAdmin } from "./sessao";
 
-// Lado do painel: quais acessos à área da paciente existem. Nunca devolve hashes.
+// Lado do painel: quais acessos à área da(o) paciente existem. Nunca devolve hashes.
 export type AcessoInfo = {
   id: string;
   email: string;

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./paciente.css";
 
 export const metadata: Metadata = {
-  title: "Área da paciente · Ritieli Hermes",
+  title: "Área da(o) paciente · Ritieli Hermes",
   robots: { index: false, follow: false },
 };
 

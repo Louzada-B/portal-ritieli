@@ -22,7 +22,7 @@ export default function Casca({ ctx, aba, children }: { ctx: Contexto; aba: Aba;
     <div className="pac raiz">
       <header className="topo">
         <div className="topo-in">
-          <Link href={href("")} className="marca"><span className="ass">{contato.nome}</span><span className="sub">Área da paciente</span></Link>
+          <Link href={href("")} className="marca"><span className="ass">{contato.nome}</span><span className="sub">Área da(o) paciente</span></Link>
           <nav className="abas" aria-label="Áreas">
             {ABAS.map((a) => <Link key={a.id} href={href(a.caminho)} className={a.id === aba ? "atual" : undefined} aria-current={a.id === aba ? "page" : undefined}>{a.texto}</Link>)}
           </nav>
