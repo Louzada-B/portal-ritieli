@@ -61,11 +61,12 @@ export const TAREFAS: Tarefa[] = [
     ],
   },
   {
-    id: "recibo", titulo: "Pedir e baixar recibo", resumo: "Recibos ficam em Pagamentos.", busca: "comprovante imposto reembolso plano",
+    id: "recibo", titulo: "Pedir o recibo", resumo: "O recibo é emitido pela Ritieli e enviado a você.", busca: "comprovante imposto reembolso plano",
     passos: [
       "Abra Pagamentos e procure a sessão paga.",
       "Se o recibo ainda não saiu, o status fica “Aguardando recibo”.",
       "Quando estiver pronto, aparecerá o botão para solicitar o recibo.",
+      "O recibo é emitido por ela no sistema da Receita Federal (Receita Saúde). Ele serve para o seu imposto de renda e para pedir reembolso ao plano.",
     ],
   },
   {
