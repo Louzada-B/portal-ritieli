@@ -216,3 +216,14 @@ export async function salvarContato(pacienteId: string, d: { whatsapp: string; c
   revalidatePath(ROTA, "layout");
   return { ok: "Dados atualizados." };
 }
+
+// Dispensa o aviso da resposta a um pedido (só os pedidos do paciente que está agindo).
+export async function dispensarResposta(pacienteId: string, ids: string[]): Promise<{ erro?: string }> {
+  const ctx = await acessoDaAcao(pacienteId);
+  if (!ctx || ctx.atual.id !== pacienteId) return { erro: "Sessão expirada. Entre de novo." };
+  if (!ids.length || ids.length > 50) return {};
+  const { error } = await supabaseAdmin().from("pedidos_paciente").update({ resposta_vista_em: new Date().toISOString() }).in("id", ids).eq("paciente_id", pacienteId).not("resultado", "is", null);
+  if (error) return { erro: "Não deu para fechar. Tente de novo." };
+  revalidatePath(ROTA, "layout");
+  return {};
+}

@@ -82,6 +82,7 @@ export async function respostasDosPedidos(sb: SupabaseClient, pacienteId: string
     .select("id, tipo, resultado, sessao_inicio, sessao_id, resolvido_em")
     .eq("paciente_id", pacienteId)
     .not("resultado", "is", null)
+    .is("resposta_vista_em", null)
     .gte("resolvido_em", desde)
     .order("resolvido_em", { ascending: false });
   const lista = data ?? [];

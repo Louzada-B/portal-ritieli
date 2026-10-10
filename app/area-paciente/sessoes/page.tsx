@@ -43,7 +43,7 @@ export default async function Sessoes({ searchParams }: { searchParams: Promise<
     <Casca ctx={ctx} aba="sessoes">
       <div className="pag-h"><h1>Suas <em>sessões.</em></h1><p>{p.fixo_dia != null ? `Horário combinado: ${fixoTexto(p.fixo_dia, p.fixo_hora)}.` : "Horário a combinar com a Ritieli."}</p></div>
 
-      <RespostasPedido itens={respostas} />
+      <RespostasPedido pacienteId={p.id} itens={respostas} />
 
       <section className="card" aria-labelledby="sp-t">
         <h2 className="card-t" id="sp-t">Próximas</h2>

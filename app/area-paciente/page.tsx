@@ -43,7 +43,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
 
       <CartaoInstalar variante="paciente" className="card pa-instalar" />
 
-      <RespostasPedido itens={respostas} />
+      <RespostasPedido pacienteId={p.id} itens={respostas} />
 
       <div className="grade1">
         <section className="card prox" aria-labelledby="px-t">
