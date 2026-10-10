@@ -2,6 +2,7 @@ import Casca from "./Casca";
 import EntrarSessao from "./EntrarSessao";
 import PedidoSessao from "./PedidoSessao";
 import PagamentoAberto from "./Pagamento";
+import { CartaoInstalar } from "../componentes/Pwa";
 import { exigirAcesso } from "../lib/pacienteAuth";
 import { supabaseAdmin } from "../lib/supabase/admin";
 import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe } from "../lib/pacienteDados";
@@ -32,6 +33,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         <div><h1>Olá, <em>{primeiroNome(ctx.acesso.nome)}.</em></h1><p>{presencial ? `Acompanhamento de ${primeiroNome(p.nome)}.` : "Que bom ter você aqui."}</p></div>
         {devendo.length ? <span className="pill p-av">{devendo.length} pagamento{devendo.length > 1 ? "s" : ""} em aberto</span> : null}
       </div>
+
+      <CartaoInstalar variante="paciente" className="card pa-instalar" />
 
       <div className="grade1">
         <section className="card prox" aria-labelledby="px-t">

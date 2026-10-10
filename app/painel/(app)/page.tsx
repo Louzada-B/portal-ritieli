@@ -6,6 +6,7 @@ import { horariosLivres, fmtHora, fmtDiaLongo, fmtQuando, local } from "../../li
 import { TopoCelular } from "../componentes/Navegacao";
 import Icone from "../componentes/Icone";
 import { cadastrosDe } from "../../lib/cadastro";
+import { CartaoInstalar } from "../../componentes/Pwa";
 import PedidosPaciente, { type PedidoLinha } from "../componentes/PedidosPaciente";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
       <header className="topo"><div><h1>Olá, <em>Ritieli.</em></h1><div className="data">{fmtDiaLongo(agora)}</div></div></header>
       <TopoCelular titulo="Olá, Ritieli" sub={titulo} pedidos={aguardando.length} />
       <main className="conteudo">
+        <CartaoInstalar variante="painel" className="card pa-instalar" />
         {senha === "ok" ? <div className="aviso ok">Senha nova salva.</div> : null}
         {aguardando.length ? (
           <div className="alerta">

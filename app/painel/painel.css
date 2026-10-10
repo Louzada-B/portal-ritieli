@@ -521,3 +521,4 @@
 .painel .faixa b{font-size:16px;color:#7A2335}
 .painel .faixa span.d{font-size:14px;color:#5A3A41}
 @media (max-width:760px){.painel .cad-g{grid-template-columns:1fr}}
+.painel .pa-instalar{margin-bottom:0}
