@@ -71,6 +71,18 @@ export default function Prontuario(props: Props) {
   const [corr, setCorr] = useState<{ id: string; texto: string } | null>(null);
   const [troca, setTroca] = useState<{ atual: string; nova: string; nova2: string } | null>(null);
   const registrou = useRef(false);
+  // Recados dos exercícios decifrados, só para a versão impressa (os exercícios também entram no PDF).
+  const [recadosPdf, setRecadosPdf] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!aberto || !props.parRecados) return;
+    let vivo = true;
+    (async () => {
+      const r: Record<string, string> = {};
+      for (const x of props.exercicios) if (x.recadoE2E) r[x.id] = (await cofre.decifrarRecado(props.parRecados!.privCripto, x.recadoE2E)) ?? "";
+      if (vivo) setRecadosPdf(r);
+    })();
+    return () => { vivo = false; };
+  }, [aberto, props.exercicios, props.parRecados]);
 
   useEffect(() => cofre.aoMudar(setAberto), []);
   useEffect(() => {
@@ -427,6 +439,16 @@ export default function Prontuario(props: Props) {
           ))}
           <h2>Encerramento</h2>
           <p>{enc ? `${enc.motivo}: ${enc.sintese}` : "Acompanhamento em andamento."}</p>
+          <h2>Exercícios</h2>
+          {props.exercicios.length ? props.exercicios.map((x) => (
+            <div key={x.id} style={{ marginBottom: 12 }}>
+              <p><b>{x.titulo}</b> · {x.concluidoEm ? `feito em ${new Date(x.concluidoEm).toLocaleDateString("pt-BR")}` : x.prazo ? `prazo ${x.prazo.split("-").reverse().join("/")}` : "em andamento"} · combinado em {new Date(x.criadoEm).toLocaleDateString("pt-BR")}</p>
+              <p style={{ whiteSpace: "pre-wrap" }}>{x.instrucoes}</p>
+              {x.link ? <p>Link: {x.link}</p> : null}
+              {x.anexos.length ? <p>Anexos: {x.anexos.map((a) => a.nome).join(", ")}</p> : null}
+              {x.recadoE2E ? <p style={{ whiteSpace: "pre-wrap" }}><i>Recado da paciente:</i> {recadosPdf[x.id] || "—"}</p> : null}
+            </div>
+          )) : <p>Nenhum.</p>}
           <h2>Anexos</h2>
           {anexos.length ? anexos.map((a) => <p key={a.id}>{a.nome} · {a.quando}</p>) : <p>Nenhum.</p>}
         </div>
