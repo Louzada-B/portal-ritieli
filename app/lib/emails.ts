@@ -186,6 +186,29 @@ export function emailSenhaProvisoria(d: { para: string; nome: string; senha: str
   );
 }
 
+// Resposta da Ritieli a um pedido feito na área da(o) paciente (sem dado clínico).
+export function emailPedidoRespondido(d: { para: string; nome: string; tipo: "remarcar" | "cancelar"; resultado: "confirmado" | "recusado"; sessao: string; novoHorario?: string }) {
+  const remarcar = d.tipo === "remarcar";
+  const assunto = d.resultado === "recusado" ? "Sobre o seu pedido" : remarcar ? "Remarcação confirmada" : "Cancelamento confirmado";
+  const texto =
+    d.resultado === "recusado"
+      ? `A ${esc(contato.nome)} viu o seu pedido ${remarcar ? "de remarcação" : "de cancelamento"} da sessão de <b>${esc(d.sessao)}</b> e não conseguiu atendê-lo. A sessão continua como estava. Se quiser, combine outra opção pelo WhatsApp.`
+      : remarcar
+        ? `A sua sessão de <b>${esc(d.sessao)}</b> foi remarcada para <b>${esc(d.novoHorario || "")}</b>.`
+        : `O cancelamento da sessão de <b>${esc(d.sessao)}</b> foi confirmado.`;
+  return paraPessoa(
+    d.para,
+    assunto,
+    moldura({
+      etiqueta: "Área da(o) paciente",
+      titulo: `Olá, ${primeiroNome(d.nome)}!`,
+      paragrafos: [texto, `Você pode ver tudo na sua área.`],
+      botao: { texto: "Abrir a área da(o) paciente", url: `${siteUrl}/area-paciente/entrar` },
+      rodape: RODAPE_PACIENTE,
+    }),
+  );
+}
+
 // ---------- para a Ritieli (sem dado clínico) ----------
 
 export function emailParaRitieli(d: { assunto: string; titulo: string; nome: string; texto: string; caminho: string }) {

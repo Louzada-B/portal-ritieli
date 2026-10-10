@@ -105,15 +105,35 @@ export async function criarPaciente(d: DadosNovo): Promise<Resultado> {
 
   const { data: pac, error } = await sb.from("pacientes").insert({ ...base, idade }).select("id").single();
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
-  const { data: resp, error: e2 } = await sb
-    .from("responsaveis")
-    .insert({ nome: d.rNome.trim(), whatsapp: rWa, email: d.rEmail.trim().toLowerCase() || null, cpf_cripto: rCpf ? cifrar(rCpf) : null, cpf_final: rCpf ? rCpf.slice(-2) : null })
-    .select("id")
-    .single();
-  if (e2) return { erro: "O paciente foi salvo, mas o responsável não. Adicione na ficha." , id: pac.id };
+  const resp = await acharOuCriarResponsavel(sb, { nome: d.rNome, whatsapp: rWa, email: d.rEmail, cpf: rCpf });
+  if (!resp) return { erro: "O paciente foi salvo, mas o responsável não. Adicione na ficha." , id: pac.id };
   await sb.from("paciente_responsaveis").insert({ paciente_id: pac.id, responsavel_id: resp.id, parentesco: d.rParentesco.trim() || null, financeiro: true, legal: true, ordem: 1 });
   revalidatePath("/painel/pacientes");
   return { ok: `Paciente salvo.${await salaInicial(sb, pac.id)}`, id: pac.id };
+}
+
+// Reaproveita o responsável que já existe (mesmo nome e e-mail), para um pai com vários filhos ter um só cadastro e um só login.
+async function acharOuCriarResponsavel(sb: Awaited<ReturnType<typeof supabaseServidor>>, d: { nome: string; whatsapp: string | null; email: string; cpf: string }): Promise<{ id: string; existente: boolean } | null> {
+  const email = d.email.trim().toLowerCase();
+  const nome = d.nome.trim();
+  if (email) {
+    const { data: ach } = await sb.from("responsaveis").select("id, nome, whatsapp, cpf_cripto").eq("email", email);
+    const igual = (ach ?? []).find((x) => String(x.nome).trim().toLowerCase() === nome.toLowerCase());
+    if (igual) {
+      const complemento: Record<string, string | null> = {};
+      if (!igual.whatsapp && d.whatsapp) complemento.whatsapp = d.whatsapp;
+      if (!igual.cpf_cripto && d.cpf) { complemento.cpf_cripto = cifrar(d.cpf); complemento.cpf_final = d.cpf.slice(-2); }
+      if (Object.keys(complemento).length) await sb.from("responsaveis").update(complemento).eq("id", igual.id);
+      return { id: igual.id as string, existente: true };
+    }
+  }
+  const { data: novo, error } = await sb
+    .from("responsaveis")
+    .insert({ nome, whatsapp: d.whatsapp, email: email || null, cpf_cripto: d.cpf ? cifrar(d.cpf) : null, cpf_final: d.cpf ? d.cpf.slice(-2) : null })
+    .select("id")
+    .single();
+  if (error || !novo) return null;
+  return { id: novo.id as string, existente: false };
 }
 
 export async function atualizarPaciente(id: string, d: { nome: string; idade: string; whatsapp: string; email: string; valor: string; tipoValor: "normal" | "social"; fixoDia: string; fixoHora: string; desde: string; fim: string; lembretes: boolean }): Promise<Resultado> {
@@ -227,16 +247,17 @@ export async function adicionarResponsavel(pacienteId: string, d: { nome: string
   if (d.cpf.trim() && !cpfValido(d.cpf)) return { erro: "CPF inválido." };
   const c = soDigitos(d.cpf);
   const sb = await supabaseServidor();
-  const { data: r, error } = await sb
-    .from("responsaveis")
-    .insert({ nome: d.nome.trim(), whatsapp: wa, email: d.email.trim().toLowerCase() || null, cpf_cripto: c ? cifrar(c) : null, cpf_final: c ? c.slice(-2) : null })
-    .select("id")
-    .single();
-  if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  const r = await acharOuCriarResponsavel(sb, { nome: d.nome, whatsapp: wa, email: d.email, cpf: c });
+  if (!r) return { erro: "Não deu para salvar. Tente de novo." };
+  const { data: jaLigado } = await sb.from("paciente_responsaveis").select("responsavel_id").eq("paciente_id", pacienteId).eq("responsavel_id", r.id).maybeSingle();
+  if (jaLigado) return { erro: "Esse responsável já está ligado a este paciente." };
   const { count } = await sb.from("paciente_responsaveis").select("responsavel_id", { count: "exact", head: true }).eq("paciente_id", pacienteId);
-  await sb.from("paciente_responsaveis").insert({ paciente_id: pacienteId, responsavel_id: r.id, parentesco: d.parentesco.trim() || null, financeiro: d.financeiro, legal: true, ordem: (count ?? 0) + 1 });
+  // Só um responsável financeiro por paciente: se este for o financeiro, o anterior deixa de ser.
+  if (d.financeiro) await sb.from("paciente_responsaveis").update({ financeiro: false }).eq("paciente_id", pacienteId);
+  const { error: eLig } = await sb.from("paciente_responsaveis").insert({ paciente_id: pacienteId, responsavel_id: r.id, parentesco: d.parentesco.trim() || null, financeiro: d.financeiro, legal: true, ordem: (count ?? 0) + 1 });
+  if (eLig) return { erro: "Não deu para ligar o responsável. Tente de novo." };
   revalidatePath("/painel/pacientes");
-  return { ok: "Responsável adicionado." };
+  return { ok: r.existente ? "Responsável já cadastrado: ligado também a este paciente (o mesmo login serve para os dois)." : "Responsável adicionado." };
 }
 
 const DURACAO = 50;
@@ -512,4 +533,30 @@ export async function salvarPessoais(id: string, d: { nascimento: string; eNome:
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
   revalidatePath("/painel/pacientes");
   return { ok: "Dados da ficha salvos." };
+}
+
+// Troca quem é o responsável financeiro do paciente (só um por vez).
+export async function definirFinanceiro(pacienteId: string, responsavelId: string): Promise<Resultado> {
+  const sb = await supabaseServidor();
+  const { data: lig } = await sb.from("paciente_responsaveis").select("responsavel_id").eq("paciente_id", pacienteId).eq("responsavel_id", responsavelId).maybeSingle();
+  if (!lig) return { erro: "Esse responsável não está ligado a este paciente." };
+  const { error: e1 } = await sb.from("paciente_responsaveis").update({ financeiro: false }).eq("paciente_id", pacienteId);
+  if (e1) return { erro: "Não deu para salvar. Tente de novo." };
+  const { error: e2 } = await sb.from("paciente_responsaveis").update({ financeiro: true }).eq("paciente_id", pacienteId).eq("responsavel_id", responsavelId);
+  if (e2) return { erro: "Não deu para salvar. Tente de novo." };
+  revalidatePath("/painel/pacientes");
+  return { ok: "Responsável financeiro atualizado." };
+}
+
+// Libera (ou tira a liberação de) uma sessão em aberto para a paciente pagar separado, na área dela.
+export async function liberarPagamento(sessaoId: string, liberar: boolean): Promise<Resultado> {
+  const sb = await supabaseServidor();
+  const { data: s } = await sb.from("sessoes").select("id, status, pago_em").eq("id", sessaoId).maybeSingle();
+  if (!s) return { erro: "Sessão não encontrada." };
+  if (s.pago_em) return { erro: "Essa sessão já está paga." };
+  if (s.status !== "realizada" && s.status !== "falta") return { erro: "Só sessões realizadas ou com falta entram no pagamento." };
+  const { error } = await sb.from("sessoes").update({ pagamento_avulso: liberar }).eq("id", sessaoId);
+  if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  revalidatePath("/painel/pacientes");
+  return { ok: liberar ? "Sessão liberada: a paciente pode pagá-la separado." : "Liberação retirada: volta a entrar só no total." };
 }

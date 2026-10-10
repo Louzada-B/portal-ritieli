@@ -12,7 +12,12 @@ export default function PedidoSessao({ pacienteId, sessaoId, pedido, menos24h, w
   const [aviso, setAviso] = useState<{ t: string; erro?: boolean } | null>(null);
   const [pend, iniciar] = useTransition();
 
-  if (pedido) return <span className="pill p-av">{pedido === "remarcar" ? "Remarcação pedida" : "Cancelamento pedido"}</span>;
+  if (pedido) return (
+    <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <span className="pill p-av">{pedido === "remarcar" ? "Remarcação pedida" : "Cancelamento pedido"}</span>
+      <span style={{ fontSize: 13, color: "#6B5A5E" }}>Aguardando a confirmação da Ritieli.</span>
+    </span>
+  );
   if (menos24h) return <a className="bt3" href={whatsapp} target="_blank" rel="noopener">Menos de 24 h: avisar pelo WhatsApp</a>;
 
   const enviar = () => iniciar(async () => {

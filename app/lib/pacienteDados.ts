@@ -15,7 +15,7 @@ export async function sessoesDoPaciente(sb: SupabaseClient, pacienteId: string):
   for (let i = 0; i < 3; i++) await gerarSessoesDoMes(sb, l.ano + Math.floor((l.mes + i) / 12), (l.mes + i) % 12);
   const { data } = await sb
     .from("sessoes")
-    .select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, origem, remarcada_de")
+    .select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, origem, remarcada_de, pagamento_avulso")
     .eq("paciente_id", pacienteId)
     .order("inicio");
   return (data ?? []) as Sessao[];
@@ -57,3 +57,14 @@ export async function termoAceito(sb: SupabaseClient, pacienteId: string): Promi
 
 // Valor de uma sessão: o dela, ou o combinado com o paciente.
 export const valorDe = (s: Pick<Sessao, "valor_centavos">, padrao: number | null) => s.valor_centavos ?? padrao ?? 0;
+
+// Sessões em aberto (realizadas ou com falta e ainda não pagas), com a marca de "liberada para pagar separado".
+export type Devida = { id: string; quando: string; centavos: number; liberada: boolean };
+export function devidasDe(sessoes: Sessao[], padrao: number | null): Devida[] {
+  return sessoes
+    .filter((s) => (s.status === "realizada" || s.status === "falta") && !s.pago_em)
+    .map((s) => {
+      const l = local(new Date(s.inicio));
+      return { id: s.id, quando: `${String(l.dia).padStart(2, "0")}/${String(l.mes + 1).padStart(2, "0")}`, centavos: valorDe(s, padrao), liberada: !!s.pagamento_avulso };
+    });
+}

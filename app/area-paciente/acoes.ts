@@ -22,7 +22,7 @@ import {
 } from "../lib/pacienteAuth";
 import { emailSenhaProvisoria, emailParaRitieli, primeiroNome } from "../lib/emails";
 import { cifrarOuNulo } from "../lib/cripto";
-import { normalizarFone } from "../lib/formato";
+import { normalizarFone, fone as foneFmt } from "../lib/formato";
 import { fmtQuando } from "../lib/agenda";
 
 export type EstadoForm = { erro?: string; ok?: string };
@@ -192,14 +192,22 @@ export async function pedirSessao(pacienteId: string, sessaoId: string, tipo: "r
 // ---------- meus dados ----------
 // Só telefone, cidade e contato de emergência. O resto do cadastro muda com a Ritieli.
 
-export async function salvarContato(pacienteId: string, d: { whatsapp: string; cidade: string; emergencia: string }): Promise<EstadoForm> {
+export async function salvarContato(pacienteId: string, d: { whatsapp: string; cidade: string; eNome: string; eTelefone: string }): Promise<EstadoForm> {
   const ctx = await acessoDaAcao(pacienteId);
   if (!ctx || ctx.atual.id !== pacienteId) return { erro: "Sua sessão terminou. Entre de novo." };
   const tel = String(d.whatsapp || "").trim();
   const fone = tel ? normalizarFone(tel) : null;
   if (tel && !fone) return { erro: "Confira o telefone: DDD e número." };
   const cidade = String(d.cidade || "").trim().slice(0, 80);
-  const emergencia = String(d.emergencia || "").trim().slice(0, 200);
+  // Mesmo formato do painel: "Nome e parentesco · telefone".
+  const eNome = String(d.eNome || "").trim().replace(/\s*·\s*/g, " ").slice(0, 120);
+  const eTel = String(d.eTelefone || "").trim();
+  let emergencia = "";
+  if (eNome || eTel) {
+    const eFone = normalizarFone(eTel);
+    if (eNome.length < 2 || !eFone) return { erro: "No contato de emergência, preencha o nome e um telefone com DDD." };
+    emergencia = `${eNome} · ${foneFmt(eFone)}`;
+  }
   const { error } = await supabaseAdmin()
     .from("pacientes")
     .update({ ...(fone ? { whatsapp: fone } : {}), cidade: cidade || null, emergencia_cripto: cifrarOuNulo(emergencia) })

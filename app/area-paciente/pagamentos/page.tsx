@@ -2,7 +2,7 @@ import Casca from "../Casca";
 import PagamentoAberto from "../Pagamento";
 import { exigirAcesso } from "../../lib/pacienteAuth";
 import { supabaseAdmin } from "../../lib/supabase/admin";
-import { sessoesDoPaciente, configPix, valorDe } from "../../lib/pacienteDados";
+import { sessoesDoPaciente, configPix, valorDe, devidasDe } from "../../lib/pacienteDados";
 import { fmtDiaCurto, local } from "../../lib/agenda";
 import { reais } from "../../lib/formato";
 import { linkWhatsApp } from "../../conteudo";
@@ -19,11 +19,10 @@ export default async function Pagamentos({ searchParams }: { searchParams: Promi
   const p = ctx.atual;
   const sb = supabaseAdmin();
   const [sessoes, pix] = await Promise.all([sessoesDoPaciente(sb, p.id), configPix(sb)]);
-  const ano = local(new Date()).ano;
   const devendo = sessoes.filter((s) => (s.status === "realizada" || s.status === "falta") && !s.pago_em);
   const total = devendo.reduce((a, s) => a + valorDe(s, p.valor_centavos), 0);
   const pagas = sessoes.filter((s) => s.pago_em && s.status !== "cancelada").sort((a, b) => b.inicio.localeCompare(a.inicio));
-  const pagoAno = pagas.filter((s) => local(new Date(s.inicio)).ano === ano).reduce((a, s) => a + valorDe(s, p.valor_centavos), 0);
+  const recibos = pagas.filter((s) => !!s.recibo_em).length;
 
   return (
     <Casca ctx={ctx} aba="pagamentos">
@@ -31,24 +30,29 @@ export default async function Pagamentos({ searchParams }: { searchParams: Promi
 
       <div className="resumos">
         <div className="resumo"><span className="s">Em aberto</span><b>{reais(total) || "R$ 0"}</b></div>
-        <div className="resumo"><span className="s">Pago em {ano}</span><b>{reais(pagoAno) || "R$ 0"}</b></div>
+        <div className="resumo"><span className="s">Recibos disponíveis</span><b>{recibos}</b></div>
         <div className="resumo"><span className="s">Valor da sessão</span><b>{reais(p.valor_centavos) || "A combinar"}</b></div>
       </div>
 
-      {devendo.length ? <div style={{ marginTop: 20 }}><PagamentoAberto qtd={devendo.length} centavos={total} pix={pix} /></div> : null}
+      {devendo.length ? <div style={{ marginTop: 20 }}><PagamentoAberto devidas={devidasDe(sessoes, p.valor_centavos)} pix={pix} /></div> : null}
 
       <section className="card" style={{ marginTop: 20 }} aria-labelledby="ph-t">
         <h2 className="card-t" id="ph-t">Histórico</h2>
         {pagas.length ? (
           <div className="tab" role="table">
-            <div className="tr th" role="row"><span>Sessão</span><span>Valor</span><span>Pago em</span><span className="c-forma">Forma</span><span>Recibo</span></div>
+            <div className="tr th" role="row"><span>Sessão</span><span>Valor</span><span>Confirmado em</span><span className="c-forma">Forma</span><span>Recibo</span></div>
             {pagas.slice(0, 60).map((s) => (
               <div className="tr" role="row" key={s.id}>
                 <span>{fmtDiaCurto(new Date(s.inicio))}</span>
                 <span>{reais(valorDe(s, p.valor_centavos))}</span>
                 <span>{dm(s.pago_em!)}</span>
                 <span className="c-forma">Pix</span>
-                <span>{s.recibo_em ? <span className="pill p-ok">Enviado em {dm(s.recibo_em)}</span> : <a href={linkWhatsApp(`Olá, Ritieli! Pode me enviar o recibo da sessão de ${fmtDiaCurto(new Date(s.inicio))}?`)} target="_blank" rel="noopener">Pedir recibo</a>}</span>
+                <span>{s.recibo_em ? (
+                  <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <span className="pill p-ok">Recibo emitido</span>
+                    <a href={linkWhatsApp(`Olá, Ritieli! Pode me enviar o recibo da sessão de ${fmtDiaCurto(new Date(s.inicio))}?`)} target="_blank" rel="noopener">Solicitar recibo</a>
+                  </span>
+                ) : <span className="pill p-av">Aguardando recibo</span>}</span>
               </div>
             ))}
           </div>

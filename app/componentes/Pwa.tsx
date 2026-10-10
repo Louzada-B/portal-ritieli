@@ -35,6 +35,9 @@ export function CartaoInstalar({ variante, className }: { variante: Variante; cl
   const [oculto, setOculto] = useState(true);
 
   useEffect(() => {
+    // Só em aparelho de toque (celular ou tablet): no computador o convite não faz sentido.
+    const toque = window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0;
+    if (!toque) return;
     const instalado = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const ate = Number(guardado(chave) || 0);
     if (instalado || ate > Date.now()) return;

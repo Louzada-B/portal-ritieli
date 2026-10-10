@@ -200,3 +200,13 @@
 .pac .termo-ver p{margin:0 0 8px;font-size:14px;line-height:1.6;color:#3A1F25}
 .pac .regras .card-t{font-size:18px}
 .pac .pa-instalar{margin-bottom:20px;border:1px solid #F2C9D1}
+.pac .pa-bt-p{align-self:flex-start;width:auto;padding:9px 20px;min-height:40px;font-size:14px}
+.pac .pa-modo{display:flex;gap:8px;flex-wrap:wrap}
+.pac .pa-sel{display:flex;flex-direction:column;gap:8px;background:#F8F3F0;border-radius:14px;padding:12px 14px}
+.pac .pa-opc{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}
+.pac .pa-opc b{margin-left:auto}
+.pac .pa-opc input{width:18px;height:18px;accent-color:#7A2335}
+.pac .pix-corpo{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.pac .pix-qr{display:flex;flex-direction:column;gap:6px;align-items:center;max-width:200px;font-size:12px;color:#6B5A5E;text-align:center}
+.pac .pix-qr img{border-radius:12px;background:#FFFFFF;padding:6px}
+.pac .pix-cod{display:flex;flex-direction:column;gap:10px;flex:1 1 220px;min-width:0}

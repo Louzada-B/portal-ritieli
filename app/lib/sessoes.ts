@@ -13,6 +13,7 @@ export type Sessao = {
   recibo_em: string | null;
   origem: "fixo" | "manual";
   remarcada_de: string | null;
+  pagamento_avulso?: boolean;
 };
 
 // Cria as sessões "agendadas" do mês a partir do horário fixo de cada paciente ativo.

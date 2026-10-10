@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
-import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, verPessoais, salvarPessoais, salvarCpf, adicionarResponsavel, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, type DadosNovo } from "./acoes";
+import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, verPessoais, salvarPessoais, salvarCpf, adicionarResponsavel, definirFinanceiro, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, liberarPagamento, type DadosNovo } from "./acoes";
 import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
 import type { AcessoInfo } from "../../../lib/pacienteAcesso";
 
@@ -26,7 +26,7 @@ type Detalhe = {
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
   temProntuario?: boolean;
   guarda?: { motivo: "encerrar" | "prazo"; ate: string | null } | null;
-  sessoes?: { resumo: ResumoSessoes; ultimas: LinhaSessao[]; proximas: LinhaSessao[] };
+  sessoes?: { abertas: { id: string; quando: string; valor: number | null; liberada: boolean }[]; resumo: ResumoSessoes; ultimas: LinhaSessao[]; proximas: LinhaSessao[] };
 } | null;
 type PedidoBase = { id: string; nome: string; whatsapp: string; email: string; para_quem: "mim" | "filho"; idade_crianca: number | null } | null;
 
@@ -235,6 +235,20 @@ function BlocoSessoes({ id, nome, s }: { id: string; nome: string; s: NonNullabl
         {lista("Próximas", s.proximas)}
         {lista("Últimas", s.ultimas)}
       </div>
+      {s.abertas.length ? (
+        <div className="resp" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#5A3A41" }}>Pagamento por sessão</span>
+          <span style={{ fontSize: 13, color: "#6B5A5E" }}>Por padrão a paciente paga tudo o que está em aberto num Pix só. Libere uma sessão para ela poder pagá-la separado.</span>
+          {s.abertas.map((a) => (
+            <div key={a.id} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 14 }}>
+              <b style={{ minWidth: 118 }}>{a.quando}</b>
+              <span>{reais(a.valor) || "sem valor"}</span>
+              {a.liberada ? <span className="pill p-ok">Liberada para pagar separado</span> : null}
+              <button type="button" className="mini2" disabled={pend} onClick={() => iniciar(async () => { const res = await liberarPagamento(a.id, !a.liberada); setAviso(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); if (res.ok) router.refresh(); })}>{a.liberada ? "Tirar liberação" : "Liberar pagar separado"}</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {aviso ? <div className={aviso.erro ? "aviso erro" : "aviso ok"} role="status">{aviso.t}</div> : null}
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
         <Link href={`/painel/sessoes?busca=${encodeURIComponent(nome)}`} style={{ fontSize: 13, fontWeight: 700 }}>Ver todas em Sessões →</Link>
@@ -437,7 +451,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
                 <span><Icone nome="escudo" tam={14} />CPF {r.cpfFinal ? cpfs[r.id] || cpfMascarado(r.cpfFinal) : "não informado"}</span>
               </span>
               <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {r.financeiro ? <span style={{ fontSize: 13, color: "#2F6A45", fontWeight: 600 }}>Responsável financeiro · recibos no nome dele(a)</span> : null}
+                {r.financeiro ? <span style={{ fontSize: 13, color: "#2F6A45", fontWeight: 600 }}>Responsável financeiro · recibos no nome dele(a)</span> : det.responsaveis.length > 1 ? <button type="button" className="mini2" disabled={pend} onClick={() => iniciar(async () => av(await definirFinanceiro(p.id, r.id)))}>Tornar financeiro</button> : null}
                 {r.cpfFinal ? <button type="button" className="mini2" onClick={() => mostrarCpf(r.id, "responsavel")}>{cpfs[r.id] ? "Esconder CPF" : "Ver CPF"}</button> : null}
               </span>
             </div>
@@ -454,7 +468,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
               </div>
               <div className="fc-g">
                 <div className="fc"><label htmlFor="nr-cpf">CPF (opcional)</label><input id="nr-cpf" inputMode="numeric" value={novoResp.cpf} onChange={(x) => setNovoResp({ ...novoResp, cpf: x.target.value })} /></div>
-                <label className="chk" style={{ alignSelf: "end" }}><input type="checkbox" checked={novoResp.financeiro} onChange={() => setNovoResp({ ...novoResp, financeiro: !novoResp.financeiro })} /><span>Responsável financeiro</span></label>
+                <label className="chk" style={{ alignSelf: "end" }}><input type="checkbox" checked={novoResp.financeiro} onChange={() => setNovoResp({ ...novoResp, financeiro: !novoResp.financeiro })} /><span>Responsável financeiro{det.responsaveis.some((x) => x.financeiro) ? " (troca o atual)" : ""}</span></label>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" className="bt" style={{ width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await adicionarResponsavel(p.id, novoResp); av(r); if (r.ok) setNovoResp(null); })}>Adicionar</button>

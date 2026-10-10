@@ -5,14 +5,17 @@ import { salvarContato, trocarSenha, type EstadoForm } from "./acoes";
 import { fone } from "../lib/formato";
 
 export function FormContato({ pacienteId, whatsapp, cidade, emergencia }: { pacienteId: string; whatsapp: string; cidade: string; emergencia: string }) {
-  const [v, setV] = useState({ whatsapp: fone(whatsapp), cidade, emergencia });
+  // O contato de emergência é guardado como "Nome e parentesco · telefone": aqui vira dois campos, como na ficha do painel.
+  const i = emergencia.lastIndexOf(" · ");
+  const [v, setV] = useState({ whatsapp: fone(whatsapp), cidade, eNome: i >= 0 ? emergencia.slice(0, i) : emergencia, eTelefone: i >= 0 ? emergencia.slice(i + 3) : "" });
   const [r, setR] = useState<EstadoForm | null>(null);
   const [pend, iniciar] = useTransition();
   return (
     <form onSubmit={(e) => { e.preventDefault(); iniciar(async () => setR(await salvarContato(pacienteId, v))); }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="fc"><label htmlFor="c-tel">Telefone</label><input id="c-tel" type="tel" autoComplete="tel" value={v.whatsapp} onChange={(e) => setV({ ...v, whatsapp: fone(e.target.value) })} /></div>
       <div className="fc"><label htmlFor="c-cid">Cidade</label><input id="c-cid" value={v.cidade} maxLength={80} onChange={(e) => setV({ ...v, cidade: e.target.value })} /></div>
-      <div className="fc"><label htmlFor="c-em">Contato de emergência</label><input id="c-em" placeholder="Nome e telefone" value={v.emergencia} maxLength={200} onChange={(e) => setV({ ...v, emergencia: e.target.value })} /></div>
+      <div className="fc"><label htmlFor="c-en">Contato de emergência: nome e parentesco</label><input id="c-en" placeholder="Ex.: Maria, mãe" value={v.eNome} maxLength={120} onChange={(e) => setV({ ...v, eNome: e.target.value })} /></div>
+      <div className="fc"><label htmlFor="c-et">Contato de emergência: telefone</label><input id="c-et" type="tel" placeholder="(51) 99999-9999" value={v.eTelefone} onChange={(e) => setV({ ...v, eTelefone: fone(e.target.value) })} /></div>
       {r ? <div className="aviso" role="status" style={r.erro ? { borderColor: "#E9B4AE", color: "#A3322A" } : undefined}>{r.erro || r.ok}</div> : null}
       <button type="submit" className="bt" style={{ alignSelf: "flex-start" }} disabled={pend}>{pend ? "Salvando…" : "Salvar"}</button>
     </form>

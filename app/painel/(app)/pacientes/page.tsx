@@ -27,7 +27,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     const l = local(new Date());
     for (let i = 0; i < 3; i++) await gerarSessoesDoMes(sb, l.ano + Math.floor((l.mes + i) / 12), (l.mes + i) % 12);
   }
-  const { data: sess } = await sb.from("sessoes").select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, remarcada_de").order("inicio");
+  const { data: sess } = await sb.from("sessoes").select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, remarcada_de, pagamento_avulso").order("inicio");
   const porPac = new Map<string, Sessao[]>();
   for (const x of (sess ?? []) as Sessao[]) porPac.set(x.paciente_id, [...(porPac.get(x.paciente_id) || []), x]);
   const selo = (id: string) => {
@@ -58,7 +58,11 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
         const rows = porPac.get(sel.id) || [];
         const agora = Date.now();
         const lin = (x: Sessao) => ({ id: x.id, quando: `${fmtDiaCurto(new Date(x.inicio))} · ${fmtHora(new Date(x.inicio))}`, status: x.status, pago: !!x.pago_em, recibo: !!x.recibo_em });
+        const abertas = rows
+          .filter((x) => (x.status === "realizada" || x.status === "falta") && !x.pago_em)
+          .map((x) => ({ id: x.id, quando: `${fmtDiaCurto(new Date(x.inicio))} · ${fmtHora(new Date(x.inicio))}`, valor: x.valor_centavos ?? sel.valor_centavos ?? null, liberada: !!x.pagamento_avulso }));
         return {
+          abertas,
           resumo: resumir(rows, agora),
           ultimas: rows.filter((x) => new Date(x.inicio).getTime() < agora - 3600000).slice(-5).reverse().map(lin),
           proximas: rows.filter((x) => new Date(x.inicio).getTime() >= agora - 3600000 && x.status !== "cancelada").slice(0, 5).map(lin),

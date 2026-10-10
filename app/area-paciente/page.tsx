@@ -5,7 +5,7 @@ import PagamentoAberto from "./Pagamento";
 import { CartaoInstalar } from "../componentes/Pwa";
 import { exigirAcesso } from "../lib/pacienteAuth";
 import { supabaseAdmin } from "../lib/supabase/admin";
-import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe } from "../lib/pacienteDados";
+import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe, devidasDe } from "../lib/pacienteDados";
 import { fmtDiaLongo, fmtHora, local } from "../lib/agenda";
 import { primeiroNome } from "../lib/formato";
 import { linkWhatsApp } from "../conteudo";
@@ -22,7 +22,6 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const prox = futuras[0];
   const depois = futuras.slice(1, 5);
   const devendo = sessoes.filter((s) => (s.status === "realizada" || s.status === "falta") && !s.pago_em);
-  const total = devendo.reduce((a, s) => a + valorDe(s, p.valor_centavos), 0);
   const pedidoDe = (id: string) => pedidos.find((x) => x.sessao_id === id)?.tipo ?? null;
   const wa = linkWhatsApp("Olá, Ritieli! Preciso combinar sobre a minha sessão.");
   const presencial = p.tipo === "crianca";
@@ -53,7 +52,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
           )}
         </section>
 
-        {devendo.length ? <PagamentoAberto qtd={devendo.length} centavos={total} pix={pix} /> : (
+        {devendo.length ? <PagamentoAberto devidas={devidasDe(sessoes, p.valor_centavos)} pix={pix} /> : (
           <section className="card"><h2 className="card-t">Pagamentos</h2><p style={{ margin: 0, color: "#6B5A5E" }}>Nada em aberto. Tudo em dia.</p></section>
         )}
       </div>
