@@ -180,7 +180,7 @@ export function emailSenhaProvisoria(d: { para: string; nome: string; senha: str
         caixa,
         `Não compartilhe esta senha com ninguém. Se você não pediu isto, pode ignorar este e-mail.`,
       ],
-      botao: { texto: "Entrar na área da paciente", url: `${siteUrl}/area-da-paciente/entrar` },
+      botao: { texto: "Entrar na área da paciente", url: `${siteUrl}/area-paciente/entrar` },
       rodape: RODAPE_PACIENTE,
     }),
   );

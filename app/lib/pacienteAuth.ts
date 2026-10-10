@@ -14,7 +14,7 @@ import { supabaseAdmin } from "./supabase/admin";
 
 const scrypt = promisify(scryptCb) as (senha: string, sal: Buffer, tamanho: number) => Promise<Buffer>;
 
-export const ROTA = "/area-da-paciente";
+export const ROTA = "/area-paciente";
 export const COOKIE = "pa_sessao";
 const DOZE_HORAS = 12 * 3600 * 1000;
 const TRINTA_DIAS = 30 * 86400 * 1000;
