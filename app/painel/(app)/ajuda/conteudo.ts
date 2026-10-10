@@ -96,9 +96,8 @@ export const TAREFAS: Tarefa[] = [
     id: "pagamentos", titulo: "Confirmar pagamentos e recibos", resumo: "Marcar pago, emitir recibo e definir valor.", busca: "pix recebido a receber recibo valor crédito antecipado",
     passos: [
       "Abra Sessões e pagamentos e use o filtro para ver o que está “A receber”.",
-      "Quando o Pix entrar na sua conta, abra a sessão e use “Marcar pago”. A paciente passa a ver “Confirmado em” e pode baixar o recibo.",
+      "Quando o Pix entrar na sua conta, abra a sessão e use “Marcar pago”. A paciente passa a ver “Confirmado em”.",
       "Use “Marcar emitido” quando entregar o recibo. Se precisar, “Desfazer”.",
-      "Para mudar o valor de uma sessão, use “Definir valor” (ou o lápis ao lado do valor).",
       "“Pagamento antecipado” e “Paga com crédito” servem para quem pagou antes ou tem crédito de outra sessão.",
     ],
     dica: "A confirmação é manual. Não há baixa automática do Pix.",
