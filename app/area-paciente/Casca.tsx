@@ -4,8 +4,10 @@ import { ROTA, type Contexto } from "../lib/pacienteAuth";
 import { contato, linkWhatsApp } from "../conteudo";
 import { iniciais, primeiroNome } from "../lib/formato";
 import { sair } from "./acoes";
+import PrimeiroAcesso from "../componentes/PrimeiroAcesso";
+import { TOUR } from "./ajuda/conteudo";
 
-export type Aba = "inicio" | "sessoes" | "pagamentos" | "dados" | "exercicios";
+export type Aba = "inicio" | "sessoes" | "pagamentos" | "dados" | "exercicios" | "ajuda";
 
 const ABAS: { id: Aba; texto: string; caminho: string; icone: "casa" | "calendario" | "cartao" | "pessoa" | "lista" }[] = [
   { id: "inicio", texto: "Início", caminho: "", icone: "casa" },
@@ -30,6 +32,7 @@ export default function Casca({ ctx, aba, children }: { ctx: Contexto; aba: Aba;
           <div className="quem">
             <span className="av" aria-hidden="true">{iniciais(ctx.acesso.nome)}</span>
             <span className="nome" style={{ fontWeight: 600, fontSize: 14 }}>{primeiroNome(ctx.acesso.nome)}</span>
+            <Link href={href("/ajuda")} className="sair" style={{ fontWeight: 700, fontSize: 14, textDecoration: "none" }} aria-current={aba === "ajuda" ? "page" : undefined}>Como usar</Link>
             <form action={sair}><button type="submit" className="sair" style={{ background: "none", border: 0, cursor: "pointer", font: "inherit", fontWeight: 700, fontSize: 14 }}>Sair</button></form>
           </div>
         </div>
@@ -38,16 +41,17 @@ export default function Casca({ ctx, aba, children }: { ctx: Contexto; aba: Aba;
       <div className="wrap">
         {varios ? (
           <div className="pa-chips" style={{ paddingTop: 20 }} role="group" aria-label="Acompanhamento de">
-            {ctx.pacientes.map((p) => <Link key={p.id} href={href(ABAS.find((a) => a.id === aba)!.caminho, p.id)} className={p.id === ctx.atual.id ? "pa-chip on" : "pa-chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>{primeiroNome(p.nome)}</Link>)}
+            {ctx.pacientes.map((p) => <Link key={p.id} href={href((ABAS.find((a) => a.id === aba) ?? ABAS[0]).caminho, p.id)} className={p.id === ctx.atual.id ? "pa-chip on" : "pa-chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>{primeiroNome(p.nome)}</Link>)}
           </div>
         ) : null}
         {children}
         <footer className="pa-rodape">
           <span>Precisa falar com a {primeiroNome(contato.nome)}? <a href={linkWhatsApp()} target="_blank" rel="noopener">WhatsApp</a> ou <a href={`mailto:${contato.email}`}>{contato.email}</a>.</span>
-          <span>Este espaço não é canal de emergência. Em crise, ligue 188 (CVV) ou 192 (SAMU). · <Link href="/privacidade">Política de privacidade</Link></span>
+          <span>Este espaço não é canal de emergência. Em crise, ligue 188 (CVV) ou 192 (SAMU). · <Link href={href("/ajuda")}>Como usar</Link> · <Link href="/privacidade">Política de privacidade</Link></span>
         </footer>
       </div>
 
+      <PrimeiroAcesso chave="paciente" passos={TOUR} ajuda={href("/ajuda")} />
       <nav className="tabbar" aria-label="Áreas">
         {ABAS.map((a) => <Link key={a.id} href={href(a.caminho)} className={a.id === aba ? "atual" : undefined} aria-current={a.id === aba ? "page" : undefined}><Icone nome={a.icone} tam={22} />{a.texto}</Link>)}
       </nav>

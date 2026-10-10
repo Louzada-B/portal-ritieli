@@ -55,6 +55,7 @@ function Lista({ pedidos, caminho }: { pedidos: number; caminho: string }) {
 function Pe() {
   return (
     <div className="lat-pe">
+      <Link className="li" href="/painel/ajuda"><Icone nome="escritos" /><span>Ajuda</span></Link>
       <a className="li" href="/" target="_blank" rel="noopener"><Icone nome="site" /><span>Ver o site</span></a>
       <div className="eu">
         <img src="/ritieli.webp" alt="" />
