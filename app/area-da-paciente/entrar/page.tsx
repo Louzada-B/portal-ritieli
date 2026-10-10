@@ -12,7 +12,8 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
     encerrado: "Seu acesso a esta área não está mais disponível. Se precisar de algo, fale com a Ritieli.",
   };
   return (
-    <div className="pac raiz ent">
+    <div className="pac raiz">
+    <div className="ent">
       <Lado titulo={<>Seu espaço, <em>com cuidado.</em></>} texto="Suas sessões, o link da chamada, pagamentos, recibos e o seu termo, sempre à mão." />
       <div className="ent-f">
         <div className="ent-box">
@@ -23,6 +24,7 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
           <p className="nota"><span style={{ color: "#7A2335", flex: "0 0 auto" }}><Icone nome="escudo" tam={18} /></span>Conexão protegida. Só você vê os seus dados. As anotações clínicas da terapia não ficam nesta área.</p>
         </div>
       </div>
+    </div>
     </div>
   );
 }

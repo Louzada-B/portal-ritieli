@@ -8,7 +8,8 @@ export default async function NovaSenha() {
   const s = await exigirSessao();
   if (!s.trocarSenha) redirect(ROTA);
   return (
-    <div className="pac raiz ent">
+    <div className="pac raiz">
+    <div className="ent">
       <Lado titulo={<>Boas-vindas! Agora, <em>sua senha.</em></>} texto="Por segurança, a senha provisória só vale para este primeiro acesso." />
       <div className="ent-f">
         <div className="ent-box">
@@ -17,6 +18,7 @@ export default async function NovaSenha() {
           <p className="nota"><span style={{ color: "#7A2335", flex: "0 0 auto" }}><Icone nome="escudo" tam={18} /></span>Não compartilhe sua senha. Se esquecer, use &quot;Esqueci minha senha&quot; na tela de entrada.</p>
         </div>
       </div>
+    </div>
     </div>
   );
 }
