@@ -16,6 +16,7 @@ export type ExItem = {
 const ACEITOS = "application/pdf,image/png,image/jpeg,image/webp,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav";
 const MAX = 10_000_000;
 const dia = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short" }).format(new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso)).replace(".", "");
+const rotulo = (t: string) => (t === "application/pdf" ? "PDF" : t.startsWith("image/") ? "Imagem" : t.startsWith("audio/") ? "Áudio" : "Arquivo");
 const tam = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
 
 // Envia os arquivos direto do navegador para o armazenamento privado e registra cada um.
@@ -127,9 +128,9 @@ export default function Exercicios({ pacienteId, itens, ativo, par }: { paciente
       </div>
       <span style={{ fontSize: 14, color: "#5A3A41", whiteSpace: "pre-wrap" }}>{x.instrucoes}</span>
       {x.link ? <a href={x.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 700, overflowWrap: "anywhere" }}>{x.link}</a> : null}
-      {x.anexos.map((a) => (
+      {x.anexos.map((a, i) => (
         <div key={a.id} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 13 }}>
-          <button type="button" className="mini2" disabled={pend} onClick={() => abrir(a.id)}>{a.nome}</button>
+          <button type="button" className="mini2" disabled={pend} title={a.nome} onClick={() => abrir(a.id)}>{rotulo(a.tipo)} {i + 1}</button>
           <span style={{ color: "#8A7A7E" }}>{tam(a.tamanho)}</span>
           <button type="button" className="mini2" style={{ color: "#A3322A", borderColor: "#F2C9D1" }} disabled={pend} onClick={() => apagarAnexo(a.id)}>Remover</button>
         </div>

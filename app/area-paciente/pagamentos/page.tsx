@@ -45,7 +45,7 @@ export default async function Pagamentos({ searchParams }: { searchParams: Promi
               <div className="tr" role="row" key={s.id}>
                 <span>{fmtDiaCurto(new Date(s.inicio))}</span>
                 <span>{reais(valorDe(s, p.valor_centavos))}</span>
-                <span>{dm(s.pago_em!)}</span>
+                <span><span className="so-m">Confirmado em </span>{dm(s.pago_em!)}</span>
                 <span className="c-forma">Pix</span>
                 <span>{s.recibo_em ? (
                   <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

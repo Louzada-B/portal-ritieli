@@ -111,13 +111,18 @@
 .pac .semana .bt{flex:1 1 100%}
 .pac .pa-secao{padding-top:14px}
 .pac .pa-rodape{padding:28px 0 24px;flex-direction:column}
-.pac .tabbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:sticky;bottom:0;z-index:40;background:#FFFFFF;border-top:1px solid #EFE2E4;padding:6px 4px 10px}
+.pac.raiz{padding-bottom:76px}
+.pac .tabbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:40;background:#FFFFFF;border-top:1px solid #EFE2E4;padding:6px 4px 10px}
 .pac .tabbar a{text-decoration:none;color:#8A7A7E;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;padding:6px 2px;min-height:48px;box-sizing:border-box}
 .pac .tabbar a.atual{color:#7A2335}
 .pac .toast{bottom:84px}
 }
 .pac .pa-chips{display:flex;flex-wrap:wrap;gap:8px}
 .pac .pa-chip{border:1px solid #E2CCD0;background:#FFFFFF;color:#5A3A41;font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:8px 16px;min-height:40px;cursor:pointer}
+.pac .pa-uma{flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:none}
+.pac .pa-uma::-webkit-scrollbar{display:none}
+.pac .pa-uma .pa-chip{flex:0 0 auto;padding:8px 12px;font-size:13px;white-space:nowrap}
+@media (max-width:420px){.pac .pa-uma .pa-chip{flex:1 1 auto;padding:8px 6px;text-align:center}}
 .pac .pa-chip.on{background:#7A2335;border-color:#7A2335;color:#FFFFFF}
 .pac .pa-chip:focus-visible{outline:2px solid #B0475D;outline-offset:2px}
 .pac .pag-h{padding:40px 0 24px}
@@ -133,6 +138,7 @@
 .pac .tab{display:flex;flex-direction:column;font-size:15px}
 .pac .tr{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.2fr 1.3fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #F1E3E6}
 .pac .tr:last-child{border-bottom:0}
+.pac .so-m{display:none}
 .pac .tr.th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9A5A67;font-weight:700;padding-top:0}
 .pac .lista .item{flex-wrap:wrap}
 .pac .regras{background:#F6E5E7;border-radius:24px;padding:22px 24px;display:flex;flex-direction:column;gap:8px}
@@ -145,6 +151,9 @@
 .pac .tr{grid-template-columns:minmax(0,1fr) auto;gap:4px 12px}
 .pac .tr.th{display:none}
 .pac .tr .c-forma{display:none}
+.pac .tr>span:last-child{grid-column:1 / -1}
+.pac .tr>span:nth-child(2){text-align:right}
+.pac .so-m{display:inline}
 .pac .item{flex-wrap:wrap}
 .pac .item-ac{flex:1 1 100%;padding-left:74px}
 }

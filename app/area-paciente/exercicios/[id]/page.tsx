@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 const dia = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "long" }).format(new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso));
 const tam = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
 
+const rotulo = (t: string) => (t === "application/pdf" ? "PDF" : t.startsWith("image/") ? "Imagem" : t.startsWith("audio/") ? "Áudio" : "Arquivo");
+
 export default async function Exercicio({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ p?: string }> }) {
   const { id } = await params;
   const ctx = await exigirAcesso((await searchParams).p);
@@ -31,8 +33,8 @@ export default async function Exercicio({ params, searchParams }: { params: Prom
         {x.anexos.length ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <span className="rot">Arquivos</span>
-            {x.anexos.map((a) => (
-              <a key={a.id} href={`${ROTA}/exercicios/anexo/${a.id}${sufixo}`} style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{a.nome} <span style={{ fontWeight: 400, color: "#8A7A7E" }}>· {tam(a.tamanho)}</span></a>
+            {x.anexos.map((a, i) => (
+              <a key={a.id} href={`${ROTA}/exercicios/anexo/${a.id}${sufixo}`} style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{rotulo(a.tipo)} {i + 1} <span style={{ fontWeight: 400, color: "#8A7A7E" }}>· {tam(a.tamanho)}</span></a>
             ))}
           </div>
         ) : null}
