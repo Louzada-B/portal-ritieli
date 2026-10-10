@@ -582,7 +582,6 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       <>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         <Link href={`/painel/prontuario/${p.id}`} className="bt"><Icone nome="escudo" tam={18} />Prontuário</Link>
-        <Link href={`/painel/prontuario/${p.id}?aba=exe`} className="bt2"><Icone nome="escritos" tam={18} />Exercícios</Link>
         <Link href={`/painel/termos?paciente=${p.id}`} className="bt2"><Icone nome="termos" tam={18} />Termos</Link>
         {p.status === "ativo" ? (
           <button type="button" className="bt3" disabled={pend} onClick={() => setEncerrando(hojeBR())}>Encerrar acompanhamento</button>

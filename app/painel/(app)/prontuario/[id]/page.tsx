@@ -15,9 +15,8 @@ const curto = (n: string) => { const p = n.trim().split(/\s+/); return p.length 
 const dataBR = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso));
 const dataHora = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)).replace(",", " às");
 
-export default async function PaginaProntuario({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: string }> }) {
+export default async function PaginaProntuario({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { aba } = await searchParams;
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", id).maybeSingle<Paciente>();
   if (!p) notFound();
@@ -66,7 +65,6 @@ export default async function PaginaProntuario({ params, searchParams }: { param
         pacote={chave ? { salt_senha: chave.salt_senha as string, iteracoes: chave.iteracoes as number, chave_senha: chave.chave_senha as string, salt_rec: chave.salt_rec as string, chave_rec: chave.chave_rec as string } : null}
         parRecados={chave?.pub_recados && chave.priv_recados_cripto ? { pub: chave.pub_recados as string, privCripto: chave.priv_recados_cripto as string } : null}
         exercicios={exercicios}
-        abaInicial={aba}
         evolucoes={(evos ?? []).map((e) => ({
           id: e.id as string,
           data: e.data as string,

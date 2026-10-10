@@ -22,7 +22,6 @@ type Props = {
   identificacao: [string, string][];
   exercicios: ExItem[];
   parRecados: { pub: string; privCripto: string } | null;
-  abaInicial?: string;
 };
 type Aba = "evo" | "dem" | "id" | "enc" | "anx" | "exe" | "log";
 
@@ -62,7 +61,7 @@ export default function Prontuario(props: Props) {
   const [calculando, setCalculando] = useState(false);
 
   // Conteúdo aberto
-  const [aba, setAba] = useState<Aba>(props.abaInicial === "exe" ? "exe" : "evo");
+  const [aba, setAba] = useState<Aba>("evo");
   const [evos, setEvos] = useState<{ id: string; data: string; rotulo: string; texto: string; reg: string; correcoes: { id: string; texto: string; quando: string }[] }[]>([]);
   const [dem, setDem] = useState({ demanda: "", objetivos: "" });
   const [enc, setEnc] = useState<{ motivo: string; sintese: string } | null>(null);
