@@ -37,3 +37,4 @@
 .mnl-tour h2{margin:0;font-size:24px;line-height:1.2}
 .mnl-tour p{margin:0;font-size:17px;line-height:1.55}
 @media (max-width:600px){.mnl-txt{font-size:17px}.mnl-pas{padding:18px}.mnl-nav .mnl-bt{flex:1}}
+a.mnl-bt,a.mnl-bt:hover,a.mnl-bt:visited{color:#fff!important;text-decoration:none!important}

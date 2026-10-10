@@ -27,7 +27,7 @@ export default function PrimeiroAcesso({ chave, passos, ajuda }: { chave: string
         <div className="mnl-nav">
           <button type="button" className="mnl-bt s" onClick={fechar}>Pular</button>
           {ultimo
-            ? <Link href={ajuda} className="mnl-bt" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={fechar}>Abrir o manual</Link>
+            ? <Link href={ajuda} className="mnl-bt" style={{ textDecoration: "none", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={fechar}>Abrir o manual</Link>
             : <button type="button" className="mnl-bt" onClick={() => setI(i + 1)}>Próximo</button>}
         </div>
       </div>
