@@ -94,7 +94,6 @@ function CamposFixo({ dia, hora, setDia, setHora, pacienteId }: { dia: string; h
     listarLivresFixo(pacienteId).then((r) => { if (!vivo) return; if ("erro" in r) setErro(r.erro); else setOpcoes(r.ok); }).catch(() => { if (vivo) setErro("Não deu para carregar os horários livres."); });
     return () => { vivo = false; };
   }, [pacienteId]);
-  const chip = (on: boolean): React.CSSProperties => ({ font: "inherit", fontSize: 14, fontWeight: 600, padding: "7px 13px", borderRadius: 999, cursor: "pointer", border: `1.5px solid ${on ? "#7A2335" : "#E2CCD0"}`, background: on ? "#7A2335" : "#FFFFFF", color: on ? "#FFFFFF" : "#3A1F25" });
   const atual = opcoes?.find((o) => String(o.dia) === dia) ?? null;
   const manual = (
     <div className="fc-g">
@@ -107,27 +106,31 @@ function CamposFixo({ dia, hora, setDia, setHora, pacienteId }: { dia: string; h
       <div className="fc"><label htmlFor="fx-hora">Horário</label><input id="fx-hora" type="time" step={900} value={hora} onChange={(e) => setHora(e.target.value)} /></div>
     </div>
   );
+  if (outro || erro || (opcoes && (!opcoes.length || (dia && !atual)))) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {erro ? <span className="aviso erro" role="status">{erro}</span> : <span style={{ fontSize: 13, color: "#8A7A7E" }}>{opcoes && !opcoes.length ? "Nenhum horário fixo livre em todas as próximas semanas." : opcoes && dia && !atual && !outro ? "O horário fixo atual não está livre em todas as próximas semanas (há algo marcado em alguma delas). Escolha outro ou ajuste a agenda." : "Fora da lista de livres. Ao salvar, o painel ainda confere a disponibilidade e os conflitos."}</span>}
+        {manual}
+        {opcoes && opcoes.length ? <span><button type="button" className="mini2" onClick={() => { setOutro(false); if (dia && !atual) { setDia(""); setHora(""); } }}>Voltar para os horários livres</button></span> : null}
+      </div>
+    );
+  }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <span className="rot">Dia e horário fixos (só os livres em todas as próximas semanas)</span>
-      {!opcoes && !erro ? <span style={{ fontSize: 13, color: "#8A7A7E" }}>Conferindo a sua agenda…</span> : null}
-      {erro ? <span className="aviso erro" role="status">{erro}</span> : null}
-      {opcoes && !opcoes.length ? <span style={{ fontSize: 13, color: "#8A7A7E" }}>Nenhum horário fixo livre. Use “Outro dia ou horário”.</span> : null}
-      {opcoes && opcoes.length ? (
-        <>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button type="button" style={chip(!dia && !outro)} onClick={() => { setOutro(false); setDia(""); setHora(""); }}>A definir</button>
-            {opcoes.map((o) => <button key={o.dia} type="button" style={chip(dia === String(o.dia) && !outro)} onClick={() => { setOutro(false); setDia(String(o.dia)); if (!o.horas.includes(hora)) setHora(o.horas[0]); }}>{o.rot}</button>)}
-          </div>
-          {atual && !outro ? (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {atual.horas.map((h) => <button key={h} type="button" style={chip(hora === h)} onClick={() => setHora(h)}>{h}</button>)}
-            </div>
-          ) : null}
-        </>
-      ) : null}
-      <span><button type="button" className="mini2" onClick={() => setOutro(!outro)} aria-expanded={outro}>{outro ? "Voltar para os horários livres" : "Outro dia ou horário"}</button></span>
-      {outro ? <>{<span style={{ fontSize: 13, color: "#8A7A7E" }}>Fora da lista de livres. Ao salvar, o painel ainda confere a disponibilidade e os conflitos.</span>}{manual}</> : null}
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="fc-g">
+        <div className="fc"><label htmlFor="fx-dia">Dia fixo</label>
+          <select id="fx-dia" value={dia} disabled={!opcoes} onChange={(e) => { const v = e.target.value; setDia(v); const o = opcoes?.find((x) => String(x.dia) === v); if (!v) setHora(""); else if (o && !o.horas.includes(hora)) setHora(o.horas[0]); }}>
+            <option value="">{opcoes ? "A definir" : "Conferindo a agenda…"}</option>
+            {(opcoes ?? []).map((o) => <option key={o.dia} value={String(o.dia)}>{DIAS_PLURAL[o.dia]}</option>)}
+          </select>
+        </div>
+        <div className="fc"><label htmlFor="fx-hora">Horário</label>
+          <select id="fx-hora" value={hora} disabled={!atual} onChange={(e) => setHora(e.target.value)}>
+            {atual ? atual.horas.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
+          </select>
+        </div>
+      </div>
+      <span style={{ fontSize: 13, color: "#8A7A7E" }}>Só aparecem dias e horários livres em todas as próximas 12 semanas. <button type="button" className="mini2" style={{ marginLeft: 4 }} onClick={() => setOutro(true)}>Outro dia ou horário</button></span>
     </div>
   );
 }
