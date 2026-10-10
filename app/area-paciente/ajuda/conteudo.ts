@@ -8,7 +8,7 @@ export const TAREFAS: Tarefa[] = [
   {
     id: "entrar", titulo: "Entrar pela primeira vez", resumo: "E-mail, senha provisória e senha nova.", busca: "login acesso senha primeiro acesso",
     passos: [
-      "Você recebe um e-mail com a senha provisória. Abra o endereço da área da paciente e escolha “Entrar na sua área”.",
+      "Você recebe um e-mail com a senha provisória. Abra o endereço da área da paciente.",
       "Digite o e-mail cadastrado e a senha provisória.",
       "No primeiro acesso o sistema pede que você crie uma senha só sua. Escolha uma que você consiga lembrar e não use em outros lugares.",
       "Pronto: a partir daí você entra com o seu e-mail e a sua senha.",
@@ -20,8 +20,7 @@ export const TAREFAS: Tarefa[] = [
     passos: [
       "O Início mostra a sua próxima sessão e o que está pendente.",
       "O cartão “Para esta semana” lista até três exercícios em aberto. Toque para ver todos.",
-      "Quando a Ritieli responde a um pedido seu, a resposta aparece aqui. Use o × para fechar um aviso, ou “Fechar todas”.",
-      "Embaixo (no celular) ficam as abas: Início, Sessões, Exercícios, Pagamentos e Meus dados.",
+      "Quando a Ritieli responde a um pedido seu, a resposta aparece no topo. Use o × para fechar um aviso, ou “Fechar todas”.",
     ],
   },
   {
@@ -29,7 +28,7 @@ export const TAREFAS: Tarefa[] = [
     passos: [
       "Abra Sessões.",
       "Em “Próximas” estão as sessões marcadas, com dia, horário e se é online ou presencial.",
-      "Use os filtros no alto para ver só as realizadas, as remarcadas ou as canceladas.",
+      "Use os filtros para ver só as realizadas, as remarcadas ou as canceladas.",
     ],
   },
   {
@@ -45,9 +44,9 @@ export const TAREFAS: Tarefa[] = [
     id: "remarcar", titulo: "Pedir remarcação ou cancelamento", resumo: "Você pede, a Ritieli confirma.", busca: "mudar horario desmarcar faltar",
     passos: [
       "Em Sessões, abra a sessão que quer mudar e escolha “Pedir remarcação” (ou o pedido de cancelamento).",
-      "Se for remarcar, escolha um dos horários livres e confirme em “Enviar pedido de remarcação”. Para cancelar, use “Enviar pedido de cancelamento”.",
+      "Se for remarcar, mande uma mensagem com o pedido de troca e confirme em “Enviar pedido de remarcação”. Para cancelar, use “Enviar pedido de cancelamento”.",
       "A sessão fica como “Remarcação pedida” até a Ritieli responder. A resposta aparece no seu Início.",
-      "Se faltar menos de 24 horas, avise também pelo WhatsApp, como combinado no termo.",
+      "Se faltar menos de 24 horas, avise pelo WhatsApp, como combinado no termo.",
     ],
     dica: "Um pedido não é uma confirmação: a sessão só muda depois que a Ritieli responde.",
   },
@@ -55,19 +54,18 @@ export const TAREFAS: Tarefa[] = [
     id: "pagar", titulo: "Pagar uma sessão com Pix", resumo: "Pix copia e cola, sem sair da sua área.", busca: "pagamento pix valor chave copiar",
     passos: [
       "Abra Pagamentos. As sessões em aberto aparecem em “Pagamento em aberto”.",
-      "Escolha “Pagar tudo” ou “Pagar só algumas” (marque as sessões que quer pagar agora).",
-      "Use “Copiar código” e cole no aplicativo do seu banco, em Pix copia e cola. Confira o valor e o nome antes de confirmar.",
-      "Depois de pagar, a Ritieli confere e marca como pago. Isso é feito por ela, então pode levar um pouco.",
+      "Escolha “Pagar por pix”.",
+      "Use “Copiar código” e ou escaneie o qrcode. Confira o valor e o nome antes de confirmar.",
+      "Depois de pagar, a Ritieli confere e marca como pago.",
       "Quando for confirmado, aparece “Confirmado em” com a data.",
     ],
-    dica: "Se o código não abrir, use “Pedir a chave Pix à Ritieli”.",
   },
   {
     id: "recibo", titulo: "Pedir e baixar recibo", resumo: "Recibos ficam em Pagamentos.", busca: "comprovante imposto reembolso plano",
     passos: [
       "Abra Pagamentos e procure a sessão paga.",
-      "Se o recibo ainda não saiu, use “Solicitar recibo”. Fica como “Aguardando recibo” até a Ritieli emitir.",
-      "Quando estiver pronto, o botão para baixar aparece na mesma linha, em “Recibos disponíveis”.",
+      "Se o recibo ainda não saiu, o status fica “Aguardando recibo”.",
+      "Quando estiver pronto, aparecerá o botão para solicitar o recibo.",
     ],
   },
   {
@@ -75,7 +73,7 @@ export const TAREFAS: Tarefa[] = [
     passos: [
       "Abra Exercícios. Os que estão em andamento aparecem primeiro; os já feitos ficam em “Histórico”.",
       "Toque em um exercício para ler as instruções, abrir o link e ver os arquivos (Imagem 1, Imagem 2 e assim por diante).",
-      "Se quiser, escreva um recado para a Ritieli. Ele é protegido neste aparelho antes de ser enviado, e só ela consegue ler.",
+      "Se quiser, escreva um recado para a Ritieli.",
       "Quando terminar, toque em “Fiz este exercício”.",
       "Se quiser refazer, use “Reabrir para refazer”.",
     ],
@@ -94,8 +92,7 @@ export const TAREFAS: Tarefa[] = [
     id: "privacidade", titulo: "Saber como seus dados são tratados", resumo: "O que é protegido e o que você controla.", busca: "lgpd sigilo seguranca privacidade",
     passos: [
       "A política de privacidade explica quais dados são guardados e por quê. O link fica no rodapé de cada tela.",
-      "O prontuário da Ritieli é protegido de ponta a ponta: só ela consegue ler.",
-      "O que você escreve nos recados dos exercícios também é protegido neste aparelho.",
+      "O que você escreve nos recados dos exercícios é protegido.",
       "Para pedir acesso, correção ou exclusão de dados, fale com a Ritieli.",
     ],
   },
@@ -104,11 +101,9 @@ export const TAREFAS: Tarefa[] = [
 export const PERGUNTAS: Pergunta[] = [
   { p: "Esqueci a minha senha.", r: "Fale com a Ritieli: ela envia uma nova senha provisória por e-mail, e você cria uma senha nova ao entrar." },
   { p: "Qual a diferença entre pedir e confirmar uma remarcação?", r: "Quando você pede, a Ritieli ainda não respondeu. A sessão só muda depois que ela confirma, e a resposta aparece no seu Início." },
-  { p: "Paguei, mas continua “em aberto”.", r: "A confirmação do Pix é feita à mão pela Ritieli. Se passar de um ou dois dias, mande uma mensagem para ela." },
-  { p: "Posso pagar mais de uma sessão de uma vez?", r: "Sim. Em Pagamentos use “Pagar tudo” ou “Pagar só algumas”." },
+  { p: "Paguei, mas continua “em aberto”.", r: "A confirmação do Pix é feita manualmente pela Ritieli. Caso não tenho dado baixa até a próxima sessão, você pode avisá-la." },
   { p: "A Ritieli vê o que eu escrevo no recado do exercício?", r: "Sim, só ela. O recado é protegido neste aparelho antes de ser enviado e não é legível para mais ninguém." },
   { p: "Posso usar em mais de um aparelho?", r: "Sim. Entre com o mesmo e-mail e a mesma senha. Saia (botão “Sair”) se usar um aparelho de outra pessoa." },
-  { p: "Algo está errado nas minhas sessões ou nos meus dados.", r: "Avise a Ritieli pelo WhatsApp ou pelo e-mail do rodapé." },
 ];
 
 export const TOUR = [
