@@ -186,6 +186,7 @@ export default function Exercicios({ pacienteId, itens, ativo, par }: { paciente
               </div>
             ))}
             <span style={{ fontSize: 12, color: "#8A7A7E" }}>PDF, imagem ou áudio, até 10 MB cada.</span>
+            <span style={{ fontSize: 12, color: "#8A4B12", background: "#FBF1E6", borderRadius: 10, padding: "6px 10px" }}>Não anexe documento clínico aqui (laudo, escala preenchida, avaliação). Estes arquivos ficam em armazenamento privado, mas sem criptografia de ponta a ponta. Material clínico vai na aba Anexos do prontuário ou pessoalmente.</span>
           </div>
           <span style={{ fontSize: 13, color: "#8A7A7E" }}>Ninguém recebe aviso: a pessoa vê o exercício ao entrar na área dela. O texto fica criptografado no servidor, porque a paciente precisa abrir; os anexos ficam em armazenamento privado. Só o recado dela tem proteção de ponta a ponta.</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
