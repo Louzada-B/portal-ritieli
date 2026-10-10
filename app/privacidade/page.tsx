@@ -52,7 +52,7 @@ export default function Pagina() {
 <ul>
 <li><strong>No agendamento:</strong> nome, telefone (WhatsApp), e-mail, o horário escolhido, a idade da criança ou do adolescente (quando a conversa é sobre um filho ou filha) e a mensagem, se você quiser escrever uma.</li>
 <li><strong>Nas conversas pelo WhatsApp:</strong> as mensagens que você enviar.</li>
-<li><strong>Durante o acompanhamento:</strong> as informações registradas no prontuário psicológico, que é obrigatório, e os dados necessários para emitir recibos, como nome e CPF.</li>
+<li><strong>Durante o acompanhamento:</strong> as informações registradas no prontuário psicológico, que é obrigatório, e os dados necessários para emitir recibos, como nome e CPF. Se a psicóloga combinar exercícios entre as sessões, ficam guardados o texto do exercício, os arquivos anexados e o recado opcional que você escrever ao marcá-lo como feito. O texto e o recado são criptografados e só a psicóloga os lê além de você.</li>
 <li><strong>Na área da(o) paciente:</strong> o e-mail de acesso, uma senha que só você conhece (guardada de forma irreversível, nunca em texto aberto), a data do último acesso e os pedidos de remarcação ou cancelamento que você fizer. Telefone, cidade e contato de emergência que você atualizar ali ficam no seu cadastro. As anotações clínicas da terapia não aparecem nessa área.</li>
 <li><strong>Na navegação:</strong> informações técnicas básicas, como tipo de dispositivo e páginas visitadas, usadas apenas para manter o site funcionando.</li>
 </ul>

@@ -4,7 +4,9 @@ import PedidoSessao from "./PedidoSessao";
 import PagamentoAberto from "./Pagamento";
 import RespostasPedido from "./RespostasPedido";
 import { CartaoInstalar } from "../componentes/Pwa";
-import { exigirAcesso } from "../lib/pacienteAuth";
+import Link from "next/link";
+import { exigirAcesso, ROTA } from "../lib/pacienteAuth";
+import { exerciciosDoPaciente } from "../lib/exercicios";
 import { supabaseAdmin } from "../lib/supabase/admin";
 import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe, devidasDe, modalidadeDe, respostasDosPedidos } from "../lib/pacienteDados";
 import { fmtDiaLongo, fmtHora, local } from "../lib/agenda";
@@ -17,7 +19,11 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const ctx = await exigirAcesso((await searchParams).p);
   const p = ctx.atual;
   const sb = supabaseAdmin();
-  const [sessoes, pedidos, pix, respostas] = await Promise.all([sessoesDoPaciente(sb, p.id), pedidosDoPaciente(sb, p.id), configPix(sb), respostasDosPedidos(sb, p.id)]);
+  const [sessoes, pedidos, pix, respostas, exercicios] = await Promise.all([sessoesDoPaciente(sb, p.id), pedidosDoPaciente(sb, p.id), configPix(sb), respostasDosPedidos(sb, p.id), exerciciosDoPaciente(sb, p.id)]);
+  const exAbertos = exercicios.filter((x) => !x.concluidoEm);
+  const exFeitos = exercicios.length - exAbertos.length;
+  const sufixo = ctx.pacientes.length > 1 ? `?p=${p.id}` : "";
+  const fmtPrazo = (d: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "long" }).format(new Date(d + "T12:00:00Z"));
   const agora = Date.now();
   const futuras = sessoes.filter((s) => s.status === "agendada" && new Date(s.inicio).getTime() >= agora - 3600000);
   const prox = futuras[0];
@@ -80,7 +86,20 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       ) : null}
 
       <section className="semana" style={{ marginTop: 20 }}>
-        <div><span className="rot">Para esta semana</span><h3>O exercício da semana chega em breve.</h3><p>Aqui vai aparecer o que a Ritieli combinar com você entre uma sessão e outra.</p></div>
+        <div style={{ flex: "1 1 320px" }}>
+          <span className="rot">Para esta semana</span>
+          {exAbertos.length ? (
+            <>
+              <h3>{exAbertos.length === 1 ? "Um exercício combinado com você." : `${exAbertos.length} exercícios combinados com você.`}</h3>
+              <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
+                {exAbertos.slice(0, 3).map((x) => <li key={x.id}><Link href={`${ROTA}/exercicios/${x.id}${sufixo}`} style={{ fontWeight: 700, color: "#7A2335" }}>{x.titulo}</Link>{x.prazo ? <span style={{ color: "#5A3A41" }}> · até {fmtPrazo(x.prazo)}</span> : null}</li>)}
+              </ul>
+            </>
+          ) : (
+            <><h3>Nada combinado por enquanto.</h3><p>Quando a Ritieli combinar um exercício entre uma sessão e outra, ele aparece aqui.</p></>
+          )}
+        </div>
+        {exAbertos.length || exFeitos ? <Link href={`${ROTA}/exercicios${sufixo}`} className="bt2" style={{ textDecoration: "none" }}>Ver {exFeitos ? "exercícios e histórico" : "exercícios"}</Link> : null}
       </section>
     </Casca>
   );

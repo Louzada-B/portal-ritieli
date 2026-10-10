@@ -433,6 +433,11 @@ export async function excluirPaciente(id: string, confirmacao: string, prontuari
   if (guarda?.motivo === "prazo") return { erro: `O prontuário deve ser guardado até ${guarda.ate!.split("-").reverse().join("/")} (5 anos depois do encerramento). A exclusão fica liberada depois dessa data.` };
   if (temProntuario && !prontuarioGuardado) return { erro: "Exporte e guarde o prontuário antes de excluir." };
   if (anexos?.length) await sb.storage.from("prontuario").remove(anexos.map((a) => a.caminho as string));
+  const { data: exs } = await sb.from("exercicios").select("id").eq("paciente_id", id);
+  if (exs?.length) {
+    const { data: anx } = await sb.from("exercicio_anexos").select("caminho").in("exercicio_id", exs.map((e) => e.id as string));
+    if (anx?.length) await sb.storage.from("exercicios").remove(anx.map((a) => a.caminho as string));
+  }
   if (p.google_evento_id) await apagarEvento(p.google_evento_id).catch(() => {});
   for (const sid of (p.series_antigas as string[] | null) ?? []) await apagarEvento(sid).catch(() => {});
   const { data: avulsas } = await sb.from("sessoes").select("google_evento_id").eq("paciente_id", id).not("google_evento_id", "is", null);

@@ -8,6 +8,7 @@ import { local, fmtDiaCurto, fmtHora } from "../../../lib/agenda";
 import { reais } from "../../../lib/formato";
 import { cadastrosDe } from "../../../lib/cadastro";
 import { acessosDoPaciente } from "../../../lib/pacienteAcesso";
+import { exerciciosDoPaciente } from "../../../lib/exercicios";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,7 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     const acessos = await acessosDoPaciente(sel.id, resps.map((r) => r.id));
     detalhe = {
       acessos,
+      exercicios: await exerciciosDoPaciente(sb, sel.id),
       responsaveis: resps.map((r) => ({ id: r.id, nome: r.nome, whatsapp: r.whatsapp, email: r.email, cpfFinal: r.cpf_final, parentesco: r.parentesco, financeiro: r.financeiro })),
       ficha: fichas?.[0] ?? null,
       termo: (termos?.[0] as Termo | undefined) ?? null,

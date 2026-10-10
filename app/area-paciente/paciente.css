@@ -83,8 +83,9 @@
 .pac .dados dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
 .pac .fc{display:flex;flex-direction:column;gap:6px}
 .pac .fc label{font-size:13px;font-weight:700}
-.pac .fc input{font:inherit;font-size:15px;color:#3A1F25;background:#FFFFFF;border:1px solid #E2CCD0;border-radius:12px;padding:10px 12px;min-height:44px;box-sizing:border-box;width:100%;outline:0}
-.pac .fc input:focus{border-color:#7A2335;box-shadow:0 0 0 3px rgba(122,35,53,.15)}
+.pac .fc input,.pac .fc textarea{font:inherit;font-size:15px;color:#3A1F25;background:#FFFFFF;border:1px solid #E2CCD0;border-radius:12px;padding:10px 12px;min-height:44px;box-sizing:border-box;width:100%;outline:0}
+.pac .fc textarea{resize:vertical;line-height:1.5}
+.pac .fc input:focus,.pac .fc textarea:focus{border-color:#7A2335;box-shadow:0 0 0 3px rgba(122,35,53,.15)}
 .pac .semana{background:#F6E5E7;border-radius:28px;padding:28px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 32px;position:relative;overflow:hidden}
 .pac .semana h3{margin:4px 0 4px;font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;font-size:32px;line-height:1.1;color:#7A2335}
 .pac .semana p{margin:0;color:#5A3A41;max-width:560px}

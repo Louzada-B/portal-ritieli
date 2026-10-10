@@ -9,6 +9,7 @@ import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, ver
 import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
 import type { AcessoInfo } from "../../../lib/pacienteAcesso";
 import { listarLivresFixo } from "../livres";
+import Exercicios, { type ExItem } from "./Exercicios";
 import type { OpcaoFixa } from "../../../lib/livres";
 
 type Item = {
@@ -27,6 +28,7 @@ type Detalhe = {
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
   temProntuario?: boolean;
+  exercicios?: ExItem[];
   guarda?: { motivo: "encerrar" | "prazo"; ate: string | null } | null;
   sessoes?: { abertas: { id: string; quando: string; valor: number | null; liberada: boolean }[]; resumo: ResumoSessoes; ultimas: LinhaSessao[]; proximas: LinhaSessao[] };
 } | null;
@@ -418,6 +420,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
       ) : null}
 
       {det.sessoes ? <BlocoSessoes key={p.id} id={p.id} nome={p.nome} s={det.sessoes} /> : null}
+      <Exercicios key={`ex-${p.id}`} pacienteId={p.id} itens={det.exercicios ?? []} ativo={p.status === "ativo"} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span className="rot">Ficha de cadastro</span>
@@ -552,7 +555,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         ) : (
           <BlocoAcesso quem={p.nome} email={p.email} acesso={det.acessos[0]} pend={pend} criar={() => iniciar(async () => av(await criarAcesso(p.id, null)))} reenviar={(id) => iniciar(async () => av(await reenviarSenha(id)))} alternar={(id, ativo) => iniciar(async () => av(await alternarAcesso(id, ativo)))} />
         )}
-        <span style={{ fontSize: 13, color: "#8A7A7E" }}>A senha provisória vai por e-mail, vale 24 horas e é trocada no primeiro acesso. O acesso se desliga sozinho quando o acompanhamento é encerrado. O exercício da semana entra em breve.</span>
+        <span style={{ fontSize: 13, color: "#8A7A7E" }}>A senha provisória vai por e-mail, vale 24 horas e é trocada no primeiro acesso. O acesso se desliga sozinho quando o acompanhamento é encerrado.</span>
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
