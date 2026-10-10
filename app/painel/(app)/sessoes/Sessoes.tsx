@@ -113,12 +113,31 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
   const [remarca, setRemarca] = useState<{ l: Linha; data: string; hora: string } | null>(null);
   const [envio, setEnvio] = useState<{ para: string; texto: string } | null>(null);
   const [pend, iniciar] = useTransition();
-  const [menu, setMenu] = useState<{ id: string; q: "sessao" | "pag" | "rec" } | null>(null);
+  const [menu, setMenu] = useState<{ id: string; q: "sessao" | "pag" | "rec"; estilo?: React.CSSProperties } | null>(null);
+  // No computador o menu fica fixo na tela (nunca aumenta a página nem empurra o menu lateral) e abre para cima se faltar espaço embaixo.
+  const abrirMenu = (e: React.MouseEvent<HTMLElement>, id: string, q: "sessao" | "pag" | "rec") => {
+    let estilo: React.CSSProperties | undefined;
+    if (window.innerWidth > 760) {
+      const r = e.currentTarget.getBoundingClientRect();
+      const abaixo = window.innerHeight - r.bottom - 16;
+      const acima = r.top - 16;
+      const pBaixo = abaixo >= 330 || abaixo >= acima;
+      estilo = {
+        position: "fixed",
+        ...(q === "rec" ? { right: Math.max(8, window.innerWidth - r.right), left: "auto" } : { left: Math.max(8, r.left) }),
+        ...(pBaixo ? { top: r.bottom + 6, bottom: "auto", maxHeight: Math.max(200, abaixo) } : { bottom: window.innerHeight - r.top + 6, top: "auto", maxHeight: Math.max(200, acima) }),
+      };
+    }
+    setMenu({ id, q, estilo });
+  };
   useEffect(() => {
     if (!menu) return;
     const f = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(null); };
+    const fecha = () => setMenu(null);
     window.addEventListener("keydown", f);
-    return () => window.removeEventListener("keydown", f);
+    window.addEventListener("scroll", fecha, true);
+    window.addEventListener("resize", fecha);
+    return () => { window.removeEventListener("keydown", f); window.removeEventListener("scroll", fecha, true); window.removeEventListener("resize", fecha); };
   }, [menu]);
 
   const abrirRemarcar = (l: Linha) => {
@@ -243,13 +262,13 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
     const aberto = menu?.id === l.id && menu.q === q;
     return (
       <span className={`est-w${q === "rec" ? " est-dir" : ""}`}>
-        <button type="button" className={`est ${cls}`} disabled={pend} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setMenu(aberto ? null : { id: l.id, q })}>
+        <button type="button" className={`est ${cls}`} disabled={pend} aria-haspopup="menu" aria-expanded={aberto} onClick={(e) => (aberto ? setMenu(null) : abrirMenu(e, l.id, q))}>
           <span>{texto}</span><span className="est-s" aria-hidden="true">▾</span>
         </button>
         {aberto ? (
           <>
             <span className="est-fundo" onClick={() => setMenu(null)} />
-            <span className="est-menu" role="menu" aria-label={titulo}>
+            <span className="est-menu" role="menu" aria-label={titulo} style={menu?.estilo}>
               <span className="est-t"><b>{titulo}</b><small>{curto(l.nome)} · {fmtData(l.inicio)}, {fmtHora(l.inicio)}</small></span>
               {ops.map((o) => (
                 <button key={o.t} type="button" role="menuitem" className={`${o.atual ? "atual" : ""}${o.perigo ? " perigo" : ""}`} disabled={pend} onClick={() => { setMenu(null); if (!o.atual) o.f(); }}>
