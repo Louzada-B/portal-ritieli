@@ -3,7 +3,7 @@ import Casca from "../Casca";
 import PedidoSessao from "../PedidoSessao";
 import { exigirAcesso, ROTA } from "../../lib/pacienteAuth";
 import { supabaseAdmin } from "../../lib/supabase/admin";
-import { sessoesDoPaciente, pedidosDoPaciente } from "../../lib/pacienteDados";
+import { sessoesDoPaciente, pedidosDoPaciente, modalidadeDe } from "../../lib/pacienteDados";
 import { fmtDiaLongo, fmtHora, local } from "../../lib/agenda";
 import { fixoTexto } from "../../lib/formato";
 import { linkWhatsApp } from "../../conteudo";
@@ -53,7 +53,7 @@ export default async function Sessoes({ searchParams }: { searchParams: Promise<
               return (
                 <div className="item" key={s.id}>
                   <div className="dt"><span className="d1">{SEMANA[l.semana]}</span><span className="d2">{l.dia}</span></div>
-                  <div className="it-t"><b>{fmtDiaLongo(d)}</b><span>{fmtHora(d)}</span></div>
+                  <div className="it-t"><b>{fmtDiaLongo(d)}</b><span>{fmtHora(d)} · {modalidadeDe(s, p.tipo) === "online" ? "Online" : "Presencial"}</span></div>
                   {ped ? null : <span className="pill p-on">Confirmada</span>}
                   <div className="item-ac" style={{ flex: "1 1 100%" }}>
                     <PedidoSessao pacienteId={p.id} sessaoId={s.id} pedido={ped} menos24h={d.getTime() - agora < 24 * 3600000} whatsapp={wa} />

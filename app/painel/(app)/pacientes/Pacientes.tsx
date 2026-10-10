@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } from "../../../lib/formato";
 import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, verPessoais, salvarPessoais, salvarCpf, adicionarResponsavel, definirFinanceiro, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, liberarPagamento, type DadosNovo } from "./acoes";
 import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
 import type { AcessoInfo } from "../../../lib/pacienteAcesso";
+import { listarLivresFixo } from "../livres";
+import type { OpcaoFixa } from "../../../lib/livres";
 
 type Item = {
   id: string; tipo: "adulta" | "crianca"; nome: string; idade: number | null; whatsapp: string | null; email: string | null;
@@ -83,8 +85,18 @@ function CamposPeriodo({ desde, fim, setDesde, setFim }: { desde: string; fim: s
   );
 }
 
-function CamposFixo({ dia, hora, setDia, setHora }: { dia: string; hora: string; setDia: (v: string) => void; setHora: (v: string) => void }) {
-  return (
+function CamposFixo({ dia, hora, setDia, setHora, pacienteId }: { dia: string; hora: string; setDia: (v: string) => void; setHora: (v: string) => void; pacienteId?: string }) {
+  const [opcoes, setOpcoes] = useState<OpcaoFixa[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [outro, setOutro] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    listarLivresFixo(pacienteId).then((r) => { if (!vivo) return; if ("erro" in r) setErro(r.erro); else setOpcoes(r.ok); }).catch(() => { if (vivo) setErro("Não deu para carregar os horários livres."); });
+    return () => { vivo = false; };
+  }, [pacienteId]);
+  const chip = (on: boolean): React.CSSProperties => ({ font: "inherit", fontSize: 14, fontWeight: 600, padding: "7px 13px", borderRadius: 999, cursor: "pointer", border: `1.5px solid ${on ? "#7A2335" : "#E2CCD0"}`, background: on ? "#7A2335" : "#FFFFFF", color: on ? "#FFFFFF" : "#3A1F25" });
+  const atual = opcoes?.find((o) => String(o.dia) === dia) ?? null;
+  const manual = (
     <div className="fc-g">
       <div className="fc"><label htmlFor="fx-dia">Dia fixo</label>
         <select id="fx-dia" value={dia} onChange={(e) => setDia(e.target.value)}>
@@ -93,6 +105,29 @@ function CamposFixo({ dia, hora, setDia, setHora }: { dia: string; hora: string;
         </select>
       </div>
       <div className="fc"><label htmlFor="fx-hora">Horário</label><input id="fx-hora" type="time" step={900} value={hora} onChange={(e) => setHora(e.target.value)} /></div>
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <span className="rot">Dia e horário fixos (só os livres em todas as próximas semanas)</span>
+      {!opcoes && !erro ? <span style={{ fontSize: 13, color: "#8A7A7E" }}>Conferindo a sua agenda…</span> : null}
+      {erro ? <span className="aviso erro" role="status">{erro}</span> : null}
+      {opcoes && !opcoes.length ? <span style={{ fontSize: 13, color: "#8A7A7E" }}>Nenhum horário fixo livre. Use “Outro dia ou horário”.</span> : null}
+      {opcoes && opcoes.length ? (
+        <>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button type="button" style={chip(!dia && !outro)} onClick={() => { setOutro(false); setDia(""); setHora(""); }}>A definir</button>
+            {opcoes.map((o) => <button key={o.dia} type="button" style={chip(dia === String(o.dia) && !outro)} onClick={() => { setOutro(false); setDia(String(o.dia)); if (!o.horas.includes(hora)) setHora(o.horas[0]); }}>{o.rot}</button>)}
+          </div>
+          {atual && !outro ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {atual.horas.map((h) => <button key={h} type="button" style={chip(hora === h)} onClick={() => setHora(h)}>{h}</button>)}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      <span><button type="button" className="mini2" onClick={() => setOutro(!outro)} aria-expanded={outro}>{outro ? "Voltar para os horários livres" : "Outro dia ou horário"}</button></span>
+      {outro ? <>{<span style={{ fontSize: 13, color: "#8A7A7E" }}>Fora da lista de livres. Ao salvar, o painel ainda confere a disponibilidade e os conflitos.</span>}{manual}</> : null}
     </div>
   );
 }
@@ -319,7 +354,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
             <div className="fc"><label htmlFor="e-valor">Valor da sessão</label><div className="valor-in"><span>R$</span><input id="e-valor" inputMode="decimal" value={e.valor} onChange={(x) => setE({ ...e, valor: x.target.value })} /></div></div>
             <div className="fc"><label htmlFor="e-tv">Tipo de valor</label><select id="e-tv" value={e.tipoValor} onChange={(x) => setE({ ...e, tipoValor: x.target.value as "normal" | "social" })}><option value="normal">Valor normal</option><option value="social">Valor social</option></select></div>
           </div>
-          <CamposFixo dia={e.fixoDia} hora={e.fixoHora} setDia={(v) => setE({ ...e, fixoDia: v })} setHora={(v) => setE({ ...e, fixoHora: v })} />
+          <CamposFixo pacienteId={p.id} dia={e.fixoDia} hora={e.fixoHora} setDia={(v) => setE({ ...e, fixoDia: v })} setHora={(v) => setE({ ...e, fixoHora: v })} />
           <label className="chk"><input type="checkbox" checked={e.lembretes} onChange={() => setE({ ...e, lembretes: !e.lembretes })} /><span>Enviar lembretes por e-mail (sessão, ficha, termo)</span></label>
           {p.status === "ativo" ? <CamposPeriodo desde={e.desde} fim={e.fim} setDesde={(v) => setE({ ...e, desde: v })} setFim={(v) => setE({ ...e, fim: v })} /> : null}
           {edP ? (
@@ -531,7 +566,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           <b style={{ fontSize: 16 }}>Reativar o acompanhamento</b>
           <span style={{ fontSize: 14, color: "#5A3A41" }}>{p.fim ? `As sessões até o encerramento (${diaBR(p.fim)}) ficam como estão. ` : ""}As novas sessões começam na data da retomada, no dia e horário fixos abaixo. Antes de salvar, o painel confere a sua disponibilidade e qualquer conflito de agenda.</span>
           <div className="fc" style={{ maxWidth: 260 }}><label htmlFor="reat-data">Retomar a partir de</label><input id="reat-data" type="date" value={reat.data} min={hojeBR()} onChange={(x) => setReat({ ...reat, data: x.target.value })} /></div>
-          <CamposFixo dia={reat.dia} hora={reat.hora} setDia={(v) => setReat({ ...reat, dia: v })} setHora={(v) => setReat({ ...reat, hora: v })} />
+          <CamposFixo pacienteId={p.id} dia={reat.dia} hora={reat.hora} setDia={(v) => setReat({ ...reat, dia: v })} setHora={(v) => setReat({ ...reat, hora: v })} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || !reat.data} onClick={() => iniciar(async () => { const r = await reativarPaciente(p.id, { retomada: reat.data, fixoDia: reat.dia, fixoHora: reat.hora }); av(r); if (r.ok) setReat(null); })}>{pend ? "Reativando…" : "Reativar"}</button>
             <button type="button" className="bt3" onClick={() => setReat(null)}>Cancelar</button>

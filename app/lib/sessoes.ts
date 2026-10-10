@@ -14,6 +14,7 @@ export type Sessao = {
   origem: "fixo" | "manual";
   remarcada_de: string | null;
   pagamento_avulso?: boolean;
+  modalidade?: "online" | "presencial" | null;
 };
 
 // Cria as sessões "agendadas" do mês a partir do horário fixo de cada paciente ativo.

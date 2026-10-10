@@ -25,10 +25,10 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const cads = await cadastrosDe(sb, pacs ?? []);
   const faltaFicha = [...cads.values()].filter((c) => c.ficha !== "preenchida").length;
   const faltaTermo = [...cads.values()].filter((c) => c.ficha === "preenchida" && c.termo !== "aceito").length;
-  const { data: pp } = await sb.from("pedidos_paciente").select("id, paciente_id, sessao_inicio, tipo, mensagem, pacientes(nome)").is("resolvido_em", null).order("criado_em");
+  const { data: pp } = await sb.from("pedidos_paciente").select("id, paciente_id, sessao_id, sessao_inicio, tipo, mensagem, pacientes(nome)").is("resolvido_em", null).order("criado_em");
   const pedidosPac: PedidoLinha[] = (pp ?? []).map((x) => {
     const pac = x.pacientes as unknown as { nome: string } | { nome: string }[] | null;
-    return { id: x.id as string, pacienteId: x.paciente_id as string, nome: (Array.isArray(pac) ? pac[0]?.nome : pac?.nome) || "Paciente", quando: fmtQuando(new Date(x.sessao_inicio as string)), tipo: x.tipo as "remarcar" | "cancelar", mensagem: (x.mensagem as string | null) ?? null };
+    return { id: x.id as string, pacienteId: x.paciente_id as string, nome: (Array.isArray(pac) ? pac[0]?.nome : pac?.nome) || "Paciente", quando: fmtQuando(new Date(x.sessao_inicio as string)), tipo: x.tipo as "remarcar" | "cancelar", mensagem: (x.mensagem as string | null) ?? null, sessaoId: (x.sessao_id as string | null) ?? null };
   });
   const aguardando = (ags ?? []) as Pedido[];
   const confirmadas = (confs ?? []) as Pedido[];
@@ -59,7 +59,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           </div>
         ) : null}
 
-        {pedidosPac.length ? <PedidosPaciente itens={pedidosPac} /> : null}
+        <PedidosPaciente itens={pedidosPac} />
 
         {faltaFicha + faltaTermo > 0 ? (
           <Link href="/painel/pacientes?f=cadastro" className="faixa">

@@ -5,7 +5,7 @@ import PagamentoAberto from "./Pagamento";
 import { CartaoInstalar } from "../componentes/Pwa";
 import { exigirAcesso } from "../lib/pacienteAuth";
 import { supabaseAdmin } from "../lib/supabase/admin";
-import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe, devidasDe } from "../lib/pacienteDados";
+import { sessoesDoPaciente, pedidosDoPaciente, configPix, valorDe, devidasDe, modalidadeDe } from "../lib/pacienteDados";
 import { fmtDiaLongo, fmtHora, local } from "../lib/agenda";
 import { primeiroNome } from "../lib/formato";
 import { linkWhatsApp } from "../conteudo";
@@ -24,12 +24,13 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const devendo = sessoes.filter((s) => (s.status === "realizada" || s.status === "falta") && !s.pago_em);
   const pedidoDe = (id: string) => pedidos.find((x) => x.sessao_id === id)?.tipo ?? null;
   const wa = linkWhatsApp("Olá, Ritieli! Preciso combinar sobre a minha sessão.");
-  const presencial = p.tipo === "crianca";
+  const infantil = p.tipo === "crianca";
+  const presencial = prox ? modalidadeDe(prox, p.tipo) === "presencial" : infantil;
 
   return (
     <Casca ctx={ctx} aba="inicio">
       <div className="ola">
-        <div><h1>Olá, <em>{primeiroNome(ctx.acesso.nome)}.</em></h1><p>{presencial ? `Acompanhamento de ${primeiroNome(p.nome)}.` : "Que bom ter você aqui."}</p></div>
+        <div><h1>Olá, <em>{primeiroNome(ctx.acesso.nome)}.</em></h1><p>{infantil ? `Acompanhamento de ${primeiroNome(p.nome)}.` : "Que bom ter você aqui."}</p></div>
         {devendo.length ? <span className="pill p-av">{devendo.length} pagamento{devendo.length > 1 ? "s" : ""} em aberto</span> : null}
       </div>
 
@@ -67,7 +68,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
               return (
                 <div className="item" key={s.id}>
                   <div className="dt"><span className="d1">{["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][l.semana]}</span><span className="d2">{l.dia}</span></div>
-                  <div className="it-t"><b>{fmtDiaLongo(d)}</b><span>{fmtHora(d)}{pedidoDe(s.id) ? " · pedido enviado" : ""}</span></div>
+                  <div className="it-t"><b>{fmtDiaLongo(d)}</b><span>{fmtHora(d)} · {modalidadeDe(s, p.tipo) === "online" ? "Online" : "Presencial"}{pedidoDe(s.id) ? " · pedido enviado" : ""}</span></div>
                 </div>
               );
             })}

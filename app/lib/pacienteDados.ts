@@ -15,7 +15,7 @@ export async function sessoesDoPaciente(sb: SupabaseClient, pacienteId: string):
   for (let i = 0; i < 3; i++) await gerarSessoesDoMes(sb, l.ano + Math.floor((l.mes + i) / 12), (l.mes + i) % 12);
   const { data } = await sb
     .from("sessoes")
-    .select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, origem, remarcada_de, pagamento_avulso")
+    .select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, origem, remarcada_de, pagamento_avulso, modalidade")
     .eq("paciente_id", pacienteId)
     .order("inicio");
   return (data ?? []) as Sessao[];
@@ -68,3 +68,6 @@ export function devidasDe(sessoes: Sessao[], padrao: number | null): Devida[] {
       return { id: s.id, quando: `${String(l.dia).padStart(2, "0")}/${String(l.mes + 1).padStart(2, "0")}`, centavos: valorDe(s, padrao), liberada: !!s.pagamento_avulso };
     });
 }
+
+// Modalidade de uma sessão: a marcada para ela, ou o padrão do paciente (adulta: online; criança: presencial).
+export const modalidadeDe = (s: Pick<Sessao, "modalidade">, tipo: "adulta" | "crianca"): "online" | "presencial" => s.modalidade ?? (tipo === "crianca" ? "presencial" : "online");

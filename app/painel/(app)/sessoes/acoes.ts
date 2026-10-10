@@ -258,3 +258,21 @@ export async function desfazerAdiantado(ids: string[]): Promise<ResSessao> {
   revalidatePath("/painel/sessoes");
   return { ok: "Desfeito." };
 }
+
+// Marca que UMA sessão específica é online ou presencial (o padrão do paciente continua valendo para as outras).
+export async function mudarModalidade(id: string, modalidade: "online" | "presencial"): Promise<ResSessao> {
+  if (modalidade !== "online" && modalidade !== "presencial") return { erro: "Modalidade inválida." };
+  const sb = await supabaseServidor();
+  const { data: s } = await sb.from("sessoes").select("id, status, paciente_id, pacientes(tipo, meet_link)").eq("id", id).maybeSingle();
+  if (!s) return { erro: "Sessão não encontrada." };
+  if (s.status !== "agendada") return { erro: "Só dá para mudar a modalidade de uma sessão agendada." };
+  const pac = s.pacientes as unknown as { tipo: "adulta" | "crianca"; meet_link: string | null } | null;
+  const padrao = pac?.tipo === "crianca" ? "presencial" : "online";
+  // Igual ao padrão do paciente: volta a valer o padrão (sem marca própria).
+  const { error } = await sb.from("sessoes").update({ modalidade: modalidade === padrao ? null : modalidade, atualizado_em: new Date().toISOString() }).eq("id", id);
+  if (error) return { erro: "Não deu para salvar. Tente de novo." };
+  revalidatePath("/painel/sessoes");
+  revalidatePath("/painel/pacientes");
+  const semSala = modalidade === "online" && !pac?.meet_link ? " Ainda não há sala do Meet para este paciente: gere em Pacientes > ficha > Sala de atendimento." : "";
+  return { ok: modalidade === "online" ? `Esta sessão será online.${semSala}` : "Esta sessão será presencial." };
+}

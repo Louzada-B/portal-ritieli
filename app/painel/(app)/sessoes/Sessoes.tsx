@@ -5,12 +5,14 @@ import { useEffect, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { reais } from "../../../lib/formato";
 import type { StatusSessao } from "../../../lib/sessoes";
-import { registrarSessao, mudarSessao, mudarValorSessao, excluirSessao, remarcarSessao, pagarAdiantado, desfazerAdiantado } from "./acoes";
+import { registrarSessao, mudarSessao, mudarValorSessao, excluirSessao, remarcarSessao, mudarModalidade, pagarAdiantado, desfazerAdiantado } from "./acoes";
 import { waLink } from "../../../lib/formato";
+import SeletorLivre from "../../componentes/SeletorLivre";
+import { listarLivres } from "../livres";
 
 export type Linha = {
   id: string; inicio: string; nome: string; tipo: "adulta" | "crianca"; status: StatusSessao;
-  valor: number | null; pago: boolean; recibo: boolean; manual: boolean; remarcadaDe: string | null;
+  valor: number | null; pago: boolean; recibo: boolean; manual: boolean; remarcadaDe: string | null; modalidade: "online" | "presencial" | null;
 };
 type Pac = { id: string; nome: string; valor: number | null; hora: string | null; credito: number };
 type Estado = { status: StatusSessao; pago: boolean; recibo: boolean };
@@ -238,6 +240,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
       setR({ ...r, data: "" });
     });
 
+  const efetiva = (l: Linha): "online" | "presencial" => l.modalidade ?? (l.tipo === "crianca" ? "presencial" : "online");
   // Cada estado da sessão é tocável e abre só as opções dele (folha no celular, menu no computador).
   type Op = { t: string; f: () => void; atual?: boolean; perigo?: boolean };
   const opSessao = (l: Linha): Op[] => {
@@ -248,7 +251,12 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
       { t: "Faltou", atual: st === "falta", f: () => mudar(l, { status: "falta", pago: l.pago, recibo: l.recibo }, MSG.falta) },
       { t: "Cancelou com 24h", atual: st === "cancelada", f: () => mudar(l, { status: "cancelada", pago: false, recibo: false }, MSG.cancelada) },
     ];
-    if (st === "agendada") ops.push({ t: "Remarcar", f: () => abrirRemarcar(l) });
+    if (st === "agendada") {
+      ops.push({ t: "Remarcar", f: () => abrirRemarcar(l) });
+      const ef = efetiva(l);
+      const nova = ef === "online" ? "presencial" : "online";
+      ops.push({ t: nova === "online" ? "Esta sessão será online (Meet)" : "Esta sessão será presencial", f: () => iniciar(async () => { const res = await mudarModalidade(l.id, nova); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok!, toast: true }); }) });
+    }
     // Excluir só a sessão registrada à mão, agendada e sem pagamento (para não sumir com dinheiro recebido).
     if (l.manual && st === "agendada" && !l.pago) ops.push({ t: "Excluir sessão", perigo: true, f: () => iniciar(async () => { const res = await excluirSessao(l.id); setMsg(res.erro ? { t: res.erro, erro: true } : { t: res.ok! }); }) });
     return ops;
@@ -316,7 +324,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
     ) : (
       <button type="button" onClick={() => setEditVal({ id: l.id, v: l.valor != null ? String(l.valor / 100).replace(".", ",") : "" })} title="Mudar o valor" style={{ font: "inherit", fontWeight: 700, color: "inherit", background: "none", border: 0, padding: 0, cursor: "pointer", whiteSpace: "nowrap" }}>{l.status === "cancelada" ? "—" : l.valor == null ? <span style={{ color: "#A3322A", textDecoration: "underline" }}>Definir valor</span> : brl(l.valor)}</button>
     );
-  const tipoTxt = (l: Linha) => `${l.tipo === "crianca" ? "Infantil · presencial" : "Online"} · ${fmtHora(l.inicio)}${l.manual ? " · registrada" : ""}${l.remarcadaDe ? ` · remarcada de ${fmtData(l.remarcadaDe).split(",")[0].toLowerCase()}, ${fmtHora(l.remarcadaDe)}` : ""}`;
+  const tipoTxt = (l: Linha) => `${l.tipo === "crianca" ? "Infantil · " : ""}${efetiva(l) === "online" ? "Online" : "Presencial"}${l.modalidade ? " (só esta)" : ""} · ${fmtHora(l.inicio)}${l.manual ? " · registrada" : ""}${l.remarcadaDe ? ` · remarcada de ${fmtData(l.remarcadaDe).split(",")[0].toLowerCase()}, ${fmtHora(l.remarcadaDe)}` : ""}`;
 
   return (
     <>
@@ -336,6 +344,7 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
           <div className="toast" role="status" style={{ gap: 14 }}>
             <span style={{ fontWeight: 500 }}>{msg.t}</span>
             {msg.desfazer ? <button type="button" onClick={desfazer} disabled={pend} style={{ font: "inherit", fontSize: 14, fontWeight: 700, color: "#F2C9D1", background: "transparent", border: "1.5px solid rgba(242,201,209,.6)", borderRadius: 999, padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap" }}>Desfazer</button> : null}
+            <button type="button" onClick={() => setMsg(null)} aria-label="Fechar aviso" style={{ font: "inherit", fontSize: 20, lineHeight: 1, color: "#F2C9D1", background: "transparent", border: 0, padding: "2px 6px", cursor: "pointer" }}>×</button>
           </div>
         ) : null}
 
@@ -356,13 +365,21 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
               <h2 className="card-t"><Icone nome="calendario" tam={20} />Remarcar sessão</h2>
               <span style={{ fontSize: 14, color: "#5A3A41" }}><b>{curto(remarca.l.nome)}</b> · hoje marcada para {fmtData(remarca.l.inicio)}, {fmtHora(remarca.l.inicio)}. Só esta sessão muda: as próximas continuam no horário fixo.</span>
               <div className="fc"><span className="lb">Novo dia e horário</span>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8, maxWidth: 460 }}>
-                  <Calendario valor={remarca.data} onEscolher={(v) => { const hs = horasDoDia(expediente, v); setRemarca({ ...remarca, data: v, hora: hs.includes(remarca.hora) ? remarca.hora : hs[0] || "" }); }} hoje={hoje} fechado={(v) => v < hojeIso || !horasDoDia(expediente, v).length} />
-                  <select value={remarca.hora} onChange={(e) => setRemarca({ ...remarca, hora: e.target.value })} aria-label="Novo horário" disabled={!horasRem.length}>
-                    {horasRem.length ? horasRem.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
-                  </select>
-                </div>
-                <span style={{ fontSize: 13, color: "#8A7A7E" }}>{horasRem.length ? `Só aparecem os dias e horários da sua disponibilidade. Conflitos com outras sessões e com a agenda do Google são conferidos ao remarcar.` : "Nesse dia você não atende. Escolha outro dia no calendário."}</span>
+                <SeletorLivre
+                  carregar={() => listarLivres(remarca.l.id)}
+                  recarregar={remarca.l.id}
+                  valor={{ data: remarca.data, hora: remarca.hora }}
+                  onChange={(v) => setRemarca({ ...remarca, data: v.data, hora: v.hora })}
+                  manual={
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8, maxWidth: 460 }}>
+                      <Calendario valor={remarca.data} onEscolher={(v) => { const hs = horasDoDia(expediente, v); setRemarca({ ...remarca, data: v, hora: hs.includes(remarca.hora) ? remarca.hora : hs[0] || "" }); }} hoje={hoje} fechado={(v) => v < hojeIso || !horasDoDia(expediente, v).length} />
+                      <select value={remarca.hora} onChange={(e) => setRemarca({ ...remarca, hora: e.target.value })} aria-label="Novo horário" disabled={!horasRem.length}>
+                        {horasRem.length ? horasRem.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
+                      </select>
+                    </div>
+                  }
+                />
+                <span style={{ fontSize: 13, color: "#8A7A7E" }}>Só aparecem dias e horários realmente livres na sua agenda (sessões, bloqueios e Google já descontados).</span>
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button type="button" className="bt" onClick={salvarRemarcar} disabled={pend} style={{ width: "auto" }}>{pend ? "Remarcando…" : "Remarcar sessão"}</button>
@@ -412,12 +429,31 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
                   </select>
                 </div>
                 <div className="fc"><span className="lb">Data e horário</span>
+                  {r.status === "agendada" ? (
+                    <SeletorLivre
+                      carregar={() => listarLivres()}
+                      recarregar="registrar"
+                      valor={{ data: r.data, hora: r.hora }}
+                      onChange={(v) => setR({ ...r, data: v.data, hora: v.hora })}
+                      manual={
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8 }}>
                     <Calendario valor={r.data} onEscolher={(v) => { const hs = horasDoDia(expediente, v); const fixa = pacientes.find((x) => x.id === r.pacienteId)?.hora; setR({ ...r, data: v, hora: hs.includes(r.hora) ? r.hora : fixa && hs.includes(fixa) ? fixa : hs[0] || "" }); }} hoje={hoje} fechado={(v) => !horasDoDia(expediente, v).length} />
                     <select value={r.hora} onChange={(e) => setR({ ...r, hora: e.target.value })} aria-label="Horário" disabled={!horasReg.length}>
                       {horasReg.length ? horasReg.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
                     </select>
                   </div>
+                      }
+                    />
+                  ) : (
+                    <>
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 8 }}>
+                    <Calendario valor={r.data} onEscolher={(v) => { const hs = horasDoDia(expediente, v); const fixa = pacientes.find((x) => x.id === r.pacienteId)?.hora; setR({ ...r, data: v, hora: hs.includes(r.hora) ? r.hora : fixa && hs.includes(fixa) ? fixa : hs[0] || "" }); }} hoje={hoje} fechado={(v) => !horasDoDia(expediente, v).length} />
+                    <select value={r.hora} onChange={(e) => setR({ ...r, hora: e.target.value })} aria-label="Horário" disabled={!horasReg.length}>
+                      {horasReg.length ? horasReg.map((h) => <option key={h} value={h}>{h}</option>) : <option value="">—</option>}
+                    </select>
+                  </div>
+                    </>
+                  )}
                   <span style={{ fontSize: 13, color: "#8A7A7E" }}>{r.data ? "Só aparecem os dias e horários da sua disponibilidade." : "Escolha o dia: os dias em que você não atende ficam riscados."}</span>
                 </div>
               </div>

@@ -63,7 +63,7 @@ export async function rodarLembretes(sb: SupabaseClient): Promise<Resumo> {
   // 1. Sessões de amanhã e depois de amanhã, que ainda não receberam o lembrete.
   {
     const { data: ses } = await sb
-      .from("sessoes").select("id, paciente_id, inicio").eq("status", "agendada")
+      .from("sessoes").select("id, paciente_id, inicio, modalidade").eq("status", "agendada")
       .gte("inicio", diaIni(1).toISOString()).lt("inicio", diaIni(3).toISOString()).order("inicio");
     const pacs = await pacientesPor(sb, [...new Set((ses ?? []).map((s) => s.paciente_id as string))]);
     const contato = await contatos(sb, [...pacs.values()]);
@@ -72,8 +72,10 @@ export async function rodarLembretes(sb: SupabaseClient): Promise<Resumo> {
       const c = p && contato(p);
       if (!p || !c) continue;
       const inicio = new Date(s.inicio as string);
+      // Link da chamada só para sessão online (o padrão: adulta online, criança presencial; a Ritieli pode trocar uma sessão).
+      const online = ((s.modalidade as string | null) ?? (p.tipo === "crianca" ? "presencial" : "online")) === "online";
       const ok = await enviarUmaVez(sb, "lembrete_sessao", `${s.id}:${s.inicio}`, () =>
-        emailLembreteSessao({ para: c.email, nome: c.nome, sessaoDe: p.tipo === "crianca" ? p.nome : undefined, dia: fmtDiaLongo(inicio), hora: fmtHora(inicio), meet: p.meet_link }),
+        emailLembreteSessao({ para: c.email, nome: c.nome, sessaoDe: p.tipo === "crianca" ? p.nome : undefined, dia: fmtDiaLongo(inicio), hora: fmtHora(inicio), meet: online ? p.meet_link : null }),
       );
       if (ok) r.sessao++, await pausa();
     }

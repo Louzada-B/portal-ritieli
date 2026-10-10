@@ -20,7 +20,7 @@ export default async function PaginaSessoes({ searchParams }: { searchParams: Pr
   const ini = deLocal(ano, mes, 1);
   const fim = deLocal(ano, mes + 1, 1);
   const [{ data: sess }, { data: pacs }, { data: semana }, { data: blq }] = await Promise.all([
-    sb.from("sessoes").select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, origem, remarcada_de, pacientes(nome, tipo)").gte("inicio", ini.toISOString()).lt("inicio", fim.toISOString()).order("inicio", { ascending: false }),
+    sb.from("sessoes").select("id, paciente_id, inicio, status, valor_centavos, pago_em, recibo_em, origem, remarcada_de, modalidade, pacientes(nome, tipo)").gte("inicio", ini.toISOString()).lt("inicio", fim.toISOString()).order("inicio", { ascending: false }),
     sb.from("pacientes").select("id, nome, valor_centavos, fixo_hora").eq("status", "ativo").order("nome"),
     sb.from("semana_padrao").select("dia_semana, ativo, inicio, fim, pausa_inicio, pausa_fim"),
     sb.from("bloqueios").select("inicio, fim").gte("fim", new Date().toISOString()),
@@ -46,6 +46,7 @@ export default async function PaginaSessoes({ searchParams }: { searchParams: Pr
       recibo: !!x.recibo_em,
       manual: x.origem === "manual",
       remarcadaDe: x.remarcada_de,
+      modalidade: x.modalidade ?? null,
     };
   });
 
