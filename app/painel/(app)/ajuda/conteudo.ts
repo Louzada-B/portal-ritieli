@@ -96,7 +96,7 @@ export const TAREFAS: Tarefa[] = [
     id: "pagamentos", titulo: "Confirmar pagamentos e recibos", resumo: "Marcar pago, emitir recibo e definir valor.", busca: "pix recebido a receber recibo valor crédito antecipado",
     passos: [
       "Abra Sessões e pagamentos e use o filtro para ver o que está “A receber”.",
-      "Quando o Pix entrar na sua conta, abra a sessão e use “Marcar pago”. A paciente passa a ver “Confirmado em”.",
+      "Quando o Pix entrar na sua conta, abra a sessão e use “Marcar pago”. A paciente passa a ver “Confirmado em”. O recibo em si você emite no Receita Saúde (o painel não emite): depois use “Marcar emitido” e ela o pede pelo WhatsApp.",
       "Use “Marcar emitido” quando entregar o recibo. Se precisar, “Desfazer”.",
       "“Pagamento antecipado” e “Paga com crédito” servem para quem pagou antes ou tem crédito de outra sessão.",
     ],
