@@ -1,12 +1,15 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseNavegador } from "../../../lib/supabase/navegador";
+import Icone from "../../componentes/Icone";
+import * as cofre from "./cofre";
+import { salvarParRecados } from "./acoes";
 import { criarExercicio, excluirExercicio, excluirAnexoExercicio, registrarAnexoExercicio, urlAnexoExercicio } from "./exercicioAcoes";
 
 export type ExItem = {
-  id: string; titulo: string; instrucoes: string; link: string; prazo: string | null; criadoEm: string; concluidoEm: string | null; recado: string;
+  id: string; titulo: string; instrucoes: string; link: string; prazo: string | null; criadoEm: string; concluidoEm: string | null; recadoE2E: string;
   anexos: { id: string; nome: string; tipo: string; tamanho: number }[];
 };
 
@@ -39,7 +42,7 @@ function validar(arquivos: File[]): string | null {
   return null;
 }
 
-export default function Exercicios({ pacienteId, itens, ativo }: { pacienteId: string; itens: ExItem[]; ativo: boolean }) {
+export default function Exercicios({ pacienteId, itens, ativo, par }: { pacienteId: string; itens: ExItem[]; ativo: boolean; par: { pub: string; privCripto: string } | null }) {
   const router = useRouter();
   const [pend, iniciar] = useTransition();
   const [aberto, setAberto] = useState(false);
@@ -51,6 +54,28 @@ export default function Exercicios({ pacienteId, itens, ativo }: { pacienteId: s
   const [arqs, setArqs] = useState<File[]>([]);
   const entrada = useRef<HTMLInputElement>(null);
   const [mais, setMais] = useState<string | null>(null);
+  const [recados, setRecados] = useState<Record<string, string | null>>({});
+  // Decifra aqui, no navegador, os recados deixados pelas pacientes.
+  useEffect(() => {
+    if (!par) return;
+    let vivo = true;
+    (async () => {
+      const r: Record<string, string | null> = {};
+      for (const x of itens) if (x.recadoE2E) r[x.id] = await cofre.decifrarRecado(par.privCripto, x.recadoE2E);
+      if (vivo) setRecados(r);
+    })();
+    return () => { vivo = false; };
+  }, [itens, par]);
+  const ativar = () => iniciar(async () => {
+    try {
+      const novo = await cofre.criarParRecados();
+      const r = await salvarParRecados(novo.pub, novo.privCripto);
+      setMsg(r.erro ? { t: r.erro, erro: true } : { t: r.ok! });
+      if (r.ok) router.refresh();
+    } catch {
+      setMsg({ t: "Não deu para ativar. Abra o prontuário de novo e tente.", erro: true });
+    }
+  });
   const maisEntrada = useRef<HTMLInputElement>(null);
 
   const limpar = () => { setTitulo(""); setInstr(""); setLink(""); setPrazo(""); setArqs([]); setAberto(false); };
@@ -109,7 +134,12 @@ export default function Exercicios({ pacienteId, itens, ativo }: { pacienteId: s
           <button type="button" className="mini2" style={{ color: "#A3322A", borderColor: "#F2C9D1" }} disabled={pend} onClick={() => apagarAnexo(a.id)}>Remover</button>
         </div>
       ))}
-      {x.recado ? <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "10px 12px", fontSize: 14 }}><span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#8A7A7E" }}>Recado da pessoa</span><span style={{ whiteSpace: "pre-wrap" }}>{x.recado}</span></div> : x.concluidoEm ? <span style={{ fontSize: 13, color: "#8A7A7E" }}>Marcou como feito, sem recado.</span> : null}
+      {x.recadoE2E ? (
+        <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "10px 12px", fontSize: 14 }}>
+          <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#8A7A7E" }}>Recado da pessoa</span>
+          {recados[x.id] ? <span style={{ whiteSpace: "pre-wrap" }}>{recados[x.id]}</span> : <span style={{ color: "#8A7A7E" }}>{x.id in recados ? "Não foi possível abrir este recado." : "Abrindo…"}</span>}
+        </div>
+      ) : x.concluidoEm ? <span style={{ fontSize: 13, color: "#8A7A7E" }}>Marcou como feito, sem recado.</span> : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button type="button" className="mini2" disabled={pend} onClick={() => { setMais(x.id); maisEntrada.current?.click(); }}>Anexar arquivo</button>
         <button type="button" className="mini2" style={{ color: "#A3322A", borderColor: "#F2C9D1" }} disabled={pend} onClick={() => apagar(x.id)}>Excluir exercício</button>
@@ -119,9 +149,16 @@ export default function Exercicios({ pacienteId, itens, ativo }: { pacienteId: s
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <span className="rot">Exercícios</span>
+      <h2 className="card-t"><Icone nome="escritos" tam={20} />Exercícios</h2>
       <input ref={maisEntrada} type="file" accept={ACEITOS} multiple hidden onChange={(e) => { anexarMais(e.target.files); e.target.value = ""; }} />
       {msg ? <div className={msg.erro ? "aviso erro" : "aviso"} role="status">{msg.t}</div> : null}
+      {!par ? (
+        <div className="aviso" role="status" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <b>Ative os recados protegidos</b>
+          <span>Enquanto não ativar, as pacientes não conseguem deixar recado nos exercícios. Ao ativar, cada recado é cifrado no aparelho da paciente e só este prontuário aberto consegue ler (nem o servidor lê).</span>
+          <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={ativar}>{pend ? "Ativando…" : "Ativar recados protegidos"}</button>
+        </div>
+      ) : null}
       {abertos.length ? abertos.map(cartao) : <span style={{ fontSize: 13, color: "#8A7A7E" }}>Nenhum exercício em andamento.</span>}
       {feitos.length ? (
         <details>
@@ -149,7 +186,7 @@ export default function Exercicios({ pacienteId, itens, ativo }: { pacienteId: s
             ))}
             <span style={{ fontSize: 12, color: "#8A7A7E" }}>PDF, imagem ou áudio, até 10 MB cada.</span>
           </div>
-          <span style={{ fontSize: 13, color: "#8A7A7E" }}>Ninguém recebe aviso. A pessoa vê o exercício ao entrar na área dela. Não coloque nada que precise de sigilo reforçado: os anexos ficam em armazenamento privado, mas sem a criptografia do prontuário.</span>
+          <span style={{ fontSize: 13, color: "#8A7A7E" }}>Ninguém recebe aviso: a pessoa vê o exercício ao entrar na área dela. O texto fica criptografado no servidor, porque a paciente precisa abrir; os anexos ficam em armazenamento privado. Só o recado dela tem proteção de ponta a ponta.</span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || titulo.trim().length < 2 || instr.trim().length < 2} onClick={salvar}>{pend ? "Salvando…" : "Criar exercício"}</button>
             <button type="button" className="bt3" disabled={pend} onClick={limpar}>Cancelar</button>

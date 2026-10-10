@@ -18,6 +18,8 @@ export default async function Exercicio({ params, searchParams }: { params: Prom
   // Só lista os exercícios do paciente atual; um id de outra pessoa cai no "não encontrado".
   const x = (await exerciciosDoPaciente(supabaseAdmin(), p.id)).find((e) => e.id === id);
   if (!x) notFound();
+  const { data: ch } = await supabaseAdmin().from("prontuario_chave").select("pub_recados").eq("id", 1).maybeSingle();
+  const pub = (ch?.pub_recados as string | null) ?? null;
   const sufixo = ctx.pacientes.length > 1 ? `?p=${p.id}` : "";
   return (
     <Casca ctx={ctx} aba="exercicios">
@@ -36,8 +38,8 @@ export default async function Exercicio({ params, searchParams }: { params: Prom
         ) : null}
       </section>
       <section className="card" style={{ marginTop: 16 }}>
-        {x.concluidoEm && x.recado ? <p style={{ margin: "0 0 12px", color: "#5A3A41" }}><b>Seu recado:</b> {x.recado}</p> : null}
-        <FormExercicio key={`${x.id}-${x.concluidoEm ?? ""}`} pacienteId={p.id} id={x.id} feito={!!x.concluidoEm} recadoAtual={x.recado} />
+        {x.concluidoEm && x.recadoE2E ? <p style={{ margin: "0 0 12px", color: "#5A3A41" }}>Você deixou um recado protegido para a Ritieli.</p> : null}
+        <FormExercicio key={`${x.id}-${x.concluidoEm ?? ""}`} pacienteId={p.id} id={x.id} feito={!!x.concluidoEm} chavePublica={pub} />
       </section>
     </Casca>
   );

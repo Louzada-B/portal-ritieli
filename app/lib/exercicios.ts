@@ -11,7 +11,7 @@ export type Exercicio = {
   prazo: string | null;
   criadoEm: string;
   concluidoEm: string | null;
-  recado: string;
+  recadoE2E: string;
   anexos: AnexoEx[];
 };
 
@@ -19,14 +19,14 @@ export type Exercicio = {
 export const TIPOS_ANEXO = ["application/pdf", "image/png", "image/jpeg", "image/webp", "audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/wav"];
 export const MAX_ANEXO = 10_000_000;
 
-type Linha = { id: string; titulo: string; instrucoes_cripto: string; link_cripto: string | null; prazo: string | null; criado_em: string; concluido_em: string | null; recado_cripto: string | null };
+type Linha = { id: string; titulo: string; instrucoes_cripto: string; link_cripto: string | null; prazo: string | null; criado_em: string; concluido_em: string | null; recado_e2e: string | null };
 
 // Exercícios de um paciente, já decifrados, com os anexos. Vale para o painel (cliente com sessão da Ritieli)
 // e para a área da(o) paciente (cliente do servidor, depois de conferir o acesso).
 export async function exerciciosDoPaciente(sb: SupabaseClient, pacienteId: string): Promise<Exercicio[]> {
   const { data } = await sb
     .from("exercicios")
-    .select("id, titulo, instrucoes_cripto, link_cripto, prazo, criado_em, concluido_em, recado_cripto")
+    .select("id, titulo, instrucoes_cripto, link_cripto, prazo, criado_em, concluido_em, recado_e2e")
     .eq("paciente_id", pacienteId)
     .order("criado_em", { ascending: false });
   const linhas = (data ?? []) as Linha[];
@@ -42,7 +42,7 @@ export async function exerciciosDoPaciente(sb: SupabaseClient, pacienteId: strin
     prazo: l.prazo,
     criadoEm: l.criado_em,
     concluidoEm: l.concluido_em,
-    recado: decifrarOuVazio(l.recado_cripto),
+    recadoE2E: l.recado_e2e ?? "",
     anexos: porEx.get(l.id) ?? [],
   }));
 }
@@ -59,3 +59,6 @@ export function linkValido(v: string): string | null {
     return null;
   }
 }
+
+// Formato do recado cifrado no navegador: v1.<chave embrulhada>.<iv>.<texto>
+export const RECADO_E2E = /^v1\.[A-Za-z0-9+/=]{300,700}\.[A-Za-z0-9+/=]{12,24}\.[A-Za-z0-9+/=]{16,6000}$/;

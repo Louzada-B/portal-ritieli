@@ -152,3 +152,25 @@ export async function decifrarArquivo(dados: ArrayBuffer) {
   const u = new Uint8Array(dados);
   return crypto.subtle.decrypt({ name: "AES-GCM", iv: u.subarray(0, 12) }, chave(), u.subarray(12));
 }
+
+// ---- recados dos exercícios (a paciente cifra com a chave pública; só esta aba, com o cofre aberto, decifra) ----
+export type ParRecados = { pub: string; privCripto: string };
+export async function criarParRecados(): Promise<ParRecados> {
+  const par = await crypto.subtle.generateKey({ name: "RSA-OAEP", modulusLength: 3072, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["encrypt", "decrypt"]);
+  const pub = b64(new Uint8Array(await crypto.subtle.exportKey("spki", par.publicKey)) as U8);
+  const priv = b64(new Uint8Array(await crypto.subtle.exportKey("pkcs8", par.privateKey)) as U8);
+  return { pub, privCripto: await cifrar(priv) };
+}
+export async function decifrarRecado(privCripto: string, recado: string): Promise<string | null> {
+  try {
+    const priv = await decifrar<string>(privCripto);
+    const [v, wk, iv, ct] = recado.split(".");
+    if (!priv || v !== "v1") return null;
+    const chavePriv = await crypto.subtle.importKey("pkcs8", deB64(priv), { name: "RSA-OAEP", hash: "SHA-256" }, false, ["decrypt"]);
+    const raw = await crypto.subtle.decrypt({ name: "RSA-OAEP" }, chavePriv, deB64(wk));
+    const aes = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["decrypt"]);
+    return dec.decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: deB64(iv) }, aes, deB64(ct)));
+  } catch {
+    return null;
+  }
+}

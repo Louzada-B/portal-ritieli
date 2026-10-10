@@ -7,6 +7,7 @@ import { mascararCpf } from "../../../../lib/termoTexto";
 import { fmtDiaCurto } from "../../../../lib/agenda";
 import { TopoCelular } from "../../../componentes/Navegacao";
 import Prontuario from "../Prontuario";
+import { exerciciosDoPaciente } from "../../../../lib/exercicios";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +15,15 @@ const curto = (n: string) => { const p = n.trim().split(/\s+/); return p.length 
 const dataBR = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso));
 const dataHora = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)).replace(",", " às");
 
-export default async function PaginaProntuario({ params }: { params: Promise<{ id: string }> }) {
+export default async function PaginaProntuario({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: string }> }) {
   const { id } = await params;
+  const { aba } = await searchParams;
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", id).maybeSingle<Paciente>();
   if (!p) notFound();
 
   const [{ data: chave }, { data: evos }, { data: secoes }, { data: anexos }, { data: acessos }, { data: sess }, { data: termo }, resps] = await Promise.all([
-    sb.from("prontuario_chave").select("salt_senha, iteracoes, chave_senha, salt_rec, chave_rec").eq("id", 1).maybeSingle(),
+    sb.from("prontuario_chave").select("salt_senha, iteracoes, chave_senha, salt_rec, chave_rec, pub_recados, priv_recados_cripto").eq("id", 1).maybeSingle(),
     sb.from("prontuario_evolucoes").select("id, data, rotulo, conteudo_cripto, criado_em, prontuario_correcoes(id, conteudo_cripto, criado_em)").eq("paciente_id", id).order("data", { ascending: false }).order("criado_em", { ascending: false }),
     sb.from("prontuario_secoes").select("id, tipo, conteudo_cripto, criado_em").eq("paciente_id", id).order("criado_em", { ascending: false }),
     sb.from("prontuario_anexos").select("id, caminho, meta_cripto, tamanho, criado_em").eq("paciente_id", id).order("criado_em", { ascending: false }),
@@ -30,6 +32,8 @@ export default async function PaginaProntuario({ params }: { params: Promise<{ i
     sb.from("termos").select("aceito_em").eq("paciente_id", id).eq("status", "aceito").order("aceito_em", { ascending: false }).limit(1).maybeSingle(),
     responsaveisDe(sb, id),
   ]);
+
+  const exercicios = await exerciciosDoPaciente(sb, id);
 
   // Sessões para vincular à evolução, numeradas na ordem em que aconteceram.
   let n = 0;
@@ -59,7 +63,10 @@ export default async function PaginaProntuario({ params }: { params: Promise<{ i
       <Prontuario
         key={id}
         paciente={{ id, nome: p.nome, curto: curto(p.nome), tipo: p.tipo, desde: p.desde, status: p.status }}
-        pacote={chave ? { ...chave, iteracoes: chave.iteracoes as number } : null}
+        pacote={chave ? { salt_senha: chave.salt_senha as string, iteracoes: chave.iteracoes as number, chave_senha: chave.chave_senha as string, salt_rec: chave.salt_rec as string, chave_rec: chave.chave_rec as string } : null}
+        parRecados={chave?.pub_recados && chave.priv_recados_cripto ? { pub: chave.pub_recados as string, privCripto: chave.priv_recados_cripto as string } : null}
+        exercicios={exercicios}
+        abaInicial={aba}
         evolucoes={(evos ?? []).map((e) => ({
           id: e.id as string,
           data: e.data as string,

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Icone from "../../componentes/Icone";
 import { supabaseNavegador } from "../../../lib/supabase/navegador";
 import * as cofre from "./cofre";
+import Exercicios, { type ExItem } from "./Exercicios";
 import { salvarChave, registrarAcesso, salvarEvolucao, salvarCorrecao, salvarSecao, registrarAnexo, excluirAnexo } from "./acoes";
 
 type Evo = { id: string; data: string; rotulo: string; cripto: string; reg: string; correcoes: { id: string; cripto: string; quando: string }[] };
@@ -19,8 +20,11 @@ type Props = {
   acessos: { id: string; quando: string; acao: string; aparelho: string }[];
   sessoes: { id: string; data: string; rotulo: string }[];
   identificacao: [string, string][];
+  exercicios: ExItem[];
+  parRecados: { pub: string; privCripto: string } | null;
+  abaInicial?: string;
 };
-type Aba = "evo" | "dem" | "id" | "enc" | "anx" | "log";
+type Aba = "evo" | "dem" | "id" | "enc" | "anx" | "exe" | "log";
 
 const DS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -58,7 +62,7 @@ export default function Prontuario(props: Props) {
   const [calculando, setCalculando] = useState(false);
 
   // Conteúdo aberto
-  const [aba, setAba] = useState<Aba>("evo");
+  const [aba, setAba] = useState<Aba>(props.abaInicial === "exe" ? "exe" : "evo");
   const [evos, setEvos] = useState<{ id: string; data: string; rotulo: string; texto: string; reg: string; correcoes: { id: string; texto: string; quando: string }[] }[]>([]);
   const [dem, setDem] = useState({ demanda: "", objetivos: "" });
   const [enc, setEnc] = useState<{ motivo: string; sintese: string } | null>(null);
@@ -266,7 +270,7 @@ export default function Prontuario(props: Props) {
   }
 
   // ---------- Aberto ----------
-  const abas: [Aba, string][] = [["evo", "Evoluções"], ["dem", "Demanda e objetivos"], ["id", "Identificação"], ["enc", "Encerramento"], ["anx", "Anexos"], ["log", "Acessos"]];
+  const abas: [Aba, string][] = [["evo", "Evoluções"], ["dem", "Demanda e objetivos"], ["id", "Identificação"], ["enc", "Encerramento"], ["anx", "Anexos"], ["exe", "Exercícios"], ["log", "Acessos"]];
   return (
     <>
       {topo}
@@ -373,6 +377,10 @@ export default function Prontuario(props: Props) {
                 {!anexos.length ? <span style={{ fontSize: 14, color: "#6B5A5E" }}>Nenhum anexo ainda.</span> : null}
                 <span style={{ fontSize: 13, color: "#8A7A7E" }}>Materiais de testes psicológicos ficam aqui, com o mesmo sigilo do prontuário. O arquivo é criptografado antes de sair do seu aparelho (até 15 MB).</span>
               </section>
+            ) : null}
+
+            {aba === "exe" ? (
+              <section className="card"><Exercicios pacienteId={paciente.id} itens={props.exercicios} ativo={paciente.status === "ativo"} par={props.parRecados} /></section>
             ) : null}
 
             {aba === "log" ? (

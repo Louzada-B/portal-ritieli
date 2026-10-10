@@ -9,7 +9,6 @@ import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, ver
 import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
 import type { AcessoInfo } from "../../../lib/pacienteAcesso";
 import { listarLivresFixo } from "../livres";
-import Exercicios, { type ExItem } from "./Exercicios";
 import type { OpcaoFixa } from "../../../lib/livres";
 
 type Item = {
@@ -22,13 +21,14 @@ type Item = {
 };
 type LinhaSessao = { id: string; quando: string; status: "agendada" | "realizada" | "falta" | "cancelada"; pago: boolean; recibo: boolean };
 type ResumoSessoes = { realizadas: number; faltas: number; proximas: number; pagasFrente: number; pagasFrenteAte: string | null; devendo: number; devendoValor: number; credito: number; creditoValor: number; recibos: number };
+type FichaAba = "dados" | "ficha" | "sessoes" | "acesso" | "situacao";
+const FICHA_ABAS: [FichaAba, string][] = [["dados", "Dados"], ["ficha", "Ficha e termo"], ["sessoes", "Sessões e pagamentos"], ["acesso", "Sala e acesso"], ["situacao", "Situação"]];
 type Detalhe = {
   acessos: AcessoInfo[];
   responsaveis: { id: string; nome: string; whatsapp: string | null; email: string | null; cpfFinal: string | null; parentesco: string | null; financeiro: boolean }[];
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
   temProntuario?: boolean;
-  exercicios?: ExItem[];
   guarda?: { motivo: "encerrar" | "prazo"; ate: string | null } | null;
   sessoes?: { abertas: { id: string; quando: string; valor: number | null; liberada: boolean }[]; resumo: ResumoSessoes; ultimas: LinhaSessao[]; proximas: LinhaSessao[] };
 } | null;
@@ -310,6 +310,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
   const [cpfNovo, setCpfNovo] = useState("");
   const [editando, setEditando] = useState(false);
   const [e, setE] = useState({ nome: p.nome, idade: p.idade ? String(p.idade) : "", whatsapp: fone(p.whatsapp), email: p.email || "", valor: p.valor != null ? String(p.valor / 100).replace(".", ",") : "", tipoValor: p.tipoValor, fixoDia: p.fixoDia != null ? String(p.fixoDia) : "", fixoHora: p.fixoHora || "", desde: p.desde, fim: p.fim || "", lembretes: p.lembretes });
+  const [aba, setAba] = useState<FichaAba>("dados");
   const [encerrando, setEncerrando] = useState<string | null>(null);
   const [reat, setReat] = useState<{ data: string; dia: string; hora: string } | null>(null);
   // Retomada sugerida: o dia seguinte ao encerramento, ou hoje se ele já passou.
@@ -346,7 +347,12 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         <span className={inf ? "pill p-in" : "pill p-on"}>{inf ? "Criança ou adolescente" : "Adulta · online"}</span>
       </div>
       <Aviso m={msg} />
+      <nav className="fi-abas" role="tablist" aria-label="Seções da ficha">
+        {FICHA_ABAS.map(([k, n]) => <button key={k} type="button" role="tab" aria-selected={aba === k} className={aba === k ? "fi-aba on" : "fi-aba"} onClick={() => setAba(k)}>{n}</button>)}
+      </nav>
 
+      {aba === "dados" ? (
+      <>
       {editando ? (
         <div className="form-c">
           <div className="fc-g">
@@ -403,44 +409,6 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={() => iniciar(async () => { const v = await verPessoais(p.id); const i = v.emergencia.lastIndexOf(" · "); setEdP({ nascimento: v.nascimento, eNome: i >= 0 ? v.emergencia.slice(0, i) : v.emergencia, eTelefone: i >= 0 ? v.emergencia.slice(i + 3) : "" }); setEditando(true); })}>Editar dados</button>
         </>
       )}
-
-      {p.status === "ativo" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span className="rot">Cadastro</span>
-          <div className="cad-g">
-            <div className="cad-p"><span className="l">1 · Ficha de cadastro</span><span className={p.cad.ficha === "preenchida" ? "pill p-ok" : p.cad.ficha === "aguardando" ? "pill p-av" : "pill p-ur"}>{p.cad.fichaTxt}</span></div>
-            <div className="cad-p"><span className="l">2 · Termo de consentimento</span><span className={p.cad.termo === "aceito" ? "pill p-ok" : p.cad.termo === "aguardando" ? "pill p-av" : p.cad.termo === "depois" ? "pill p-ne" : "pill p-ur"}>{p.cad.termoTxt}</span></div>
-          </div>
-          {p.cad.ficha === "preenchida" && p.cad.termo !== "aceito" ? (
-            <Link href={det.termo && det.termo.status === "enviado" ? `/painel/termos?t=${det.termo.id}&aba=doc` : `/painel/termos?paciente=${p.id}`} className="mini2" style={{ alignSelf: "flex-start" }}>
-              {p.cad.termo === "sem" ? "Gerar o termo" : p.cad.termo === "nao_enviado" ? "Abrir o termo e mandar" : "Ver o termo ou reenviar"} <span aria-hidden="true">→</span>
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
-
-      {det.sessoes ? <BlocoSessoes key={p.id} id={p.id} nome={p.nome} s={det.sessoes} /> : null}
-      <Exercicios key={`ex-${p.id}`} pacienteId={p.id} itens={det.exercicios ?? []} ativo={p.status === "ativo"} />
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span className="rot">Ficha de cadastro</span>
-        <div className="resp" style={{ gap: 10 }}>
-          <span style={{ fontSize: 14, color: "#5A3A41" }}>{p.fichaEm ? "A ficha foi preenchida. Você pode gerar o termo em Termos." : "A pessoa preenche CPF, nascimento e contato de emergência num link pessoal, válido por 7 dias."}</span>
-          {envio ? (
-            <>
-              <div className="prev" style={{ fontSize: 14 }}>{envio.texto}</div>
-              <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {envio.para ? <a href={waLink(envio.para, envio.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto", minHeight: 40, padding: "9px 16px", fontSize: 14 }} onClick={() => { if (envio.ref) marcarEnviado("ficha", envio.ref).then(() => router.refresh()); }}><Icone nome="whats" tam={16} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado: copie o link.</span>}
-                <button type="button" className="mini2" onClick={() => navigator.clipboard?.writeText(envio.link).then(() => av({ ok: "Link copiado." }))}>Copiar link</button>
-              </span>
-            </>
-          ) : (
-            <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={() => iniciar(async () => { const r = await linkFicha(p.id); if (r.erro) return av(r); setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, ref: r.ref }); })}>
-              <Icone nome="whats" tam={16} />{p.fichaEm ? "Enviar a ficha de novo" : det.ficha ? "Enviar a ficha de novo" : "Enviar ficha pelo WhatsApp"}
-            </button>
-          )}
-        </div>
-      </div>
 
       {!inf ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -519,7 +487,57 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
           ) : null}
         </div>
       ) : null}
+      </>
+      ) : null}
 
+      {aba === "ficha" ? (
+      <>
+      {p.status === "ativo" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="rot">Cadastro</span>
+          <div className="cad-g">
+            <div className="cad-p"><span className="l">1 · Ficha de cadastro</span><span className={p.cad.ficha === "preenchida" ? "pill p-ok" : p.cad.ficha === "aguardando" ? "pill p-av" : "pill p-ur"}>{p.cad.fichaTxt}</span></div>
+            <div className="cad-p"><span className="l">2 · Termo de consentimento</span><span className={p.cad.termo === "aceito" ? "pill p-ok" : p.cad.termo === "aguardando" ? "pill p-av" : p.cad.termo === "depois" ? "pill p-ne" : "pill p-ur"}>{p.cad.termoTxt}</span></div>
+          </div>
+          {p.cad.ficha === "preenchida" && p.cad.termo !== "aceito" ? (
+            <Link href={det.termo && det.termo.status === "enviado" ? `/painel/termos?t=${det.termo.id}&aba=doc` : `/painel/termos?paciente=${p.id}`} className="mini2" style={{ alignSelf: "flex-start" }}>
+              {p.cad.termo === "sem" ? "Gerar o termo" : p.cad.termo === "nao_enviado" ? "Abrir o termo e mandar" : "Ver o termo ou reenviar"} <span aria-hidden="true">→</span>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span className="rot">Ficha de cadastro</span>
+        <div className="resp" style={{ gap: 10 }}>
+          <span style={{ fontSize: 14, color: "#5A3A41" }}>{p.fichaEm ? "A ficha foi preenchida. Você pode gerar o termo em Termos." : "A pessoa preenche CPF, nascimento e contato de emergência num link pessoal, válido por 7 dias."}</span>
+          {envio ? (
+            <>
+              <div className="prev" style={{ fontSize: 14 }}>{envio.texto}</div>
+              <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {envio.para ? <a href={waLink(envio.para, envio.texto)} target="_blank" rel="noopener" className="bt" style={{ width: "auto", minHeight: 40, padding: "9px 16px", fontSize: 14 }} onClick={() => { if (envio.ref) marcarEnviado("ficha", envio.ref).then(() => router.refresh()); }}><Icone nome="whats" tam={16} />Abrir no WhatsApp</a> : <span style={{ fontSize: 13, color: "#A3322A" }}>Sem WhatsApp cadastrado: copie o link.</span>}
+                <button type="button" className="mini2" onClick={() => navigator.clipboard?.writeText(envio.link).then(() => av({ ok: "Link copiado." }))}>Copiar link</button>
+              </span>
+            </>
+          ) : (
+            <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} disabled={pend} onClick={() => iniciar(async () => { const r = await linkFicha(p.id); if (r.erro) return av(r); setEnvio({ link: r.link!, para: r.para!, texto: r.texto!, ref: r.ref }); })}>
+              <Icone nome="whats" tam={16} />{p.fichaEm ? "Enviar a ficha de novo" : det.ficha ? "Enviar a ficha de novo" : "Enviar ficha pelo WhatsApp"}
+            </button>
+          )}
+        </div>
+      </div>
+      </>
+      ) : null}
+
+      {aba === "sessoes" ? (
+      <>
+      {det.sessoes ? <BlocoSessoes key={p.id} id={p.id} nome={p.nome} s={det.sessoes} /> : null}
+      </>
+      ) : null}
+
+      {aba === "acesso" ? (
+      <>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span className="rot">Sala de atendimento</span>
         {p.meet ? (
@@ -557,9 +575,14 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         )}
         <span style={{ fontSize: 13, color: "#8A7A7E" }}>A senha provisória vai por e-mail, vale 24 horas e é trocada no primeiro acesso. O acesso se desliga sozinho quando o acompanhamento é encerrado.</span>
       </div>
+      </>
+      ) : null}
 
+      {aba === "situacao" ? (
+      <>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
         <Link href={`/painel/prontuario/${p.id}`} className="bt"><Icone nome="escudo" tam={18} />Prontuário</Link>
+        <Link href={`/painel/prontuario/${p.id}?aba=exe`} className="bt2"><Icone nome="escritos" tam={18} />Exercícios</Link>
         <Link href={`/painel/termos?paciente=${p.id}`} className="bt2"><Icone nome="termos" tam={18} />Termos</Link>
         {p.status === "ativo" ? (
           <button type="button" className="bt3" disabled={pend} onClick={() => setEncerrando(hojeBR())}>Encerrar acompanhamento</button>
@@ -598,6 +621,9 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
         </div>
       ) : <ExcluirPaciente id={p.id} nome={p.nome} temProntuario={!!det.temProntuario} />}
       <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>CPF e dados pessoais ficam guardados com criptografia e aparecem mascarados. O prontuário fica numa área à parte, com criptografia de ponta a ponta.</p>
+      </>
+      ) : null}
+
     </>
   );
 }

@@ -8,7 +8,7 @@ import { linkValido, MAX_ANEXO, TIPOS_ANEXO } from "../../../lib/exercicios";
 
 type Res = { erro?: string; ok?: string; id?: string; url?: string };
 const NEGADO: Res = { erro: "Sessão expirada. Entre de novo no painel." };
-const ATUALIZAR = () => { revalidatePath("/painel/pacientes"); };
+const ATUALIZAR = () => { revalidatePath("/painel/prontuario/[id]", "page"); };
 
 export async function criarExercicio(pacienteId: string, d: { titulo: string; instrucoes: string; link: string; prazo: string }): Promise<Res> {
   if (!(await ehAdmin())) return NEGADO;

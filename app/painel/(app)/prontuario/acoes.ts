@@ -94,3 +94,16 @@ export async function excluirAnexo(pacienteId: string, anexoId: string): Promise
   revalidatePath(`/painel/prontuario/${pacienteId}`);
   return { ok: "Anexo excluído." };
 }
+
+// Guarda a chave pública (aberta) e a privada (selada pela chave mestra). Só vale se ainda não existir.
+export async function salvarParRecados(pub: string, privCripto: string): Promise<Res> {
+  if (!/^[A-Za-z0-9+/=]{400,1000}$/.test(pub) || !ok(privCripto, 8000)) return { erro: "Dados inválidos." };
+  const sb = await supabaseServidor();
+  const { data: atual } = await sb.from("prontuario_chave").select("pub_recados").eq("id", 1).maybeSingle();
+  if (!atual) return { erro: "Crie a senha do prontuário primeiro." };
+  if (atual.pub_recados) return { erro: "Os recados protegidos já estão ativos. Recarregue a página." };
+  const { error } = await sb.from("prontuario_chave").update({ pub_recados: pub, priv_recados_cripto: privCripto }).eq("id", 1).is("pub_recados", null);
+  if (error) return { erro: "Não deu para ativar. Tente de novo." };
+  await registrarAcesso(null, "Ativou os recados protegidos dos exercícios");
+  return { ok: "Recados protegidos ativados." };
+}

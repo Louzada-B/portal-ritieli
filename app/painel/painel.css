@@ -537,3 +537,7 @@
 .painel .slv-h1{font:inherit;font-size:14px;font-weight:600;padding:7px 0;border-radius:10px;border:1.5px solid #E2CCD0;background:#FFFFFF;color:#3A1F25;cursor:pointer}
 .painel .slv-h1:hover{border-color:#7A2335}
 .painel .slv-h1.on{background:#7A2335;border-color:#7A2335;color:#FFFFFF}
+.painel .fi-abas{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;margin:4px 0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.painel .fi-aba{flex:0 0 auto;font:inherit;font-size:14px;font-weight:700;color:#5A3A41;background:#FFFFFF;border:1.5px solid #E2CCD0;border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer;white-space:nowrap}
+.painel .fi-aba.on{background:#7A2335;border-color:#7A2335;color:#FFFFFF}
+.painel .fi-aba:focus-visible{outline:2px solid #B0475D;outline-offset:2px}

@@ -1,5 +1,6 @@
 const CAMINHOS: Record<string, React.ReactNode> = {
   video: (<><rect x="3" y="6" width="13" height="12" rx="2" /><path d="M16 10l5-3v10l-5-3" /></>),
+  lista: (<><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 9l1.5 1.5L13 8M9 15h6" /></>),
   casa: <path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" />,
   calendario: (<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M8 3v4M16 3v4M3.5 10h17" /></>),
   cartao: (<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></>),

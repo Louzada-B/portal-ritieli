@@ -7,9 +7,10 @@ import { sair } from "./acoes";
 
 export type Aba = "inicio" | "sessoes" | "pagamentos" | "dados" | "exercicios";
 
-const ABAS: { id: Exclude<Aba, "exercicios">; texto: string; caminho: string; icone: "casa" | "calendario" | "cartao" | "pessoa" }[] = [
+const ABAS: { id: Aba; texto: string; caminho: string; icone: "casa" | "calendario" | "cartao" | "pessoa" | "lista" }[] = [
   { id: "inicio", texto: "Início", caminho: "", icone: "casa" },
   { id: "sessoes", texto: "Sessões", caminho: "/sessoes", icone: "calendario" },
+  { id: "exercicios", texto: "Exercícios", caminho: "/exercicios", icone: "lista" },
   { id: "pagamentos", texto: "Pagamentos", caminho: "/pagamentos", icone: "cartao" },
   { id: "dados", texto: "Meus dados", caminho: "/meus-dados", icone: "pessoa" },
 ];
@@ -37,7 +38,7 @@ export default function Casca({ ctx, aba, children }: { ctx: Contexto; aba: Aba;
       <div className="wrap">
         {varios ? (
           <div className="pa-chips" style={{ paddingTop: 20 }} role="group" aria-label="Acompanhamento de">
-            {ctx.pacientes.map((p) => <Link key={p.id} href={href(ABAS.find((a) => a.id === aba)?.caminho ?? "/exercicios", p.id)} className={p.id === ctx.atual.id ? "pa-chip on" : "pa-chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>{primeiroNome(p.nome)}</Link>)}
+            {ctx.pacientes.map((p) => <Link key={p.id} href={href(ABAS.find((a) => a.id === aba)!.caminho, p.id)} className={p.id === ctx.atual.id ? "pa-chip on" : "pa-chip"} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>{primeiroNome(p.nome)}</Link>)}
           </div>
         ) : null}
         {children}
