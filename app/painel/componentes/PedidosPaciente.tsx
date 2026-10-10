@@ -13,6 +13,7 @@ const campo: React.CSSProperties = { font: "inherit", fontSize: 14, padding: "6p
 function Linha({ x, feito, onFeito, onFechar }: { x: PedidoLinha; feito: { t: string; erro?: boolean } | null; onFeito: (id: string, r: { t: string; erro?: boolean }) => void; onFechar: (id: string) => void }) {
   const [pend, iniciar] = useTransition();
   const [novo, setNovo] = useState({ data: "", hora: "" });
+  const [abrir, setAbrir] = useState(false);
   const rodar = (f: () => Promise<{ erro?: string; ok?: string }>) => iniciar(async () => {
     const r = await f();
     onFeito(x.id, r.erro ? { t: r.erro, erro: true } : { t: r.ok || "Feito." });
@@ -33,35 +34,37 @@ function Linha({ x, feito, onFeito, onFechar }: { x: PedidoLinha; feito: { t: st
           <button type="button" className="mini2" onClick={() => onFechar(x.id)}>Fechar</button>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: "1 1 340px", minWidth: 0 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "flex-end", flex: "1 1 320px" }}>
           {x.tipo === "remarcar" ? (
             x.sessaoId ? (
-              <SeletorLivre
-                carregar={() => listarLivres(x.sessaoId!)}
-                recarregar={x.sessaoId}
-                valor={novo}
-                onChange={setNovo}
-                manual={
-                  <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <input type="date" aria-label="Novo dia" value={novo.data} onChange={(e) => setNovo({ ...novo, data: e.target.value })} style={campo} />
-                    <input type="time" aria-label="Novo horário" value={novo.hora} onChange={(e) => setNovo({ ...novo, hora: e.target.value })} style={campo} />
-                  </span>
-                }
-              />
-            ) : <span style={{ fontSize: 13, color: "#8A7A7E" }}>A sessão deste pedido não existe mais. Recuse ou marque como resolvido.</span>
-          ) : null}
-          <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {x.tipo === "remarcar" ? (
-              <button type="button" className="mini2" disabled={pend || !novo.data || !novo.hora} onClick={() => rodar(() => confirmarRemarcacaoPedido(x.id, novo.data, novo.hora))}>Remarcar e resolver</button>
-            ) : (
-              <button type="button" className="mini2" disabled={pend} onClick={() => rodar(() => confirmarCancelamentoPedido(x.id))}>Confirmar cancelamento</button>
-            )}
-            <button type="button" className="mini2" disabled={pend} onClick={() => rodar(() => recusarPedido(x.id))}>Recusar</button>
-            <button type="button" className="mini2" disabled={pend} onClick={() => rodar(() => resolverPedidoPaciente(x.id))}>Só marcar como resolvido</button>
-          </span>
-          {feito?.erro ? <span className="aviso erro" role="status">{feito.t}</span> : null}
+              <button type="button" className="mini2" aria-expanded={abrir} disabled={pend} onClick={() => setAbrir(!abrir)}>{abrir ? "Fechar calendário" : "Escolher novo horário"}</button>
+            ) : <span style={{ fontSize: 13, color: "#8A7A7E" }}>A sessão deste pedido não existe mais.</span>
+          ) : (
+            <button type="button" className="mini2" disabled={pend} onClick={() => rodar(() => confirmarCancelamentoPedido(x.id))}>Confirmar cancelamento</button>
+          )}
+          <button type="button" className="mini2" disabled={pend} onClick={() => rodar(() => recusarPedido(x.id))}>Recusar</button>
+          <button type="button" className="mini2" disabled={pend} onClick={() => rodar(() => resolverPedidoPaciente(x.id))}>Só marcar como resolvido</button>
         </div>
       )}
+
+      {!resolvido && abrir && x.tipo === "remarcar" && x.sessaoId ? (
+        <div style={{ flex: "1 1 100%", borderTop: "1px solid #EAD9DC", paddingTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <SeletorLivre
+            carregar={() => listarLivres(x.sessaoId!)}
+            recarregar={x.sessaoId}
+            valor={novo}
+            onChange={setNovo}
+            manual={
+              <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input type="date" aria-label="Novo dia" value={novo.data} onChange={(e) => setNovo({ ...novo, data: e.target.value })} style={campo} />
+                <input type="time" aria-label="Novo horário" value={novo.hora} onChange={(e) => setNovo({ ...novo, hora: e.target.value })} style={campo} />
+              </span>
+            }
+          />
+          <span><button type="button" className="mini2" disabled={pend || !novo.data || !novo.hora} onClick={() => rodar(() => confirmarRemarcacaoPedido(x.id, novo.data, novo.hora))}>Remarcar e resolver</button></span>
+        </div>
+      ) : null}
+      {!resolvido && feito?.erro ? <span className="aviso erro" role="status" style={{ flex: "1 1 100%" }}>{feito.t}</span> : null}
     </li>
   );
 }
