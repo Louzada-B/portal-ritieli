@@ -173,12 +173,20 @@ export default function Sessoes({ linhas, rotulo, ant, prox, pacientes, hoje, bu
   const pagas = linhas.filter((l) => l.pago);
   const ags = linhas.filter((l) => l.status === "agendada");
   const soma = (xs: Linha[]) => xs.reduce((a, l) => a + (l.valor || 0), 0);
-  // Busca pelo nome (sem acentos) e sempre em ordem de data, da mais recente para a mais antiga.
+  // Busca pelo nome (sem acentos). Ordem: de hoje em diante, da mais próxima para a mais distante; depois as passadas, da mais recente para a mais antiga.
   const sem = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const termo = sem(busca.trim());
   const lista = (filtro === "pend" ? aRec : filtro === "rec" ? semRecibo : filtro === "ag" ? ags : linhas)
     .filter((l) => !termo || sem(l.nome).includes(termo))
-    .sort((a, b) => b.inicio.localeCompare(a.inicio));
+    .sort((a, b) => {
+      const hoje = Math.floor((Date.now() - 3 * 3600000) / 86400000) * 86400000 + 3 * 3600000; // começo de hoje em Brasília
+      const ta = Date.parse(a.inicio);
+      const tb = Date.parse(b.inicio);
+      const fa = ta >= hoje;
+      const fb = tb >= hoje;
+      if (fa !== fb) return fa ? -1 : 1;
+      return fa ? ta - tb : tb - ta;
+    });
 
   const escolherPac = (id: string) => {
     const p = pacientes.find((x) => x.id === id);
