@@ -3,6 +3,6 @@ export const ESCALA = ["Discordo totalmente", "Discordo", "Nem concordo nem disc
 export const AFIRMACOES = [
   { campo: "clareza", texto: "O conteúdo foi fácil de entender." },
   { campo: "duracao", texto: "O tempo da palestra foi adequado." },
-  { campo: "nota", texto: "No geral, a palestra foi muito boa." },
+  { campo: "aplicacao", texto: "O assunto aqui discutido pode ser incrementado em minha vida de forma prática." },
 ] as const;
 export type CampoLikert = (typeof AFIRMACOES)[number]["campo"];

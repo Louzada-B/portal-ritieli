@@ -6,7 +6,7 @@ import GeradorQR from "./GeradorQR";
 
 export const dynamic = "force-dynamic";
 
-type Linha = { id: number; palestra: string; nota: number; clareza: number; duracao: number; mais_util: string | null; melhorar: string | null; criado_em: string };
+type Linha = { id: number; palestra: string; aplicacao: number; clareza: number; duracao: number; mais_util: string | null; melhorar: string | null; criado_em: string };
 
 const dia = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)).replace(".", "");
 const pct = (n: number, t: number) => (t ? Math.round((n / t) * 100) : 0);
@@ -34,7 +34,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
   const sel = q.p && /^[a-z0-9-]{1,60}$/.test(q.p) ? q.p : palestras[0] ?? "palestra";
   const l = todas.filter((x) => x.palestra === sel);
   const total = l.length;
-  const media = (c: "nota" | "clareza" | "duracao") => (total ? (l.reduce((s, x) => s + x[c], 0) / total).toFixed(1).replace(".", ",") : "–");
+  const media = (c: "aplicacao" | "clareza" | "duracao") => (total ? (l.reduce((s, x) => s + x[c], 0) / total).toFixed(1).replace(".", ",") : "–");
   const util = l.filter((x) => x.mais_util);
   const melhorar = l.filter((x) => x.melhorar);
 
@@ -76,7 +76,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                 {(lista as Linha[]).length ? (lista as Linha[]).map((x) => (
                   <div key={x.id} style={{ borderTop: "1px solid #EFE2E4", paddingTop: 10 }}>
                     <p style={{ margin: 0, color: "#3A1F25", lineHeight: 1.5 }}>{x[campo as "mais_util" | "melhorar"]}</p>
-                    <span style={{ fontSize: 12, color: "#8A7A7E" }}>Nota {x.nota} · {dia(x.criado_em)}</span>
+                    <span style={{ fontSize: 12, color: "#8A7A7E" }}>{dia(x.criado_em)}</span>
                   </div>
                 )) : <p style={{ margin: 0, color: "#8A7A7E" }}>Nenhum comentário.</p>}
               </section>

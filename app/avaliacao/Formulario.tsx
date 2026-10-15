@@ -10,7 +10,7 @@ type Links = { site: string; instagram: string; whatsapp: string; arroba: string
 export default function Formulario({ palestra, links }: { palestra: string; links: Links }) {
   const chave = `avaliacao:${palestra}`;
   const [feito, setFeito] = useState(false);
-  const [lk, setLk] = useState<Record<CampoLikert, number>>({ nota: 0, clareza: 0, duracao: 0 });
+  const [lk, setLk] = useState<Record<CampoLikert, number>>({ clareza: 0, duracao: 0, aplicacao: 0 });
   const [maisUtil, setMaisUtil] = useState("");
   const [melhorar, setMelhorar] = useState("");
   const [site, setSite] = useState("");
@@ -23,10 +23,10 @@ export default function Formulario({ palestra, links }: { palestra: string; link
 
   const enviar = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lk.nota || !lk.clareza || !lk.duracao) return setErro("Responda as três primeiras perguntas.");
+    if (!lk.clareza || !lk.duracao || !lk.aplicacao) return setErro("Responda as três primeiras perguntas.");
     setErro("");
     iniciar(async () => {
-      const r = await enviarAvaliacao({ palestra, nota: lk.nota, clareza: lk.clareza, duracao: lk.duracao, maisUtil, melhorar, site });
+      const r = await enviarAvaliacao({ palestra, clareza: lk.clareza, duracao: lk.duracao, aplicacao: lk.aplicacao, maisUtil, melhorar, site });
       if (r.erro) return setErro(r.erro);
       try { localStorage.setItem(chave, "1"); } catch {}
       setFeito(true);
