@@ -2,6 +2,7 @@ import { supabaseServidor } from "../../../lib/supabase/servidor";
 import { TopoCelular } from "../../componentes/Navegacao";
 import { siteUrl } from "../../../site";
 import { AFIRMACOES, ESCALA } from "../../../lib/avaliacao";
+import GeradorQR from "./GeradorQR";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +31,12 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
   const { data } = await sb.from("avaliacoes_palestra").select("*").order("criado_em", { ascending: false }).limit(2000);
   const todas = (data ?? []) as Linha[];
   const palestras = [...new Set(todas.map((l) => l.palestra))];
-  const sel = q.p && palestras.includes(q.p) ? q.p : palestras[0] ?? "palestra";
+  const sel = q.p && /^[a-z0-9-]{1,60}$/.test(q.p) ? q.p : palestras[0] ?? "palestra";
   const l = todas.filter((x) => x.palestra === sel);
   const total = l.length;
   const media = (c: "nota" | "clareza" | "duracao") => (total ? (l.reduce((s, x) => s + x[c], 0) / total).toFixed(1).replace(".", ",") : "–");
   const util = l.filter((x) => x.mais_util);
   const melhorar = l.filter((x) => x.melhorar);
-  const link = `${siteUrl}/avaliacao${sel === "palestra" ? "" : `?p=${sel}`}`;
 
   return (
     <>
@@ -49,11 +49,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
           </div>
         ) : null}
 
-        <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h2 className="card-t">Link do formulário</h2>
-          <code style={{ fontSize: 14, wordBreak: "break-all", color: "#7A2335" }}>{link}</code>
-          <span style={{ fontSize: 13, color: "#8A7A7E" }}>Para separar as respostas por palestra, acrescente <b>?p=nome-da-palestra</b> ao link (só letras minúsculas, números e hífen), por exemplo <b>/avaliacao?p=ansiedade-escola-x</b>. Cada link precisa do seu QR code.</span>
-        </section>
+        <GeradorQR key={sel} base={`${siteUrl}/avaliacao`} inicial={sel} />
 
         {!total ? (
           <section className="card"><p style={{ margin: 0, color: "#5A3A41" }}>Ainda não há respostas.</p></section>

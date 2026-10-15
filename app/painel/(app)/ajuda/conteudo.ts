@@ -133,6 +133,16 @@ export const TAREFAS: Tarefa[] = [
     ],
   },
   {
+    id: "avaliacoes", titulo: "Avaliação de palestra", resumo: "Link, QR code e respostas anônimas.", busca: "palestra qr code formulario avaliacao evento",
+    passos: [
+      "Abra Avaliações, em Conteúdo.",
+      "Em “Nome da palestra”, escreva o nome do evento. O link e o QR code são criados na hora; cada nome separa as respostas.",
+      "Use “Baixar QR (PNG)” para colocar no slide final. Deixe o QR grande, com pelo menos um quarto da tela.",
+      "Depois da palestra, use “Ver respostas” para ver as médias e os comentários. As respostas são anônimas.",
+    ],
+    dica: "Antes do evento, escaneie o QR com o celular e envie uma resposta de teste.",
+  },
+  {
     id: "escritos", titulo: "Publicar um escrito", resumo: "Textos do site.", busca: "blog artigo texto publicar",
     passos: [
       "Abra Escritos, em Conteúdo.",
