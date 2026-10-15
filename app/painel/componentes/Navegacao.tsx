@@ -18,6 +18,7 @@ export const ITENS: Item[] = [
 const CONTEUDO: Item[] = [
   { href: "/painel/escritos", nome: "Escritos", curto: "Escritos", icone: "escritos" },
   { href: "/painel/termos", nome: "Termos", curto: "Termos", icone: "termos" },
+  { href: "/painel/avaliacoes", nome: "Avaliações", curto: "Avaliações", icone: "estrela" },
 ];
 
 function ItemLat({ item, atual, n }: { item: Item; atual: boolean; n: number }) {

@@ -9,6 +9,7 @@ const P: Record<string, React.ReactNode> = {
   termos: (<><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></>),
   site: (<><path d="M14 4h6v6M20 4l-8 8" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>),
   sair: (<><path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" /><path d="M10 16l-4-4 4-4M6 12h10" /></>),
+  estrela: <path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z" />,
   menu: <path d="M4 7h16M4 12h16M4 17h10" />,
   busca: (<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>),
   fechar: <path d="M6 6l12 12M18 6L6 18" />,

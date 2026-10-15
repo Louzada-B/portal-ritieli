@@ -1,0 +1,89 @@
+import { supabaseServidor } from "../../../lib/supabase/servidor";
+import { TopoCelular } from "../../componentes/Navegacao";
+import { siteUrl } from "../../../site";
+
+export const dynamic = "force-dynamic";
+
+type Linha = { id: number; palestra: string; nota: number; clareza: string; duracao: string; mais_util: string | null; melhorar: string | null; criado_em: string };
+
+const dia = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)).replace(".", "");
+const pct = (n: number, t: number) => (t ? Math.round((n / t) * 100) : 0);
+const CLAREZA: [string, string][] = [["sim", "Sim"], ["em_parte", "Em parte"], ["nao", "Não"]];
+const DURACAO: [string, string][] = [["curta", "Curta"], ["na_medida", "Na medida"], ["longa", "Longa"]];
+
+function Barras({ itens, total }: { itens: [string, number][]; total: number }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {itens.map(([rot, n]) => (
+        <div key={rot} style={{ display: "grid", gridTemplateColumns: "90px 1fr 64px", gap: 10, alignItems: "center", fontSize: 14 }}>
+          <span style={{ color: "#5A3A41" }}>{rot}</span>
+          <span style={{ height: 10, borderRadius: 99, background: "#F6E5E7", overflow: "hidden" }}><span style={{ display: "block", height: "100%", width: `${pct(n, total)}%`, background: "#7A2335", borderRadius: 99 }} /></span>
+          <span style={{ textAlign: "right", color: "#3A1F25", fontWeight: 700 }}>{n} · {pct(n, total)}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default async function Avaliacoes({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  const q = await searchParams;
+  const sb = await supabaseServidor();
+  const { data } = await sb.from("avaliacoes_palestra").select("*").order("criado_em", { ascending: false }).limit(2000);
+  const todas = (data ?? []) as Linha[];
+  const palestras = [...new Set(todas.map((l) => l.palestra))];
+  const sel = q.p && palestras.includes(q.p) ? q.p : palestras[0] ?? "palestra";
+  const l = todas.filter((x) => x.palestra === sel);
+  const total = l.length;
+  const media = total ? (l.reduce((s, x) => s + x.nota, 0) / total).toFixed(1).replace(".", ",") : "–";
+  const conta = (campo: "clareza" | "duracao", v: string) => l.filter((x) => x[campo] === v).length;
+  const util = l.filter((x) => x.mais_util);
+  const melhorar = l.filter((x) => x.melhorar);
+  const link = `${siteUrl}/avaliacao${sel === "palestra" ? "" : `?p=${sel}`}`;
+
+  return (
+    <>
+      <header className="topo"><div><h1>Avaliações das <em>palestras.</em></h1><div className="data">Respostas anônimas do formulário do QR code</div></div></header>
+      <TopoCelular titulo="Avaliações" sub="Palestras" pedidos={0} />
+      <main className="conteudo">
+        {palestras.length > 1 ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {palestras.map((p) => <a key={p} href={`/painel/avaliacoes?p=${p}`} className={p === sel ? "bt" : "bt2"} style={{ width: "auto", minHeight: 40, padding: "8px 16px", fontSize: 14 }}>{p}</a>)}
+          </div>
+        ) : null}
+
+        <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h2 className="card-t">Link do formulário</h2>
+          <code style={{ fontSize: 14, wordBreak: "break-all", color: "#7A2335" }}>{link}</code>
+          <span style={{ fontSize: 13, color: "#8A7A7E" }}>Para separar as respostas por palestra, acrescente <b>?p=nome-da-palestra</b> ao link (só letras minúsculas, números e hífen), por exemplo <b>/avaliacao?p=ansiedade-escola-x</b>. Cada link precisa do seu QR code.</span>
+        </section>
+
+        {!total ? (
+          <section className="card"><p style={{ margin: 0, color: "#5A3A41" }}>Ainda não há respostas.</p></section>
+        ) : (
+          <>
+            <section className="card" style={{ display: "flex", flexWrap: "wrap", gap: 28 }}>
+              <div><div style={{ fontSize: 13, color: "#8A7A7E" }}>Respostas</div><div style={{ fontSize: 40, fontWeight: 700, color: "#3A1F25" }}>{total}</div></div>
+              <div><div style={{ fontSize: 13, color: "#8A7A7E" }}>Nota média</div><div style={{ fontSize: 40, fontWeight: 700, color: "#7A2335" }}>{media}<span style={{ fontSize: 18, color: "#8A7A7E" }}> / 5</span></div></div>
+            </section>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 20 }}>
+              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}><h2 className="card-t">Notas</h2><Barras total={total} itens={[5, 4, 3, 2, 1].map((n) => [`${n}`, l.filter((x) => x.nota === n).length])} /></section>
+              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}><h2 className="card-t">Foi fácil de entender?</h2><Barras total={total} itens={CLAREZA.map(([v, t]) => [t, conta("clareza", v)])} /></section>
+              <section className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}><h2 className="card-t">Tempo da palestra</h2><Barras total={total} itens={DURACAO.map(([v, t]) => [t, conta("duracao", v)])} /></section>
+            </div>
+            {[["O que levaram de mais útil", util, "mais_util"], ["O que poderia ser melhor", melhorar, "melhorar"]].map(([titulo, lista, campo]) => (
+              <section key={titulo as string} className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <h2 className="card-t">{titulo as string} <span style={{ fontWeight: 500, color: "#8A7A7E", fontSize: 14 }}>({(lista as Linha[]).length})</span></h2>
+                {(lista as Linha[]).length ? (lista as Linha[]).map((x) => (
+                  <div key={x.id} style={{ borderTop: "1px solid #EFE2E4", paddingTop: 10 }}>
+                    <p style={{ margin: 0, color: "#3A1F25", lineHeight: 1.5 }}>{x[campo as "mais_util" | "melhorar"]}</p>
+                    <span style={{ fontSize: 12, color: "#8A7A7E" }}>Nota {x.nota} · {dia(x.criado_em)}</span>
+                  </div>
+                )) : <p style={{ margin: 0, color: "#8A7A7E" }}>Nenhum comentário.</p>}
+              </section>
+            ))}
+          </>
+        )}
+      </main>
+    </>
+  );
+}
