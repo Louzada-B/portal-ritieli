@@ -5,6 +5,7 @@ import { rotas } from "../conteudo";
 import foto from "../../public/ritieli.webp";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/quem-sou" },
   title: "Quem sou · Ritieli Hermes · Psicóloga",
   description: "Ritieli Hermes, psicóloga clínica (CRP 07/46564), pós-graduanda em Terapia Cognitivo-Comportamental. Atendimento online para mulheres em todo o Brasil.",
 };

@@ -3,6 +3,7 @@ import Moldura from "../componentes/Moldura";
 import { linkWhatsApp, rotas } from "../conteudo";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/criancas-e-adolescentes" },
   title: "Crianças e adolescentes · Ritieli Hermes · Psicóloga",
   description: "Psicoterapia para crianças e adolescentes de 5 a 16 anos com a TCC. Sessões presenciais no Nonoai, em Porto Alegre, e encontros com os pais que podem ser online.",
 };

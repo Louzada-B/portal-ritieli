@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Moldura from "../componentes/Moldura";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/privacidade" },
   title: "Política de privacidade · Ritieli Hermes · Psicóloga",
   description: "Quais dados o site recebe, por que e como eles são protegidos, de acordo com a LGPD.",
 };

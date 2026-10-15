@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import Cabecalho from "./componentes/Cabecalho";
@@ -10,6 +11,8 @@ import Triangulo from "./componentes/Triangulo";
 import { agendar, apresentacao, escritos, hero, infantil, informacoes, rotas } from "./conteudo";
 import foto from "../public/ritieli.webp";
 import { escritosPublicados } from "./lib/escritos";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 // O convite dos Escritos mostra o texto mais recente (atualiza a cada 5 minutos).
 export const revalidate = 300;

@@ -4,6 +4,7 @@ import Duvidas from "../componentes/Duvidas";
 import { rotas } from "../conteudo";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/duvidas" },
   title: "Dúvidas · Ritieli Hermes · Psicóloga",
   description: "Perguntas frequentes sobre a terapia online: TCC, conversa inicial gratuita, valores, reembolso, sigilo e atendimento de crianças e adolescentes.",
 };
