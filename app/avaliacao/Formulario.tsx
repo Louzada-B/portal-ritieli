@@ -2,20 +2,15 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { enviarAvaliacao } from "./acoes";
+import { AFIRMACOES, ESCALA, type CampoLikert } from "../lib/avaliacao";
 
 type Links = { site: string; instagram: string; whatsapp: string; arroba: string };
 
-const NOTAS = [1, 2, 3, 4, 5];
-const ROTULO_NOTA: Record<number, string> = { 1: "Não gostei", 2: "Fraca", 3: "Boa", 4: "Muito boa", 5: "Excelente" };
-const CLAREZA = [["sim", "Sim"], ["em_parte", "Em parte"], ["nao", "Não"]] as const;
-const DURACAO = [["curta", "Curta"], ["na_medida", "Na medida"], ["longa", "Longa"]] as const;
 
 export default function Formulario({ palestra, links }: { palestra: string; links: Links }) {
   const chave = `avaliacao:${palestra}`;
   const [feito, setFeito] = useState(false);
-  const [nota, setNota] = useState(0);
-  const [clareza, setClareza] = useState("");
-  const [duracao, setDuracao] = useState("");
+  const [lk, setLk] = useState<Record<CampoLikert, number>>({ nota: 0, clareza: 0, duracao: 0 });
   const [maisUtil, setMaisUtil] = useState("");
   const [melhorar, setMelhorar] = useState("");
   const [site, setSite] = useState("");
@@ -28,12 +23,10 @@ export default function Formulario({ palestra, links }: { palestra: string; link
 
   const enviar = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nota) return setErro("Escolha uma nota de 1 a 5.");
-    if (!clareza) return setErro("Responda se o conteúdo foi claro.");
-    if (!duracao) return setErro("Responda sobre o tempo da palestra.");
+    if (!lk.nota || !lk.clareza || !lk.duracao) return setErro("Responda as três primeiras perguntas.");
     setErro("");
     iniciar(async () => {
-      const r = await enviarAvaliacao({ palestra, nota, clareza, duracao, maisUtil, melhorar, site });
+      const r = await enviarAvaliacao({ palestra, nota: lk.nota, clareza: lk.clareza, duracao: lk.duracao, maisUtil, melhorar, site });
       if (r.erro) return setErro(r.erro);
       try { localStorage.setItem(chave, "1"); } catch {}
       setFeito(true);
@@ -64,35 +57,22 @@ export default function Formulario({ palestra, links }: { palestra: string; link
         <p>Leva menos de um minuto. As respostas são anônimas: não pedimos nome nem contato.</p>
       </div>
 
-      <fieldset className="av-q">
-        <legend><span className="av-n">1</span>De 1 a 5, como você avalia a palestra?</legend>
-        <div className="av-notas" role="radiogroup" aria-label="Nota de 1 a 5">
-          {NOTAS.map((n) => (
-            <button key={n} type="button" role="radio" aria-checked={nota === n} className={nota === n ? "av-nota on" : "av-nota"} onClick={() => setNota(n)}>
-              <b>{n}</b>
-            </button>
-          ))}
-        </div>
-        <span className="av-rot">{nota ? ROTULO_NOTA[nota] : "1 = não gostei · 5 = excelente"}</span>
-      </fieldset>
-
-      <fieldset className="av-q">
-        <legend><span className="av-n">2</span>O conteúdo foi fácil de entender?</legend>
-        <div className="av-chips" role="radiogroup">
-          {CLAREZA.map(([v, t]) => (
-            <button key={v} type="button" role="radio" aria-checked={clareza === v} className={clareza === v ? "av-chip on" : "av-chip"} onClick={() => setClareza(v)}>{t}</button>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="av-q">
-        <legend><span className="av-n">3</span>O tempo da palestra foi…</legend>
-        <div className="av-chips" role="radiogroup">
-          {DURACAO.map(([v, t]) => (
-            <button key={v} type="button" role="radio" aria-checked={duracao === v} className={duracao === v ? "av-chip on" : "av-chip"} onClick={() => setDuracao(v)}>{t}</button>
-          ))}
-        </div>
-      </fieldset>
+      <p className="av-instr">Nas três primeiras, diga o quanto você concorda com cada frase.</p>
+      {AFIRMACOES.map((a, i) => (
+        <fieldset key={a.campo} className="av-q">
+          <legend><span className="av-n">{i + 1}</span>{a.texto}</legend>
+          <div className="av-likert" role="radiogroup" aria-label={a.texto}>
+            {ESCALA.map((rot, k) => (
+              <button key={rot} type="button" role="radio" aria-checked={lk[a.campo] === k + 1} aria-label={rot} title={rot}
+                className={lk[a.campo] === k + 1 ? "av-lk on" : "av-lk"} onClick={() => setLk({ ...lk, [a.campo]: k + 1 })}>
+                <span className="av-bol" aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+          <div className="av-pontas" aria-hidden="true"><span>Discordo totalmente</span><span>Concordo totalmente</span></div>
+          <span className="av-rot">{lk[a.campo] ? ESCALA[lk[a.campo] - 1] : "\u00a0"}</span>
+        </fieldset>
+      ))}
 
       <div className="av-q">
         <label htmlFor="av-util" className="av-leg"><span className="av-n">4</span><span>O que você leva de mais útil desta palestra? <i>(opcional)</i></span></label>
