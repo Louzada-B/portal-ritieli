@@ -79,7 +79,6 @@ export function Lateral({ pedidos }: { pedidos: number }) {
   const caminho = usePathname();
   return (
     <aside className="lat">
-      <svg className="forma" viewBox="0 0 200 200" width="360" height="360" aria-hidden="true"><path fill="#F2C9D1" d="M43.1,-58.6C55.3,-49.2,64,-35.4,68.5,-20.1C73,-4.8,73.3,12,66.7,25.4C60.1,38.8,46.6,48.8,31.9,56.8C17.2,64.8,1.3,70.8,-15.3,69.6C-31.9,68.4,-49.2,60,-59.6,46.4C-70,32.8,-73.6,14,-70.4,-2.9C-67.2,-19.8,-57.3,-34.8,-44.3,-44.2C-31.3,-53.6,-15.7,-57.4,0.3,-57.8C16.2,-58.2,30.9,-68,43.1,-58.6Z" transform="translate(100 100)" /></svg>
       <span className="lat-ass">Ritieli Hermes</span>
       <span className="lat-sub">Painel</span>
       <Lista pedidos={pedidos} caminho={caminho} />
