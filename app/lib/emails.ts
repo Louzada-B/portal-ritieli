@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { siteUrl } from "../site";
+import { siteUrl, ehTeste } from "../site";
 import { contato, linkWhatsApp } from "../conteudo";
 
 // E-mails automáticos do site. Sai do endereço do domínio (AVISO_REMETENTE) pelo Resend.
@@ -32,7 +32,8 @@ const RODAPE_PACIENTE = `E-mail automático de ${contato.nome}, psicóloga (${co
 const RODAPE_LEMBRETE = `${RODAPE_PACIENTE} Se preferir não receber estes lembretes, é só avisar.`;
 
 async function enviar(p: { para: string; assunto: string; html: string; respostaPara?: string }): Promise<boolean> {
-  const chave = process.env.RESEND_API_KEY;
+  // No ambiente de teste nenhum e-mail sai, mesmo que a chave exista.
+  const chave = ehTeste ? undefined : process.env.RESEND_API_KEY;
   if (!chave || !p.para) return false;
   try {
     const r = await fetch("https://api.resend.com/emails", {

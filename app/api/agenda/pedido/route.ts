@@ -4,13 +4,14 @@ import { agendaLiberada, montarAgenda } from "../../../lib/agendaPublica";
 import { supabaseAdmin } from "../../../lib/supabase/admin";
 import { avisarPedidoNovo } from "../../../lib/aviso";
 import { fmtQuando } from "../../../lib/agenda";
+import { ehTeste } from "../../../site";
 
 export const dynamic = "force-dynamic";
 
 const erro = (codigo: string, msg: string, status = 400) => NextResponse.json({ ok: false, codigo, msg }, { status });
 
 async function turnstileOk(token: string, ip: string) {
-  const segredo = process.env.TURNSTILE_SECRET_KEY;
+  const segredo = ehTeste ? undefined : process.env.TURNSTILE_SECRET_KEY;
   if (!segredo) return true;
   if (!token) return false;
   const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {

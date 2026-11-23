@@ -1,10 +1,10 @@
 import "server-only";
-import { siteUrl } from "../site";
+import { siteUrl, ehTeste } from "../site";
 
 // Avisa a Ritieli por e-mail que chegou um pedido novo.
 // A mensagem da pessoa não vai no e-mail: fica só no painel.
 export async function avisarPedidoNovo(p: { nome: string; quando: string; paraFilho: boolean }) {
-  const chave = process.env.RESEND_API_KEY;
+  const chave = ehTeste ? undefined : process.env.RESEND_API_KEY;
   const para = process.env.AVISO_EMAIL;
   if (!chave || !para) return;
   const link = `${siteUrl}/painel/pedidos`;
@@ -38,7 +38,7 @@ function esc(s: string) {
 
 // Aviso genérico para a Ritieli (ficha preenchida, termo aceito...). Só nome e o que aconteceu.
 export async function avisarRitieli(p: { titulo: string; nome: string; texto: string; caminho: string }) {
-  const chave = process.env.RESEND_API_KEY;
+  const chave = ehTeste ? undefined : process.env.RESEND_API_KEY;
   const para = process.env.AVISO_EMAIL;
   if (!chave || !para) return;
   const link = `${siteUrl}${p.caminho}`;
