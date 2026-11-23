@@ -56,6 +56,18 @@ export const TAREFAS: Tarefa[] = [
     dica: "O jeito mais seguro de ter o CPF é a própria pessoa preencher pela ficha de cadastro.",
   },
   {
+    id: "clinica", titulo: "Paciente de clínica parceira", resumo: "Só o prontuário e os atendimentos, sem a parte burocrática.", busca: "clinica parceira encaminhado convenio atendimento prontuario particular converter",
+    passos: [
+      "Em Pacientes, toque em “Novo paciente” e escolha “Clínica parceira”.",
+      "Preencha nome, clínica, início do acompanhamento e, se quiser, uma observação curta. Não há ficha, termo, valor, Pix, recibo, acesso à área da paciente, Meet nem lembretes: a clínica cuida disso.",
+      "A cada atendimento, abra a ficha, vá em Atendimentos e toque em “Registrar atendimento” (a data vem com hoje; o horário é opcional).",
+      "Depois, em “Escrever a evolução no prontuário”, escolha o atendimento na lista e escreva a evolução, como nas sessões.",
+      "Esses atendimentos não entram na agenda do site, no Google nem no financeiro. Use o filtro “Clínica parceira” para ver só esses pacientes.",
+      "Se a pessoa passar a ser atendida por você direto, use Situação → “Passar para particular”: o prontuário e os atendimentos continuam, e você completa o resto como num cadastro novo.",
+    ],
+    dica: "A observação fica no cadastro, sem a criptografia do prontuário. O que for clínico vai no prontuário.",
+  },
+  {
     id: "ficha", titulo: "Usar a ficha em abas", resumo: "Dados, Ficha e termo, Sessões e pagamentos, Sala e acesso, Situação.", busca: "abas paciente editar encerrar",
     passos: [
       "Em Pacientes, toque em um nome para abrir a ficha.",

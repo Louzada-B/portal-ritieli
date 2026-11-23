@@ -21,7 +21,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     carregarAgenda(sb),
     supabaseAdmin().from("google_conexao").select("id").eq("id", 1).maybeSingle(),
   ]);
-  const { data: pacs } = await sb.from("pacientes").select("id, ficha_em").eq("status", "ativo");
+  const { data: pacs } = await sb.from("pacientes").select("id, ficha_em").eq("status", "ativo").eq("origem", "particular");
   const cads = await cadastrosDe(sb, pacs ?? []);
   const faltaFicha = [...cads.values()].filter((c) => c.ficha !== "preenchida").length;
   const faltaTermo = [...cads.values()].filter((c) => c.ficha === "preenchida" && c.termo !== "aceito").length;

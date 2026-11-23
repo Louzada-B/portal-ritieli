@@ -16,14 +16,14 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
   const sb = await supabaseServidor();
   const { data } = await sb
     .from("pacientes")
-    .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, fim, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto, lembretes_email")
+    .select("id, tipo, nome, idade, whatsapp, email, cpf_final, valor_centavos, tipo_valor, fixo_dia, fixo_hora, meet_link, google_evento_id, status, desde, fim, ficha_em, criado_em, pedido_id, cidade, escola, cpf_cripto, nascimento_cripto, emergencia_cripto, lembretes_email, origem, clinica, observacao")
     .order("nome");
   const todos = (data ?? []) as Paciente[];
   const cads = await cadastrosDe(sb, todos);
   const sel = q.id ? todos.find((p) => p.id === q.id) : undefined;
 
   // Com a ficha aberta, garante as sessões do horário fixo dos próximos meses (para contar as próximas).
-  if (sel) {
+  if (sel && sel.origem !== "clinica") {
     const l = local(new Date());
     for (let i = 0; i < 3; i++) await gerarSessoesDoMes(sb, l.ano + Math.floor((l.mes + i) / 12), (l.mes + i) % 12);
   }
@@ -48,8 +48,18 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
       sb.from("prontuario_secoes").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
       sb.from("prontuario_anexos").select("id", { count: "exact", head: true }).eq("paciente_id", sel.id),
     ]);
-    const acessos = await acessosDoPaciente(sel.id, resps.map((r) => r.id));
+    const clinica = sel.origem === "clinica";
+    const [acessos, atend] = await Promise.all([
+      clinica ? Promise.resolve([]) : acessosDoPaciente(sel.id, resps.map((r) => r.id)),
+      sb.from("atendimentos_clinica").select("id, data, hora, prontuario_evolucoes(id)").eq("paciente_id", sel.id).order("data", { ascending: false }).order("hora", { ascending: false, nullsFirst: false }),
+    ]);
     detalhe = {
+      atendimentos: (atend.data ?? []).map((a) => ({
+        id: a.id as string,
+        data: a.data as string,
+        hora: a.hora ? String(a.hora).slice(0, 5) : null,
+        temEvolucao: ((a.prontuario_evolucoes as unknown as { id: string }[] | null) ?? []).length > 0,
+      })),
       acessos,
       responsaveis: resps.map((r) => ({ id: r.id, nome: r.nome, whatsapp: r.whatsapp, email: r.email, cpfFinal: r.cpf_final, parentesco: r.parentesco, financeiro: r.financeiro })),
       ficha: fichas?.[0] ?? null,
@@ -105,14 +115,19 @@ export default async function PaginaPacientes({ searchParams }: { searchParams: 
     cad: cads.get(p.id)!,
     escola: p.escola,
     cidade: p.cidade,
+    origem: p.origem === "clinica" ? ("clinica" as const) : ("particular" as const),
+    clinica: p.clinica ?? null,
+    observacao: p.observacao ?? null,
   }));
+  // Clínicas já usadas, para sugerir o mesmo nome (e o filtro agrupar certo).
+  const clinicas = [...new Set(todos.map((p) => p.clinica).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   return (
     <>
       <header className="topo"><div><h1>Seus <em>pacientes.</em></h1><div className="data">Contatos, responsáveis, sala de atendimento e histórico</div></div></header>
       <TopoCelular titulo="Pacientes" sub={`${ativos} em acompanhamento`} pedidos={0} />
       <main className="conteudo">
-        <Pacientes key={`${q.id || ""}-${q.novo || ""}`} lista={lista} selId={sel?.id || null} detalhe={detalhe} novo={!!q.novo} pedido={pedido} filtroInicial={q.f || "ativo"} />
+        <Pacientes key={`${q.id || ""}-${q.novo || ""}`} lista={lista} clinicas={clinicas} selId={sel?.id || null} detalhe={detalhe} novo={!!q.novo} pedido={pedido} filtroInicial={q.f || "ativo"} />
       </main>
     </>
   );

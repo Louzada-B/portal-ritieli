@@ -149,6 +149,7 @@ export async function atualizarPaciente(id: string, d: { nome: string; idade: st
   const sb = await supabaseServidor();
   const { data: atual } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!atual) return { erro: "Paciente não encontrado." };
+  if (atual.origem === "clinica") return { erro: "Use Editar dados da ficha da clínica." };
   const mudouAgenda = atual.fixo_dia !== comum.fixoDia || (atual.fixo_hora || "").slice(0, 5) !== (comum.fixoHora || "") || atual.desde !== per.desde || (atual.fim || null) !== per.fim;
   if (atual.status === "ativo" && mudouAgenda && comum.fixoDia != null && comum.fixoHora) {
     const c = await conflitoFixo(sb, { id, fixo_dia: comum.fixoDia, fixo_hora: comum.fixoHora, desde: per.desde, fim: per.fim, antigo: { dia: atual.fixo_dia, hora: atual.fixo_hora } });
@@ -203,6 +204,7 @@ export async function linkFicha(id: string): Promise<Resultado> {
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!p) return { erro: "Paciente não encontrado." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira: a clínica cuida disso. Para usar aqui, passe para particular na ficha." };
   const resps = await responsaveisDe(sb, id);
   const c = contatoPrincipal(p, resps);
   const { token, hash } = novoToken();
@@ -337,6 +339,7 @@ export async function gerarSala(id: string): Promise<Resultado> {
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!p) return { erro: "Paciente não encontrado." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira: a clínica cuida disso. Para usar aqui, passe para particular na ficha." };
   if (p.fixo_dia == null || !p.fixo_hora) return { erro: "Defina o horário fixo antes de gerar a sala." };
   try {
     const r = await refazerSerie(sb, p, true);
@@ -373,6 +376,7 @@ export async function encerrarPaciente(id: string, ultima: string): Promise<Resu
   if (p.google_evento_id) await mudarFimSerie(p.google_evento_id, ultima).catch(() => { aviso += " A agenda do Google não respondeu: confira a sessão semanal por lá."; });
   revalidatePath("/painel/pacientes");
   revalidatePath("/painel/sessoes");
+  if (p.origem === "clinica") return { ok: "Acompanhamento encerrado. O prontuário fica guardado por 5 anos." };
   return { ok: `Acompanhamento encerrado. A sessão semanal sai da agenda depois da última sessão.${aviso}` };
 }
 
@@ -387,6 +391,13 @@ export async function reativarPaciente(id: string, r: { retomada: string; fixoDi
   const { data: antes } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!antes) return { erro: "Paciente não encontrado." };
   if (antes.status === "ativo") return { erro: "O acompanhamento já está ativo." };
+  if (antes.origem === "clinica") {
+    // Clínica parceira: sem horário fixo nem agenda, só volta a ficar em acompanhamento.
+    const { error } = await sb.from("pacientes").update({ status: "ativo", fim: null, retomado_em: r.retomada, atualizado_em: new Date().toISOString() }).eq("id", id);
+    if (error) return { erro: "Não deu para salvar. Tente de novo." };
+    revalidatePath("/painel/pacientes");
+    return { ok: "Acompanhamento reativado." };
+  }
   if (comum.fixoDia != null && comum.fixoHora) {
     const c = await conflitoFixo(sb, { id, fixo_dia: comum.fixoDia, fixo_hora: comum.fixoHora, desde: r.retomada, fim: null, antigo: { dia: antes.fixo_dia, hora: antes.fixo_hora } });
     if (c) return { erro: c };
@@ -472,6 +483,7 @@ export async function acertarAgenda(id: string): Promise<{ ok?: string; erro?: s
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", id).single<Paciente>();
   if (!p) return { erro: "Paciente não encontrado." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira: a clínica cuida disso. Para usar aqui, passe para particular na ficha." };
   const { data: sess } = await sb.from("sessoes").select("id, inicio, status, origem, remarcada_de, google_evento_id").eq("paciente_id", id).order("inicio");
   let mudou = 0;
   let falhou = 0;

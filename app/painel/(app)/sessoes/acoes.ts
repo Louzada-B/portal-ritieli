@@ -52,6 +52,7 @@ export async function registrarSessao(d: { pacienteId: string; data: string; hor
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", d.pacienteId).single<Paciente>();
   if (!p) return { erro: "Paciente não encontrado." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira: registre o atendimento na ficha dele, em Atendimentos." };
 
   if (d.status !== "cancelada") {
     const c = await conflitoEm(sb, inicio, DUR_SESSAO);

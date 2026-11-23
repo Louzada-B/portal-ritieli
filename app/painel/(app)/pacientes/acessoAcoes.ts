@@ -19,8 +19,9 @@ const ATUALIZAR = () => revalidatePath("/painel/pacientes");
 export async function criarAcesso(pacienteId: string, responsavelId: string | null): Promise<ResultadoAcesso> {
   if (!(await ehAdmin())) return NEGADO;
   const rls = await supabaseServidor();
-  const { data: p } = await rls.from("pacientes").select("id, tipo, nome, email, status").eq("id", pacienteId).maybeSingle();
+  const { data: p } = await rls.from("pacientes").select("id, tipo, nome, email, status, origem").eq("id", pacienteId).maybeSingle();
   if (!p) return { erro: "Paciente não encontrada." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira: a clínica cuida disso. Para usar aqui, passe para particular na ficha." };
   if (p.status !== "ativo") return { erro: "O acompanhamento está encerrado. Reative antes de liberar o acesso." };
 
   let nome: string;

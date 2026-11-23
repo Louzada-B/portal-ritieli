@@ -11,7 +11,7 @@ import { salvarChave, registrarAcesso, salvarEvolucao, salvarCorrecao, salvarSec
 
 type Evo = { id: string; data: string; rotulo: string; cripto: string; reg: string; correcoes: { id: string; cripto: string; quando: string }[] };
 type Props = {
-  paciente: { id: string; nome: string; curto: string; tipo: "adulta" | "crianca"; desde: string; status: string };
+  paciente: { id: string; nome: string; curto: string; tipo: "adulta" | "crianca"; desde: string; status: string; clinica?: string | null };
   pacote: cofre.Pacote | null;
   evolucoes: Evo[];
   demanda: { cripto: string; quando: string; versoes: number } | null;
@@ -161,7 +161,7 @@ export default function Prontuario(props: Props) {
     const t = novo.texto.trim();
     if (!t) return av({ erro: "Escreva a evolução antes de salvar." });
     const s = props.sessoes.find((x) => x.id === novo.sessao);
-    const r = await salvarEvolucao(paciente.id, { sessaoId: s?.id || null, data: s ? isoLocal(s.data) : hojeISO(), rotulo: s ? s.rotulo.split(" · ")[1].replace(/^s/, "S") : "", cripto: await cofre.cifrar({ texto: t }) });
+    const r = await salvarEvolucao(paciente.id, { sessaoId: s?.id || null, data: s ? isoLocal(s.data) : hojeISO(), rotulo: s ? s.rotulo.split(" · ")[1].replace(/^./, (c) => c.toUpperCase()) : "", cripto: await cofre.cifrar({ texto: t }) });
     av(r);
     if (!r.erro) { setNovo({ ...novo, texto: "" }); router.refresh(); }
   });
@@ -281,7 +281,8 @@ export default function Prontuario(props: Props) {
   }
 
   // ---------- Aberto ----------
-  const abas: [Aba, string][] = [["evo", "Evoluções"], ["dem", "Demanda e objetivos"], ["id", "Identificação"], ["enc", "Encerramento"], ["anx", "Anexos"], ["exe", "Exercícios"], ["log", "Acessos"]];
+  // Exercícios vão para a área da paciente, que não existe para quem vem de clínica parceira.
+  const abas = ([["evo", "Evoluções"], ["dem", "Demanda e objetivos"], ["id", "Identificação"], ["enc", "Encerramento"], ["anx", "Anexos"], ["exe", "Exercícios"], ["log", "Acessos"]] as [Aba, string][]).filter(([k]) => k !== "exe" || !paciente.clinica);
   return (
     <>
       {topo}
@@ -296,7 +297,7 @@ export default function Prontuario(props: Props) {
             <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ width: 52, height: 52, borderRadius: "50%", background: "#F6E5E7", color: "#7A2335", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{paciente.nome.split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase()).join("")}</span>
               <b style={{ fontSize: 19 }}>{paciente.curto}</b>
-              <span style={{ fontSize: 14, color: "#6B5A5E" }}>{paciente.tipo === "crianca" ? "Infantil · presencial" : "Online"} · desde {new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(paciente.desde + "T12:00:00Z"))}<br />{evos.length} {evos.length === 1 ? "evolução registrada" : "evoluções registradas"}</span>
+              <span style={{ fontSize: 14, color: "#6B5A5E" }}>{paciente.clinica ? `Clínica parceira · ${paciente.clinica}` : paciente.tipo === "crianca" ? "Infantil · presencial" : "Online"} · desde {new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(paciente.desde + "T12:00:00Z"))}<br />{evos.length} {evos.length === 1 ? "evolução registrada" : "evoluções registradas"}</span>
               <Link href={`/painel/pacientes?id=${paciente.id}`} style={{ fontSize: 13, fontWeight: 700 }}>← Voltar à ficha</Link>
             </section>
             <nav className="abas-p" aria-label="Seções do prontuário">{abas.map(([k, n]) => <button key={k} type="button" className={aba === k ? "pa on" : "pa"} onClick={() => { setAba(k); setMsg(null); }}>{n}</button>)}</nav>
@@ -306,10 +307,10 @@ export default function Prontuario(props: Props) {
               <section className="card">
                 <h2 className="card-t" style={{ marginBottom: 14 }}><Icone nome="escritos" tam={20} />Evoluções</h2>
                 <div className="compor">
-                  <div className="fc"><label htmlFor="p-ses">Sessão</label>
+                  <div className="fc"><label htmlFor="p-ses">{paciente.clinica ? "Atendimento" : "Sessão"}</label>
                     <select id="p-ses" value={novo.sessao} onChange={(e) => setNovo({ ...novo, sessao: e.target.value })}>
                       {props.sessoes.map((s) => <option key={s.id} value={s.id}>{s.rotulo}</option>)}
-                      <option value="">Sem sessão vinculada · hoje</option>
+                      <option value="">{paciente.clinica ? "Sem atendimento vinculado · hoje" : "Sem sessão vinculada · hoje"}</option>
                     </select>
                   </div>
                   <textarea aria-label="Nova evolução" placeholder="Como foi a sessão, o que foi trabalhado, tarefas combinadas…" value={novo.texto} onChange={(e) => setNovo({ ...novo, texto: e.target.value })} />

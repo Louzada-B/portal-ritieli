@@ -18,7 +18,7 @@ export default async function PaginaTermos({ searchParams }: { searchParams: Pro
   const sb = await supabaseServidor();
   const [{ data: termos }, { data: pacs }, { data: cfg }] = await Promise.all([
     sb.from("termos").select("id, paciente_id, resumo, status, enviado_em, aceito_em, aceite_nome, link_enviado_em, conteudo_cripto, pacientes(nome)").order("enviado_em", { ascending: false }),
-    sb.from("pacientes").select("*").eq("status", "ativo").order("nome"),
+    sb.from("pacientes").select("*").eq("status", "ativo").eq("origem", "particular").order("nome"),
     sb.from("config_agenda").select("politica_faltas").eq("id", 1).single(),
   ]);
 

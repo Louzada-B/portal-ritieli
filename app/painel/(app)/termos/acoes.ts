@@ -40,6 +40,7 @@ export async function criarTermo(pacienteId: string, d: { valor: string; tipoVal
   const sb = await supabaseServidor();
   const { data: p } = await sb.from("pacientes").select("*").eq("id", pacienteId).single<Paciente>();
   if (!p) return { erro: "Paciente não encontrado." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira: a clínica cuida disso. Para usar aqui, passe para particular na ficha." };
   const valorCentavos = centavosDe(d.valor);
   if (!valorCentavos) return { erro: "Confira o valor da sessão." };
   if (d.faltas.trim().length < 20) return { erro: "Escreva a política de faltas." };

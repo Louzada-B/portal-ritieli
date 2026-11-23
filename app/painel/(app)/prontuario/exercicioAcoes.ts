@@ -21,9 +21,10 @@ export async function criarExercicio(pacienteId: string, d: { titulo: string; in
   if (link === null) return { erro: "Confira o link: precisa começar com https://." };
   if (d.prazo && !/^\d{4}-\d{2}-\d{2}$/.test(d.prazo)) return { erro: "Confira a data." };
   const sb = await supabaseServidor();
-  const { data: p } = await sb.from("pacientes").select("id, status").eq("id", pacienteId).maybeSingle();
+  const { data: p } = await sb.from("pacientes").select("id, status, origem").eq("id", pacienteId).maybeSingle();
   if (!p) return { erro: "Paciente não encontrado." };
   if (p.status !== "ativo") return { erro: "O acompanhamento está encerrado." };
+  if (p.origem === "clinica") return { erro: "Paciente de clínica parceira não tem área da paciente para receber exercícios." };
   const { data, error } = await sb.from("exercicios").insert({ paciente_id: pacienteId, titulo, instrucoes_cripto: cifrar(instrucoes), link_cripto: cifrarOuNulo(link), prazo: d.prazo || null }).select("id").single();
   if (error || !data) return { erro: "Não deu para salvar. Tente de novo." };
   ATUALIZAR();

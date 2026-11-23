@@ -9,6 +9,7 @@ import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, ver
 import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
 import type { AcessoInfo } from "../../../lib/pacienteAcesso";
 import { listarLivresFixo } from "../livres";
+import { criarPacienteClinica, atualizarClinica, registrarAtendimento, removerAtendimento, converterParticular, type DadosClinica } from "./clinicaAcoes";
 import type { OpcaoFixa } from "../../../lib/livres";
 
 type Item = {
@@ -16,6 +17,7 @@ type Item = {
   cpfFinal: string | null; temNascimento: boolean; temEmergencia: boolean; valor: number | null; tipoValor: "normal" | "social";
   fixoDia: number | null; fixoHora: string | null; meet: string | null; status: "ativo" | "encerrado"; desde: string; fim: string | null; fichaEm: string | null;
   escola: string | null; cidade: string | null; lembretes: boolean;
+  origem: "particular" | "clinica"; clinica: string | null; observacao: string | null;
   selo?: { t: string; cls: string } | null;
   cad: { ficha: string; termo: string; fichaTxt: string; termoTxt: string; etiqueta: string; cls: string; pendente: boolean };
 };
@@ -23,8 +25,10 @@ type LinhaSessao = { id: string; quando: string; status: "agendada" | "realizada
 type ResumoSessoes = { realizadas: number; faltas: number; proximas: number; pagasFrente: number; pagasFrenteAte: string | null; devendo: number; devendoValor: number; credito: number; creditoValor: number; recibos: number };
 type FichaAba = "dados" | "ficha" | "sessoes" | "acesso" | "situacao";
 const FICHA_ABAS: [FichaAba, string][] = [["dados", "Dados"], ["ficha", "Ficha e termo"], ["sessoes", "Sessões e pagamentos"], ["acesso", "Sala e acesso"], ["situacao", "Situação"]];
+type Atendimento = { id: string; data: string; hora: string | null; temEvolucao: boolean };
 type Detalhe = {
   acessos: AcessoInfo[];
+  atendimentos: Atendimento[];
   responsaveis: { id: string; nome: string; whatsapp: string | null; email: string | null; cpfFinal: string | null; parentesco: string | null; financeiro: boolean }[];
   ficha: { criado_em: string; expira_em: string; preenchida_em: string | null } | null;
   termo: { id: string; resumo: string; status: string; enviado_em: string; aceito_em: string | null } | null;
@@ -137,7 +141,19 @@ function CamposFixo({ dia, hora, setDia, setHora, pacienteId }: { dia: string; h
   );
 }
 
-function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () => void }) {
+function NovoPaciente({ pedido, aoFechar, clinicas }: { pedido: PedidoBase; aoFechar: () => void; clinicas: string[] }) {
+  const [origem, setOrigem] = useState<"particular" | "clinica">("particular");
+  const escolha = pedido ? null : (
+    <div className="fc"><span className="lb">Paciente</span><div className="seg">
+      <button type="button" className={origem === "particular" ? "on" : ""} onClick={() => setOrigem("particular")}>Particular</button>
+      <button type="button" className={origem === "clinica" ? "on" : ""} onClick={() => setOrigem("clinica")}>Clínica parceira</button>
+    </div></div>
+  );
+  if (origem === "clinica") return <NovoClinica escolha={escolha} aoFechar={aoFechar} clinicas={clinicas} />;
+  return <NovoParticular pedido={pedido} aoFechar={aoFechar} escolha={escolha} />;
+}
+
+function NovoParticular({ pedido, aoFechar, escolha }: { pedido: PedidoBase; aoFechar: () => void; escolha: React.ReactNode }) {
   const router = useRouter();
   const [pend, iniciar] = useTransition();
   const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
@@ -176,6 +192,7 @@ function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () =
       <div className="form-c" style={{ background: "transparent", padding: 0 }}>
         <h2 className="card-t"><Icone nome="pacientes" />Novo paciente</h2>
         {pedido ? <div className="aviso ok">Dados trazidos do pedido de {pedido.nome}. Confira e complete.</div> : null}
+        {escolha}
         <div className="fc"><span className="lb">Atendimento</span><div className="seg">
           <button type="button" className={!inf ? "on" : ""} onClick={() => set({ tipo: "adulta" })}>Adulta · online</button>
           <button type="button" className={inf ? "on" : ""} onClick={() => set({ tipo: "crianca" })}>Criança ou adolescente</button>
@@ -225,6 +242,205 @@ function NovoPaciente({ pedido, aoFechar }: { pedido: PedidoBase; aoFechar: () =
         </div>
       </div>
     </section>
+  );
+}
+
+// Campos do paciente de clínica parceira: só o mínimo para o prontuário e para saber quem ela atende.
+function CamposClinica({ d, set, clinicas }: { d: DadosClinica; set: (o: Partial<DadosClinica>) => void; clinicas: string[] }) {
+  const inf = d.tipo === "crianca";
+  return (
+    <>
+      <div className="fc"><span className="lb">Público</span><div className="seg">
+        <button type="button" className={!inf ? "on" : ""} onClick={() => set({ tipo: "adulta" })}>Adulta</button>
+        <button type="button" className={inf ? "on" : ""} onClick={() => set({ tipo: "crianca" })}>Criança ou adolescente</button>
+      </div></div>
+      <div className="fc-g">
+        <div className="fc"><label htmlFor="c-nome">Nome do paciente</label><input id="c-nome" type="text" placeholder="Nome completo" value={d.nome} onChange={(e) => set({ nome: e.target.value })} /></div>
+        <div className="fc"><label htmlFor="c-cli">Clínica</label><input id="c-cli" type="text" list="c-clinicas" placeholder="Nome da clínica" value={d.clinica} onChange={(e) => set({ clinica: e.target.value })} />
+          <datalist id="c-clinicas">{clinicas.map((c) => <option key={c} value={c} />)}</datalist>
+        </div>
+      </div>
+      <div className="fc-g">
+        <div className="fc"><label htmlFor="c-ini">Início do acompanhamento</label><input id="c-ini" type="date" value={d.desde} onChange={(e) => set({ desde: e.target.value })} /></div>
+        <div />
+      </div>
+      <div className="fc"><label htmlFor="c-obs">Observação <span style={{ fontWeight: 500, color: "#8A7A7E" }}>(opcional)</span></label>
+        <textarea id="c-obs" className="ta" rows={3} maxLength={500} placeholder="Ex.: sala, dia combinado com a clínica, quem encaminhou" value={d.observacao} onChange={(e) => set({ observacao: e.target.value })} />
+        <span style={{ fontSize: 13, color: "#6B5A5E" }}>Fica no cadastro, sem a criptografia do prontuário. O que for clínico vai no prontuário.</span>
+      </div>
+    </>
+  );
+}
+
+function NovoClinica({ escolha, aoFechar, clinicas }: { escolha: React.ReactNode; aoFechar: () => void; clinicas: string[] }) {
+  const router = useRouter();
+  const [pend, iniciar] = useTransition();
+  const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
+  const [d, setD] = useState<DadosClinica>({ tipo: "adulta", nome: "", clinica: clinicas.length === 1 ? clinicas[0] : "", desde: hojeBR(), observacao: "" });
+  const salvar = () => iniciar(async () => {
+    const r = await criarPacienteClinica(d);
+    if (r.erro) return setMsg({ t: r.erro, erro: true });
+    router.push(`/painel/pacientes?id=${r.id}`);
+  });
+  return (
+    <section className="card">
+      <div className="form-c" style={{ background: "transparent", padding: 0 }}>
+        <h2 className="card-t"><Icone nome="pacientes" />Novo paciente</h2>
+        {escolha}
+        <span style={{ fontSize: 14, color: "#5A3A41" }}>A clínica cuida do cadastro, dos documentos, da agenda e do pagamento. Aqui fica só o necessário para o seu prontuário: sem ficha, termo, valor, Pix, recibo, acesso à área da paciente, Meet ou lembretes.</span>
+        <CamposClinica d={d} set={(o) => setD({ ...d, ...o })} clinicas={clinicas} />
+        <Aviso m={msg} />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" className="bt" onClick={salvar} disabled={pend} style={{ width: "auto" }}>{pend ? "Salvando…" : "Salvar paciente"}</button>
+          <button type="button" className="bt3" onClick={aoFechar}>Cancelar</button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type AbaClinica = "dados" | "atendimentos" | "situacao";
+const ABAS_CLINICA: [AbaClinica, string][] = [["dados", "Dados"], ["atendimentos", "Atendimentos"], ["situacao", "Situação"]];
+const diaSemana = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso + "T12:00:00Z")).replace(/\./g, "");
+
+function FichaClinica({ p, det, clinicas }: { p: Item; det: NonNullable<Detalhe>; clinicas: string[] }) {
+  const router = useRouter();
+  const [pend, iniciar] = useTransition();
+  const [msg, setMsg] = useState<{ t: string; erro?: boolean } | null>(null);
+  const [aba, setAba] = useState<AbaClinica>("atendimentos");
+  const [ed, setEd] = useState<DadosClinica | null>(null);
+  const [novo, setNovo] = useState({ data: hojeBR(), hora: "" });
+  const [encerrando, setEncerrando] = useState<string | null>(null);
+  const [reat, setReat] = useState<string | null>(null);
+  const [convertendo, setConvertendo] = useState(false);
+  const inf = p.tipo === "crianca";
+  const av = (r: { erro?: string; ok?: string }) => setMsg(r.erro ? { t: r.erro, erro: true } : r.ok ? { t: r.ok } : null);
+  const ats = det.atendimentos;
+  const ultimo = ats[0];
+
+  return (
+    <>
+      <div className="det-top">
+        <span className={inf ? "av k" : "av"}>{iniciais(p.nome)}</span>
+        <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+          <h2 style={{ margin: 0, fontSize: 24, lineHeight: 1.2, color: "#3A1F25" }}>{p.nome}</h2>
+          <span style={{ fontSize: 14, color: "#8A7A7E" }}>{p.status === "ativo" ? `Em acompanhamento desde ${mesAno(p.desde)}` : `Acompanhamento encerrado${p.fim ? ` em ${diaBR(p.fim)}` : ""}`}</span>
+        </div>
+        <span className="pill p-cl">Clínica parceira</span>
+      </div>
+      <Aviso m={msg} />
+      <nav className="fi-abas" role="tablist" aria-label="Seções da ficha">
+        {ABAS_CLINICA.map(([k, n]) => <button key={k} type="button" role="tab" aria-selected={aba === k} className={aba === k ? "fi-aba on" : "fi-aba"} onClick={() => setAba(k)}>{n}</button>)}
+      </nav>
+
+      {aba === "dados" ? (
+        ed ? (
+          <div className="form-c">
+            <CamposClinica d={ed} set={(o) => setEd({ ...ed, ...o })} clinicas={clinicas} />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="bt" style={{ width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await atualizarClinica(p.id, ed); av(r); if (r.ok) { setEd(null); router.refresh(); } })}>Salvar</button>
+              <button type="button" className="bt3" onClick={() => setEd(null)}>Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="dados">
+              <div className="dado"><span className="di"><Icone nome="site" tam={18} /></span><span><span className="l">Clínica</span><b>{p.clinica || "—"}</b></span></div>
+              <div className="dado"><span className="di"><Icone nome="calendario" tam={18} /></span><span><span className="l">Início do acompanhamento</span><b>{diaBR(p.desde)}</b></span></div>
+              <div className="dado"><span className="di"><Icone nome={inf ? "crianca" : "pessoa"} tam={18} /></span><span><span className="l">Público</span><b>{inf ? "Criança ou adolescente" : "Adulta"}</b></span></div>
+              <div className="dado"><span className="di"><Icone nome="sessoes" tam={18} /></span><span><span className="l">Atendimentos registrados</span><b>{ats.length}{ultimo ? ` · último em ${diaBR(ultimo.data)}` : ""}</b></span></div>
+            </div>
+            {p.observacao ? <div className="resp"><span className="rot">Observação</span><span style={{ fontSize: 14, color: "#3A1F25", whiteSpace: "pre-wrap" }}>{p.observacao}</span></div> : null}
+            <button type="button" className="mini2" style={{ alignSelf: "flex-start" }} onClick={() => setEd({ tipo: p.tipo, nome: p.nome, clinica: p.clinica || "", desde: p.desde, observacao: p.observacao || "" })}>Editar dados</button>
+            <span style={{ fontSize: 13, color: "#8A7A7E" }}>Cadastro, documentos, agenda e pagamento ficam com a clínica. O relatório final vai direto para ela.</span>
+          </>
+        )
+      ) : null}
+
+      {aba === "atendimentos" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {p.status === "ativo" ? (
+            <div className="resp" style={{ gap: 10 }}>
+              <b style={{ fontSize: 15 }}>Registrar atendimento</b>
+              <div className="fc-g">
+                <div className="fc"><label htmlFor="at-data">Data</label><input id="at-data" type="date" value={novo.data} max={hojeBR()} onChange={(e) => setNovo({ ...novo, data: e.target.value })} /></div>
+                <div className="fc"><label htmlFor="at-hora">Horário <span style={{ fontWeight: 500, color: "#8A7A7E" }}>(opcional)</span></label><input id="at-hora" type="time" step={900} value={novo.hora} onChange={(e) => setNovo({ ...novo, hora: e.target.value })} /></div>
+              </div>
+              <span style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || !novo.data} onClick={() => iniciar(async () => { const r = await registrarAtendimento(p.id, novo); av(r); if (r.ok) { setNovo({ data: hojeBR(), hora: "" }); router.refresh(); } })}>{pend ? "Registrando…" : "Registrar atendimento"}</button>
+                <span style={{ fontSize: 13, color: "#8A7A7E" }}>Sem valor nem pagamento. Não entra na agenda do site nem no financeiro.</span>
+              </span>
+            </div>
+          ) : <div className="resp"><span style={{ fontSize: 14, color: "#5A3A41" }}>O acompanhamento está encerrado. Reative em Situação para registrar novos atendimentos.</span></div>}
+          <span className="rot">Atendimentos · {ats.length}</span>
+          {ats.length ? (
+            <div className="resp" style={{ gap: 8 }}>
+              {ats.map((a, i) => (
+                <div key={a.id} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 14 }}>
+                  <b style={{ minWidth: 150 }}>{diaSemana(a.data)}{a.hora ? ` · ${a.hora}` : ""}</b>
+                  <span style={{ color: "#8A7A7E" }}>Atendimento {ats.length - i}</span>
+                  {a.temEvolucao ? <span className="pill p-ok">Com evolução</span> : <span className="pill p-av">Sem evolução</span>}
+                  {!a.temEvolucao ? <button type="button" className="mini2" disabled={pend} onClick={() => { if (window.confirm("Remover este atendimento registrado por engano?")) iniciar(async () => { const r = await removerAtendimento(a.id); av(r); if (r.ok) router.refresh(); }); }}>Remover</button> : null}
+                </div>
+              ))}
+            </div>
+          ) : <span style={{ fontSize: 14, color: "#6B5A5E" }}>Nenhum atendimento registrado ainda.</span>}
+          <Link href={`/painel/prontuario/${p.id}`} className="bt2" style={{ alignSelf: "flex-start" }}><Icone nome="escudo" tam={18} />Escrever a evolução no prontuário</Link>
+        </div>
+      ) : null}
+
+      {aba === "situacao" ? (
+        <>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <Link href={`/painel/prontuario/${p.id}`} className="bt"><Icone nome="escudo" tam={18} />Prontuário</Link>
+            {p.status === "ativo" ? (
+              <button type="button" className="bt3" disabled={pend} onClick={() => { setEncerrando(ultimo?.data || hojeBR()); setReat(null); setConvertendo(false); }}>Encerrar acompanhamento</button>
+            ) : (
+              <button type="button" className="bt3" disabled={pend} onClick={() => { setReat(hojeBR()); setEncerrando(null); setConvertendo(false); }}>Reativar acompanhamento</button>
+            )}
+            <button type="button" className="bt3" disabled={pend} onClick={() => { setConvertendo(true); setEncerrando(null); setReat(null); }}>Passar para particular</button>
+          </div>
+          {encerrando !== null ? (
+            <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <b style={{ fontSize: 16 }}>Encerrar o acompanhamento</b>
+              <span style={{ fontSize: 14, color: "#5A3A41" }}>Os atendimentos e o prontuário ficam guardados. A guarda de 5 anos conta a partir desta data.</span>
+              <div className="fc" style={{ maxWidth: 260 }}><label htmlFor="ec-data">Data do último atendimento</label><input id="ec-data" type="date" value={encerrando} min={p.desde} onChange={(x) => setEncerrando(x.target.value)} /></div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || !encerrando} onClick={() => iniciar(async () => { const r = await encerrarPaciente(p.id, encerrando); av(r); if (r.ok) { setEncerrando(null); router.refresh(); } })}>{pend ? "Encerrando…" : "Encerrar"}</button>
+                <button type="button" className="bt3" onClick={() => setEncerrando(null)}>Cancelar</button>
+              </div>
+            </div>
+          ) : null}
+          {reat !== null ? (
+            <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <b style={{ fontSize: 16 }}>Reativar o acompanhamento</b>
+              <div className="fc" style={{ maxWidth: 260 }}><label htmlFor="rc-data">Retomar a partir de</label><input id="rc-data" type="date" value={reat} min={hojeBR()} onChange={(x) => setReat(x.target.value)} /></div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <button type="button" className="bt" style={{ width: "auto" }} disabled={pend || !reat} onClick={() => iniciar(async () => { const r = await reativarPaciente(p.id, { retomada: reat, fixoDia: "", fixoHora: "" }); av(r); if (r.ok) { setReat(null); router.refresh(); } })}>{pend ? "Reativando…" : "Reativar"}</button>
+                <button type="button" className="bt3" onClick={() => setReat(null)}>Cancelar</button>
+              </div>
+            </div>
+          ) : null}
+          {convertendo ? (
+            <div className="caixa rec" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <b style={{ fontSize: 16 }}>Passar {p.nome.split(" ")[0]} para particular?</b>
+              <span style={{ fontSize: 14, color: "#5A3A41" }}>O prontuário e os {ats.length} atendimentos registrados continuam aqui. A ficha ganha as partes do particular: depois, complete WhatsApp, e-mail, valor e horário em <b>Editar dados</b>, envie a ficha de cadastro e gere o termo, como num paciente novo.</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <button type="button" className="bt" style={{ width: "auto" }} disabled={pend} onClick={() => iniciar(async () => { const r = await converterParticular(p.id); av(r); if (r.ok) { setConvertendo(false); router.refresh(); } })}>{pend ? "Passando…" : "Passar para particular"}</button>
+                <button type="button" className="bt3" onClick={() => setConvertendo(false)}>Cancelar</button>
+              </div>
+            </div>
+          ) : null}
+          {det.guarda ? (
+            <div className="aviso" role="status" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <b>{det.guarda.motivo === "prazo" ? `Prontuário guardado até ${diaBR(det.guarda.ate!)}` : "Prontuário com guarda obrigatória"}</b>
+              <span>{det.guarda.motivo === "prazo" ? "São 5 anos depois do encerramento do acompanhamento. A exclusão do paciente e dos dados fica liberada depois dessa data." : "O prontuário deve ser guardado por 5 anos depois do encerramento. Para poder excluir no futuro, encerre o acompanhamento e espere o prazo."}</span>
+            </div>
+          ) : <ExcluirPaciente id={p.id} nome={p.nome} temProntuario={!!det.temProntuario} />}
+          <p style={{ margin: 0, fontSize: 12, color: "#8A7A7E" }}>O prontuário fica numa área à parte, com criptografia de ponta a ponta, igual ao dos pacientes particulares.</p>
+        </>
+      ) : null}
+    </>
   );
 }
 
@@ -657,13 +873,22 @@ function ExcluirPaciente({ id, nome, temProntuario }: { id: string; nome: string
   );
 }
 
-export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroInicial }: { lista: Item[]; selId: string | null; detalhe: Detalhe; novo: boolean; pedido: PedidoBase; filtroInicial: string }) {
+export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroInicial, clinicas }: { lista: Item[]; selId: string | null; detalhe: Detalhe; novo: boolean; pedido: PedidoBase; filtroInicial: string; clinicas: string[] }) {
   const router = useRouter();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState(filtroInicial);
   const [abrirNovo, setAbrirNovo] = useState(novo);
-  const FILTROS: [string, string][] = [["ativo", "Em acompanhamento"], ["cadastro", "Cadastro pendente"], ["crianca", "Crianças e adolescentes"], ["encerrado", "Encerrados"]];
-  const passa = (p: Item, f: string) => (f === "ativo" ? p.status === "ativo" : f === "cadastro" ? p.status === "ativo" && p.cad.pendente : f === "crianca" ? p.status === "ativo" && p.tipo === "crianca" : p.status === "encerrado");
+  const FILTROS: [string, string][] = [["ativo", "Em acompanhamento"], ["particular", "Particulares"], ["clinica", "Clínica parceira"], ["cadastro", "Cadastro pendente"], ["crianca", "Crianças e adolescentes"], ["encerrado", "Encerrados"]];
+  const cli = (p: Item) => p.origem === "clinica";
+  const passa = (p: Item, f: string) => {
+    if (f === "encerrado") return p.status === "encerrado";
+    if (p.status !== "ativo") return false;
+    if (f === "particular") return !cli(p);
+    if (f === "clinica") return cli(p);
+    if (f === "cadastro") return !cli(p) && p.cad.pendente;
+    if (f === "crianca") return p.tipo === "crianca";
+    return true;
+  };
   const vis = useMemo(() => lista.filter((p) => passa(p, filtro) && (!busca || p.nome.toLowerCase().includes(busca.toLowerCase()))), [lista, filtro, busca]);
   const sel = selId ? lista.find((p) => p.id === selId) : undefined;
 
@@ -676,16 +901,16 @@ export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroI
         </div>
         <button type="button" className="bt" onClick={() => setAbrirNovo(true)}><Icone nome="pacientes" tam={18} />Novo paciente</button>
       </div>
-      {abrirNovo ? <NovoPaciente pedido={pedido} aoFechar={() => { setAbrirNovo(false); if (novo) router.push("/painel/pacientes"); }} /> : null}
+      {abrirNovo ? <NovoPaciente pedido={pedido} clinicas={clinicas} aoFechar={() => { setAbrirNovo(false); if (novo) router.push("/painel/pacientes"); }} /> : null}
       <div className="ped">
         <div className="ped-lista">
           {vis.map((p) => (
             <Link key={p.id} href={`/painel/pacientes?id=${p.id}`} scroll={false} className={sel?.id === p.id ? "pi on" : "pi"}>
               <span className={p.tipo === "crianca" ? "av k" : "av"}>{iniciais(p.nome)}</span>
               <span className="tx">
-                <span style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{p.nome}</b><span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>{p.selo ? <span className={p.selo.cls}>{p.selo.t}</span> : null}<span className={p.tipo === "crianca" ? "pill p-in" : "pill p-on"}>{p.tipo === "crianca" ? "Criança" : "Adulta"}</span></span></span>
-                <span className="q">{fixoTexto(p.fixoDia, p.fixoHora)}</span>
-                <span className="m">{p.status === "ativo" ? <span className={p.cad.cls}>{p.cad.etiqueta}</span> : "Encerrado"}{p.valor != null ? ` · ${reais(p.valor)}` : ""}</span>
+                <span style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{p.nome}</b><span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>{p.selo ? <span className={p.selo.cls}>{p.selo.t}</span> : null}{cli(p) ? <span className="pill p-cl">Clínica</span> : null}<span className={p.tipo === "crianca" ? "pill p-in" : "pill p-on"}>{p.tipo === "crianca" ? "Criança" : "Adulta"}</span></span></span>
+                <span className="q">{cli(p) ? p.clinica : fixoTexto(p.fixoDia, p.fixoHora)}</span>
+                <span className="m">{cli(p) ? (p.status === "ativo" ? "Só prontuário · a clínica cuida do resto" : "Encerrado") : <>{p.status === "ativo" ? <span className={p.cad.cls}>{p.cad.etiqueta}</span> : "Encerrado"}{p.valor != null ? ` · ${reais(p.valor)}` : ""}</>}</span>
               </span>
             </Link>
           ))}
@@ -694,7 +919,7 @@ export default function Pacientes({ lista, selId, detalhe, novo, pedido, filtroI
         {sel && detalhe ? (
           <section className="card ped-det">
             <Link href="/painel/pacientes" className="bt3 voltar-m" scroll={false}><Icone nome="voltar" tam={18} /> Todos os pacientes</Link>
-            <Ficha key={sel.id} p={sel} det={detalhe} />
+            {cli(sel) ? <FichaClinica key={sel.id} p={sel} det={detalhe} clinicas={clinicas} /> : <Ficha key={sel.id} p={sel} det={detalhe} />}
           </section>
         ) : (
           <section className="card ped-det" style={{ color: "#6B5A5E", textAlign: "center", justifyContent: "center" }}>

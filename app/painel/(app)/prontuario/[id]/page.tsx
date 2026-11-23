@@ -21,7 +21,7 @@ export default async function PaginaProntuario({ params }: { params: Promise<{ i
   const { data: p } = await sb.from("pacientes").select("*").eq("id", id).maybeSingle<Paciente>();
   if (!p) notFound();
 
-  const [{ data: chave }, { data: evos }, { data: secoes }, { data: anexos }, { data: acessos }, { data: sess }, { data: termo }, resps] = await Promise.all([
+  const [{ data: chave }, { data: evos }, { data: secoes }, { data: anexos }, { data: acessos }, { data: sess }, { data: termo }, resps, { data: atend }] = await Promise.all([
     sb.from("prontuario_chave").select("salt_senha, iteracoes, chave_senha, salt_rec, chave_rec, pub_recados, priv_recados_cripto").eq("id", 1).maybeSingle(),
     sb.from("prontuario_evolucoes").select("id, data, rotulo, conteudo_cripto, criado_em, prontuario_correcoes(id, conteudo_cripto, criado_em)").eq("paciente_id", id).order("data", { ascending: false }).order("criado_em", { ascending: false }),
     sb.from("prontuario_secoes").select("id, tipo, conteudo_cripto, criado_em").eq("paciente_id", id).order("criado_em", { ascending: false }),
@@ -30,19 +30,37 @@ export default async function PaginaProntuario({ params }: { params: Promise<{ i
     sb.from("sessoes").select("id, inicio, status").eq("paciente_id", id).neq("status", "cancelada").lte("inicio", new Date(Date.now() + 86400000).toISOString()).order("inicio", { ascending: true }),
     sb.from("termos").select("aceito_em").eq("paciente_id", id).eq("status", "aceito").order("aceito_em", { ascending: false }).limit(1).maybeSingle(),
     responsaveisDe(sb, id),
+    sb.from("atendimentos_clinica").select("id, data, hora").eq("paciente_id", id).order("data", { ascending: true }).order("hora", { ascending: true, nullsFirst: true }),
   ]);
 
   const exercicios = await exerciciosDoPaciente(sb, id);
 
-  // Sessões para vincular à evolução, numeradas na ordem em que aconteceram.
+  // Sessões (e atendimentos na clínica parceira) para vincular à evolução, numerados na ordem em que aconteceram.
+  // O atendimento da clínica não tem fuso guardado: vira meio-dia de Brasília do dia, só para a data.
+  const clinica = p.origem === "clinica";
   let n = 0;
-  const sessoes = (sess ?? []).map((s) => ({ id: s.id as string, data: new Date(s.inicio).toISOString(), rotulo: `${fmtDiaCurto(new Date(s.inicio))} · sessão ${++n}` })).reverse();
+  let k = 0;
+  const sessoes = [
+    ...(sess ?? []).map((s) => ({ id: s.id as string, t: new Date(s.inicio).getTime(), rotulo: (q: number) => `${fmtDiaCurto(new Date(s.inicio))} · sessão ${q}`, tipo: "s" as const })),
+    ...(atend ?? []).map((a) => {
+      const t = new Date(`${a.data}T${a.hora ? String(a.hora).slice(0, 5) : "12:00"}:00-03:00`).getTime();
+      return { id: a.id as string, t, rotulo: (q: number) => `${fmtDiaCurto(new Date(t))}${a.hora ? ` ${String(a.hora).slice(0, 5)}` : ""} · atendimento ${q}`, tipo: "a" as const };
+    }),
+  ]
+    .sort((x, y) => x.t - y.t)
+    .map((x) => ({ id: x.id, data: new Date(x.t).toISOString(), rotulo: x.rotulo(x.tipo === "s" ? ++n : ++k) }))
+    .reverse();
 
   const inf = p.tipo === "crianca";
   const r = resps.find((x) => x.legal) || resps[0];
   const cpf = cpfFormatado(decifrarOuVazio(inf ? r?.cpf_cripto : p.cpf_cripto));
   const nasc = decifrarOuVazio(p.nascimento_cripto);
-  const identificacao = [
+  const identificacao = (clinica ? [
+    ["Nome completo", p.nome],
+    ["Atendimento", `Clínica parceira · ${p.clinica || ""}`],
+    ["Início do acompanhamento", dataBR(p.desde)],
+    ["Cadastro e documentos", "Com a clínica parceira"],
+  ] : [
     ["Nome completo", p.nome],
     inf ? ["Responsável legal", r ? `${r.nome}${r.parentesco ? ` (${r.parentesco})` : ""}` : "Não cadastrado"] : null,
     ["Data de nascimento", nasc || (p.idade ? `${p.idade} anos` : "Não preenchida")],
@@ -50,7 +68,7 @@ export default async function PaginaProntuario({ params }: { params: Promise<{ i
     ["Contato de emergência", decifrarOuVazio(p.emergencia_cripto) || "Não preenchido"],
     ["Início do acompanhamento", dataBR(p.desde)],
     ["Termo de consentimento", termo?.aceito_em ? `Aceito em ${dataHora(termo.aceito_em)}` : "Ainda não aceito"],
-  ].filter(Boolean) as [string, string][];
+  ]).filter(Boolean) as [string, string][];
 
   const ultima = (t: string) => (secoes ?? []).find((s) => s.tipo === t) || null;
   const dem = ultima("demanda");
@@ -61,7 +79,7 @@ export default async function PaginaProntuario({ params }: { params: Promise<{ i
       <TopoCelular titulo="Prontuário" sub={`${curto(p.nome)} · área protegida`} pedidos={0} />
       <Prontuario
         key={id}
-        paciente={{ id, nome: p.nome, curto: curto(p.nome), tipo: p.tipo, desde: p.desde, status: p.status }}
+        paciente={{ id, nome: p.nome, curto: curto(p.nome), tipo: p.tipo, desde: p.desde, status: p.status, clinica: clinica ? p.clinica || "Clínica parceira" : null }}
         pacote={chave ? { salt_senha: chave.salt_senha as string, iteracoes: chave.iteracoes as number, chave_senha: chave.chave_senha as string, salt_rec: chave.salt_rec as string, chave_rec: chave.chave_rec as string } : null}
         parRecados={chave?.pub_recados && chave.priv_recados_cripto ? { pub: chave.pub_recados as string, privCripto: chave.priv_recados_cripto as string } : null}
         exercicios={exercicios}

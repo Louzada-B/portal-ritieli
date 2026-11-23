@@ -44,7 +44,19 @@ export async function salvarChave(p: Pacote, modo: "criar" | "trocar" | "recuper
 export async function salvarEvolucao(pacienteId: string, d: { sessaoId: string | null; data: string; rotulo: string; cripto: string }): Promise<Res> {
   if (!ok(d.cripto) || !/^\d{4}-\d{2}-\d{2}$/.test(d.data)) return { erro: "Dados inválidos." };
   const sb = await supabaseServidor();
-  const { error } = await sb.from("prontuario_evolucoes").insert({ paciente_id: pacienteId, sessao_id: d.sessaoId || null, data: d.data, rotulo: d.rotulo.slice(0, 60) || null, conteudo_cripto: d.cripto });
+  // O vínculo pode ser uma sessão ou um atendimento na clínica parceira (sempre do mesmo paciente).
+  let sessaoId: string | null = null;
+  let atendimentoId: string | null = null;
+  if (d.sessaoId) {
+    const [{ data: s }, { data: a }] = await Promise.all([
+      sb.from("sessoes").select("id").eq("id", d.sessaoId).eq("paciente_id", pacienteId).maybeSingle(),
+      sb.from("atendimentos_clinica").select("id").eq("id", d.sessaoId).eq("paciente_id", pacienteId).maybeSingle(),
+    ]);
+    if (s) sessaoId = s.id as string;
+    else if (a) atendimentoId = a.id as string;
+    else return { erro: "Sessão não encontrada. Recarregue a página." };
+  }
+  const { error } = await sb.from("prontuario_evolucoes").insert({ paciente_id: pacienteId, sessao_id: sessaoId, atendimento_id: atendimentoId, data: d.data, rotulo: d.rotulo.slice(0, 60) || null, conteudo_cripto: d.cripto });
   if (error) return { erro: "Não deu para salvar. Tente de novo." };
   await registrarAcesso(pacienteId, "Registrou evolução");
   revalidatePath(`/painel/prontuario/${pacienteId}`);

@@ -38,6 +38,7 @@
 .painel .p-ur{background:#FBE5E2;color:#A3322A}
 .painel .p-ok{background:#E7F1EA;color:#2F6A45}
 .painel .p-ne{background:#F1ECEC;color:#6B5A5E}
+.painel .p-cl{background:#E6EEF2;color:#2D5068}
 .painel .tab{display:none}
 .painel .m-menu{display:none}
 .painel .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:80;background:#3A1F25;color:#FFFFFF;border-radius:16px;padding:14px 20px;font-size:15px;font-weight:600;box-shadow:0 20px 40px -16px rgba(58,31,37,.6);display:flex;gap:10px;align-items:center;max-width:calc(100% - 32px);box-sizing:border-box;animation:tIn .4s ease both}

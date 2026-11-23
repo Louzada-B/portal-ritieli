@@ -29,7 +29,12 @@ export type Paciente = {
   pedido_id: string | null;
   ficha_em: string | null;
   criado_em: string;
+  origem?: "particular" | "clinica"; // clínica parceira: a clínica cuida de cadastro, agenda e pagamento
+  clinica?: string | null;
+  observacao?: string | null;
 };
+
+export const ehClinica = (p: { origem?: string | null } | null | undefined) => p?.origem === "clinica";
 
 export type Responsavel = {
   id: string;
