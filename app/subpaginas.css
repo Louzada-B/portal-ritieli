@@ -100,9 +100,7 @@
 .sub .passo-i .tag{align-self:flex-start;background:#F6E5E7;color:#7A2335;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;letter-spacing:.04em}
 .sub .local{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;background:#FFFFFF;border-radius:36px;overflow:hidden}
 .sub .local-mapa{position:relative;background:#F4E9E2;min-height:340px;overflow:hidden}
-.sub .local-mapa .rua{position:absolute;background:#FFFFFF;opacity:.9}
-.sub .local-mapa .pin{position:absolute;left:50%;top:46%;transform:translate(-50%,-100%);width:56px;height:56px;border-radius:50% 50% 50% 0;rotate:-45deg;background:#7A2335;box-shadow:0 14px 30px -12px rgba(58,31,37,.7)}
-.sub .local-mapa .pin::after{content:"";position:absolute;inset:18px;border-radius:50%;background:#FFFFFF}
+.sub .local-mapa iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .sub .local-txt{padding:44px;display:flex;flex-direction:column;gap:14px}
 .sub .local-txt dl{margin:8px 0 0;display:flex;flex-direction:column;gap:14px}
 .sub .local-txt dt{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:#B0475D}
@@ -151,7 +149,7 @@
 .sub .sinais{grid-template-columns:minmax(0,1fr);gap:12px}
 .sub .passos{grid-template-columns:minmax(0,1fr);gap:12px}
 .sub .local{grid-template-columns:minmax(0,1fr);border-radius:26px}
-.sub .local-mapa{min-height:200px}
+.sub .local-mapa{min-height:280px}
 .sub .local-txt{padding:26px 22px}
 }
 @media (prefers-reduced-motion:reduce){.sub .r,.sub .ic{animation:none;transition:none}.sub .card,.sub .destaque,.sub .chip,.sub .ler{transition:none}}

@@ -22,6 +22,9 @@ const c_ = consultorio;
 export const enderecoCurto = `${c_.rua}, ${c_.complemento} · ${c_.bairro}`;
 export const enderecoCompleto = `${enderecoCurto} · ${c_.cidade}/${c_.uf} · CEP ${c_.cep}`;
 export const enderecoFrase = `na ${c_.rua}, ${c_.complemento}, no bairro ${c_.bairro}, em ${c_.cidade}`;
+const consultaMapa = encodeURIComponent(`${c_.rua} - ${c_.bairro}, ${c_.cidade} - ${c_.uf}, ${c_.cep}`);
+// Mapa do Google embutido na página (sem chave de API).
+export const enderecoMapaEmbed = `https://www.google.com/maps?q=${consultaMapa}&z=16&hl=pt-BR&output=embed`;
 export const enderecoMapa = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c_.rua} - ${c_.bairro}, ${c_.cidade} - ${c_.uf}, ${c_.cep}`)}`;
 
 export const linkWhatsApp = (mensagem?: string) =>

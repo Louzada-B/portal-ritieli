@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Moldura from "../componentes/Moldura";
-import { linkWhatsApp, rotas, consultorio, enderecoCompleto, enderecoMapa } from "../conteudo";
+import { linkWhatsApp, rotas, consultorio, enderecoCompleto, enderecoMapa, enderecoMapaEmbed } from "../conteudo";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/criancas-e-adolescentes" },
@@ -61,12 +61,8 @@ export default function Pagina() {
 
 <section className="wrap sec">
 <div className="local">
-<div className="local-mapa" aria-hidden="true">
-<span className="rua" style={{ left: '0', right: '0', top: '30%', height: '18px' }}></span>
-<span className="rua" style={{ left: '0', right: '0', top: '68%', height: '12px' }}></span>
-<span className="rua" style={{ top: '0', bottom: '0', left: '36%', width: '16px' }}></span>
-<span className="rua" style={{ top: '0', bottom: '0', left: '74%', width: '12px' }}></span>
-<span className="pin"></span>
+<div className="local-mapa">
+<iframe src={enderecoMapaEmbed} title={`Mapa: ${enderecoCompleto}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
 </div>
 <div className="local-txt">
 <h2 className="st" style={{ fontSize: '36px' }}>Onde <em style={{ fontSize: '42px' }}>acontece</em></h2>
