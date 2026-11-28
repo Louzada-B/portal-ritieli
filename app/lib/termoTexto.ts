@@ -11,6 +11,11 @@ export type ConteudoTermo = {
   plataforma: string;
   faltas: string;
   data: string;
+  // Endereço do consultório no dia em que o termo foi gerado (termos antigos não têm: usam o anterior).
+  endereco?: string;
 };
+
+// Endereço dos termos gerados antes de o endereço passar a ser guardado no próprio termo.
+export const ENDERECO_TERMO_ANTIGO = "na R. Santa Flora, 1166, no bairro Nonoai, em Porto Alegre";
 
 export const mascararCpf = (c: string) => (c && c.length >= 14 ? `•••.•••.${c.slice(8)}` : c);

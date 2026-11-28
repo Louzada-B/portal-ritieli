@@ -8,6 +8,7 @@ import { cpfMascarado, fone, reais, iniciais, fixoTexto, waLink, DIAS_PLURAL } f
 import { criarPaciente, atualizarPaciente, linkFicha, marcarEnviado, verCpf, verPessoais, salvarPessoais, salvarCpf, adicionarResponsavel, definirFinanceiro, gerarSala, encerrarPaciente, reativarPaciente, excluirPaciente, acertarAgenda, liberarPagamento, type DadosNovo } from "./acoes";
 import { criarAcesso, reenviarSenha, alternarAcesso } from "./acessoAcoes";
 import type { AcessoInfo } from "../../../lib/pacienteAcesso";
+import { enderecoCurto } from "../../../conteudo";
 import { listarLivresFixo } from "../livres";
 import { criarPacienteClinica, atualizarClinica, registrarAtendimento, removerAtendimento, converterParticular, type DadosClinica } from "./clinicaAcoes";
 import type { OpcaoFixa } from "../../../lib/livres";
@@ -774,7 +775,7 @@ function Ficha({ p, det }: { p: Item; det: NonNullable<Detalhe> }) {
             <span style={{ fontSize: 13, color: "#8A7A7E" }}>Cria a sessão semanal no horário fixo, na sua agenda do Google, com a sala do Meet.</span>
           </>
         )}
-        {inf ? <span style={{ fontSize: 14, color: "#5A3A41" }}>Sessões com a criança ou o adolescente: presencial, na R. Santa Flora, 1166 · Nonoai. Encontros com os responsáveis: online, pela sala do Google Meet.</span> : null}
+        {inf ? <span style={{ fontSize: 14, color: "#5A3A41" }}>Sessões com a criança ou o adolescente: presencial, na {enderecoCurto}. Encontros com os responsáveis: online, pela sala do Google Meet.</span> : null}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Revela from "./componentes/Revela";
-import { contato } from "./conteudo";
+import { contato, consultorio } from "./conteudo";
 import { siteUrl } from "./site";
 
 const descricao =
@@ -46,10 +46,10 @@ const dadosEstruturados = {
   areaServed: { "@type": "Country", name: "Brasil" },
   address: {
     "@type": "PostalAddress",
-    streetAddress: "R. Santa Flora, 1166",
-    addressLocality: "Porto Alegre",
-    addressRegion: "RS",
-    postalCode: "90830-410",
+    streetAddress: `${consultorio.rua}, ${consultorio.complemento}`,
+    addressLocality: consultorio.cidade,
+    addressRegion: consultorio.uf,
+    postalCode: consultorio.cep,
     addressCountry: "BR",
   },
   sameAs: [`https://instagram.com/${contato.instagram}`],

@@ -7,6 +7,7 @@ import Icone from "../../componentes/Icone";
 import TermoDocumento from "../../../componentes/TermoDocumento";
 import { centavosDe, reais, waLink } from "../../../lib/formato";
 import type { ConteudoTermo } from "../../../lib/termoTexto";
+import { enderecoFrase } from "../../../conteudo";
 import { criarTermo, reenviarTermo, cancelarTermo } from "./acoes";
 import { verCpf, linkFicha, marcarEnviado } from "../pacientes/acoes";
 
@@ -77,6 +78,7 @@ export default function Termos({ hist, selId, doc, pacientes, novo, faltasPadrao
         plataforma: inf ? "" : plat,
         faltas,
         data: dataHoje,
+        endereco: inf ? enderecoFrase : undefined,
       }
     : null;
   const mostrado = ehHist ? doc : previa;

@@ -5,6 +5,7 @@ import PagamentoAberto from "./Pagamento";
 import RespostasPedido from "./RespostasPedido";
 import { CartaoInstalar } from "../componentes/Pwa";
 import Link from "next/link";
+import { enderecoCurto } from "../conteudo";
 import { exigirAcesso, ROTA } from "../lib/pacienteAuth";
 import { exerciciosDoPaciente } from "../lib/exercicios";
 import { supabaseAdmin } from "../lib/supabase/admin";
@@ -51,7 +52,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
           {prox ? (
             <>
               <div><p className="prox-dia">{fmtDiaLongo(new Date(prox.inicio))}</p><div className="prox-hora">{fmtHora(new Date(prox.inicio))}</div></div>
-              <div className="prox-meta"><span>{presencial ? "Presencial · R. Santa Flora, 1166 · Nonoai" : "Online · Google Meet"}</span></div>
+              <div className="prox-meta"><span>{presencial ? `Presencial · ${enderecoCurto}` : "Online · Google Meet"}</span></div>
               <div className="prox-acoes">
                 {!presencial ? <EntrarSessao meet={p.meet_link} inicio={prox.inicio} /> : null}
                 <PedidoSessao pacienteId={p.id} sessaoId={prox.id} pedido={pedidoDe(prox.id)} menos24h={new Date(prox.inicio).getTime() - agora < 24 * 3600000} whatsapp={wa} />

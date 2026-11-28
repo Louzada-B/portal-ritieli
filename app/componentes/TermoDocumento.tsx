@@ -1,5 +1,5 @@
 import type { ConteudoTermo } from "../lib/termoTexto";
-import { mascararCpf } from "../lib/termoTexto";
+import { mascararCpf, ENDERECO_TERMO_ANTIGO } from "../lib/termoTexto";
 
 // O documento do termo, o mesmo texto no painel ("papel") e na página de aceite ("publico").
 export default function TermoDocumento({ c, publico = false, rodape }: { c: ConteudoTermo; publico?: boolean; rodape?: React.ReactNode }) {
@@ -16,7 +16,7 @@ export default function TermoDocumento({ c, publico = false, rodape }: { c: Cont
       <p>O acompanhamento segue a Terapia Cognitivo-Comportamental, com sessões semanais de 50 minutos.</p>
       <h3>2. Onde acontece</h3>
       {inf ? (
-        <p>As sessões com a criança ou o adolescente acontecem presencialmente, na R. Santa Flora, 1166, no bairro Nonoai, em Porto Alegre. Os encontros com os responsáveis podem ser online, pelo Google Meet.</p>
+        <p>As sessões com a criança ou o adolescente acontecem presencialmente, {c.endereco || ENDERECO_TERMO_ANTIGO}. Os encontros com os responsáveis podem ser online, pelo Google Meet.</p>
       ) : (
         <p>As sessões acontecem online, por <D v={c.plataforma} ph="[plataforma de vídeo]" />, em sala exclusiva da paciente, conforme a Resolução CFP nº 9/2024. As sessões não são gravadas. A paciente se compromete a estar em um local reservado, com boa conexão.</p>
       )}

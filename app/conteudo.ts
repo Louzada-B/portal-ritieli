@@ -9,6 +9,21 @@ export const contato = {
   instagram: "psi.ritielihermes",
 };
 
+// Consultório (atendimento presencial). Trocar o endereço aqui atualiza site, painel, área da paciente e termos novos.
+export const consultorio = {
+  rua: "R. Barão do Cerro Largo, 11",
+  complemento: "sala 404",
+  bairro: "Menino Deus",
+  cidade: "Porto Alegre",
+  uf: "RS",
+  cep: "90850-110",
+};
+const c_ = consultorio;
+export const enderecoCurto = `${c_.rua}, ${c_.complemento} · ${c_.bairro}`;
+export const enderecoCompleto = `${enderecoCurto} · ${c_.cidade}/${c_.uf} · CEP ${c_.cep}`;
+export const enderecoFrase = `na ${c_.rua}, ${c_.complemento}, no bairro ${c_.bairro}, em ${c_.cidade}`;
+export const enderecoMapa = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c_.rua} - ${c_.bairro}, ${c_.cidade} - ${c_.uf}, ${c_.cep}`)}`;
+
 export const linkWhatsApp = (mensagem?: string) =>
   `https://wa.me/${contato.whatsapp}${mensagem ? `?text=${encodeURIComponent(mensagem)}` : ""}`;
 

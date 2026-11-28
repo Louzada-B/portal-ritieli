@@ -6,6 +6,7 @@ import { cifrar, decifrarOuVazio, novoToken } from "../../../lib/cripto";
 import { centavosDe, cpfFormatado, primeiroNome, reais } from "../../../lib/formato";
 import { responsaveisDe, contatoPrincipal, type Paciente } from "../../../lib/pacientes";
 import { local, MESES } from "../../../lib/agenda";
+import { enderecoFrase } from "../../../conteudo";
 import type { ConteudoTermo } from "../../../lib/termoTexto";
 import { siteUrl } from "../../../site";
 
@@ -32,6 +33,7 @@ async function montarConteudo(p: Paciente, combinados: { valorCentavos: number |
     plataforma: p.tipo === "adulta" ? combinados.plataforma.trim() || "Google Meet" : "",
     faltas: combinados.faltas.trim(),
     data: dataExtenso(),
+    endereco: p.tipo === "crianca" ? enderecoFrase : undefined,
   };
   return { conteudo, resps };
 }

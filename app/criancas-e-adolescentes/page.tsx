@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Moldura from "../componentes/Moldura";
-import { linkWhatsApp, rotas } from "../conteudo";
+import { linkWhatsApp, rotas, consultorio, enderecoCompleto, enderecoMapa } from "../conteudo";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/criancas-e-adolescentes" },
   title: "Crianças e adolescentes · Ritieli Hermes · Psicóloga",
-  description: "Psicoterapia para crianças e adolescentes de 5 a 16 anos com a TCC. Sessões presenciais no Nonoai, em Porto Alegre, e encontros com os pais que podem ser online.",
+  description: "Psicoterapia para crianças e adolescentes de 5 a 16 anos com a TCC. Sessões presenciais no Menino Deus, em Porto Alegre, e encontros com os pais que podem ser online.",
 };
 
 export default function Pagina() {
@@ -70,10 +70,10 @@ export default function Pagina() {
 </div>
 <div className="local-txt">
 <h2 className="st" style={{ fontSize: '36px' }}>Onde <em style={{ fontSize: '42px' }}>acontece</em></h2>
-<p style={{ margin: '0', color: '#5A3A41' }}>Os atendimentos presenciais acontecem no bairro Nonoai, em Porto Alegre, em um ambiente preparado e acolhedor para crianças e adolescentes.</p>
+<p style={{ margin: '0', color: '#5A3A41' }}>Os atendimentos presenciais acontecem no bairro {consultorio.bairro}, em {consultorio.cidade}, em um ambiente preparado e acolhedor para crianças e adolescentes.</p>
 <dl>
-<div><dt>Bairro</dt><dd>Nonoai · Porto Alegre/RS</dd></div>
-<div><dt>Endereço</dt><dd>R. Santa Flora, 1166 · Nonoai · Porto Alegre/RS · CEP 90830-410<br /><a href="https://www.google.com/maps/search/?api=1&amp;query=R.+Santa+Flora,+1166+-+Nonoai,+Porto+Alegre+-+RS,+90830-410" target="_blank" rel="noopener" style={{ fontWeight: '700', fontSize: '14px' }}>Ver no mapa →</a></dd></div>
+<div><dt>Bairro</dt><dd>{consultorio.bairro} · {consultorio.cidade}/{consultorio.uf}</dd></div>
+<div><dt>Endereço</dt><dd>{enderecoCompleto}<br /><a href={enderecoMapa} target="_blank" rel="noopener" style={{ fontWeight: '700', fontSize: '14px' }}>Ver no mapa →</a></dd></div>
 <div><dt>Confirmação</dt><dd>O endereço da sessão é confirmado no agendamento.</dd></div>
 </dl>
 </div>
