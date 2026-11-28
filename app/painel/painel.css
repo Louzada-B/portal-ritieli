@@ -407,6 +407,26 @@
 .painel .compor{background:#F8F3F0;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .painel .compor textarea,.painel .ta{font:inherit;font-size:15.5px;line-height:1.65;color:#3A1F25;background:#FFFFFF;border:1px solid #E2CCD0;border-radius:14px;padding:12px 14px;min-height:120px;resize:vertical;width:100%;box-sizing:border-box;outline:0}
 .painel .compor textarea:focus,.painel .ta:focus{border-color:#7A2335;box-shadow:0 0 0 3px rgba(122,35,53,.15)}
+/* Editor da evolução (prontuário) */
+.painel .ed{border:1px solid #E2CCD0;border-radius:14px;background:#FFFFFF;overflow:hidden}
+.painel .ed:focus-within{border-color:#7A2335;box-shadow:0 0 0 3px rgba(122,35,53,.15)}
+.painel .ed-barra{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid #F0E3E5;background:#FBF7F5}
+.painel .ed-bt{min-width:34px;height:34px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#5A3A41;font:inherit;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.painel .ed-bt:hover{background:#F1E6E8}
+.painel .ed-bt.on{background:#7A2335;color:#FFFFFF}
+.painel .ed-sep{width:1px;height:20px;background:#E2CCD0;margin:0 6px}
+.painel .ed-cor{width:30px;height:30px;border:0;border-radius:50%;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.painel .ed-cor span{width:18px;height:18px;border-radius:50%;display:block}
+.painel .ed-cor.on{box-shadow:inset 0 0 0 2px #7A2335}
+.painel .ed-area{min-height:140px;padding:12px 14px;font-size:15.5px;line-height:1.65;color:#3A1F25;outline:0}
+.painel .ed-area p{margin:0 0 8px}
+.painel .ed-area h3{font-size:16px;margin:10px 0 6px}
+.painel .ed-area>:first-child,.painel .texto-rico>:first-child{margin-top:0}
+.painel .ed-area ul,.painel .ed-area ol{margin:0 0 8px;padding-left:22px}
+.painel .ed-area mark{background:#FCEB9C;color:inherit;padding:0 2px;border-radius:3px}
+.painel .ed-area p.is-editor-empty:first-child::before{content:attr(data-placeholder);color:#A8989C;float:left;height:0;pointer-events:none}
+.painel .texto-rico{margin:0 0 6px}
+
 .painel .log{width:100%;border-collapse:collapse;font-size:14px}
 .painel .log th{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#9A5A67;padding:0 10px 10px}
 .painel .log td{border-top:1px solid #F1E3E6;padding:12px 10px}
@@ -497,6 +517,7 @@
 }
 @media print{
   .painel .lat,.painel .tab,.painel .topo,.painel .m-topo,.painel .faixa-ab,.painel .pr-g,.painel .conteudo>.aviso{display:none!important}
+  .painel .pr-print mark,.painel .pr-print .texto-rico span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .painel .pr-print{display:block!important;font-family:Georgia,serif;color:#000;font-size:12pt;line-height:1.5}
   .painel .pr-print h1{font-size:16pt;margin:0 0 4pt}
   .painel .pr-print h2{font-size:12pt;text-transform:uppercase;letter-spacing:.05em;margin:16pt 0 6pt;border-bottom:1px solid #999}

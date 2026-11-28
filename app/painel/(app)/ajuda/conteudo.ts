@@ -115,12 +115,13 @@ export const TAREFAS: Tarefa[] = [
     dica: "A confirmação é manual. Não há baixa automática do Pix.",
   },
   {
-    id: "prontuario", titulo: "Abrir e usar o prontuário", resumo: "Senha, evoluções, anexos e exercícios.", busca: "evolução cofre senha chave recuperação anexo pdf exportar",
+    id: "prontuario", titulo: "Abrir e usar o prontuário", resumo: "Senha, evoluções, anexos e exercícios.", busca: "evolução cofre senha chave recuperação anexo pdf exportar negrito italico cor formatação lista realce",
     passos: [
       "Na ficha da pessoa, toque em “Prontuário” (ou em “Abrir o prontuário →”).",
       "Digite a senha do prontuário para abrir. Ele fecha sozinho após 10 minutos sem uso, e você pode usar “Fechar agora”.",
       "As abas organizam o conteúdo: Evoluções, Demanda e objetivos, Identificação, Encerramento, Anexos, Exercícios e Acessos.",
       "Em Evoluções, escolha a sessão e escreva. O texto é cifrado antes de sair do seu navegador. Registros não se apagam: use “Acrescentar correção”.",
+      "A barra acima do texto da evolução formata: negrito, itálico, sublinhado, título, listas, realce (marca-texto) e as cores preto, azul, vermelho, verde e roxo. A formatação sai também no PDF.",
       "Em Anexos, envie arquivos clínicos (cifrados também). Para imprimir ou guardar, use “Exportar PDF”.",
     ],
     dica: "Na primeira vez você cria a senha e recebe uma chave de recuperação. Guarde as duas em lugar seguro.",

@@ -7,6 +7,8 @@ import Icone from "../../componentes/Icone";
 import { supabaseNavegador } from "../../../lib/supabase/navegador";
 import * as cofre from "./cofre";
 import Exercicios, { type ExItem } from "./Exercicios";
+import EditorEvolucao from "./EditorEvolucao";
+import TextoRico, { type NoRico } from "./TextoRico";
 import { salvarChave, registrarAcesso, salvarEvolucao, salvarCorrecao, salvarSecao, registrarAnexo, excluirAnexo } from "./acoes";
 
 type Evo = { id: string; data: string; rotulo: string; cripto: string; reg: string; correcoes: { id: string; cripto: string; quando: string }[] };
@@ -62,12 +64,13 @@ export default function Prontuario(props: Props) {
 
   // Conteúdo aberto
   const [aba, setAba] = useState<Aba>("evo");
-  const [evos, setEvos] = useState<{ id: string; data: string; rotulo: string; texto: string; reg: string; correcoes: { id: string; texto: string; quando: string }[] }[]>([]);
+  const [evos, setEvos] = useState<{ id: string; data: string; rotulo: string; texto: string; doc: NoRico | null; reg: string; correcoes: { id: string; texto: string; quando: string }[] }[]>([]);
   const [dem, setDem] = useState({ demanda: "", objetivos: "" });
   const [enc, setEnc] = useState<{ motivo: string; sintese: string } | null>(null);
   const [encNovo, setEncNovo] = useState({ motivo: "", sintese: "" });
   const [anexos, setAnexos] = useState<{ id: string; caminho: string; nome: string; tipo: string; tamanho: number; quando: string }[]>([]);
-  const [novo, setNovo] = useState({ sessao: props.sessoes[0]?.id || "", texto: "" });
+  const [novo, setNovo] = useState<{ sessao: string; texto: string; doc: NoRico | null }>({ sessao: props.sessoes[0]?.id || "", texto: "", doc: null });
+  const [edKey, setEdKey] = useState(0);
   const [corr, setCorr] = useState<{ id: string; texto: string } | null>(null);
   const [troca, setTroca] = useState<{ atual: string; nova: string; nova2: string } | null>(null);
   const registrou = useRef(false);
@@ -97,11 +100,15 @@ export default function Prontuario(props: Props) {
     if (!aberto) return;
     let vivo = true;
     (async () => {
-      const e = await Promise.all(props.evolucoes.map(async (x) => ({
+      const e = await Promise.all(props.evolucoes.map(async (x) => {
+        const v = await cofre.decifrar<{ texto: string; doc?: NoRico }>(x.cripto);
+        return {
         id: x.id, data: x.data, rotulo: x.rotulo, reg: x.reg,
-        texto: (await cofre.decifrar<{ texto: string }>(x.cripto))?.texto ?? "[não deu para abrir este registro]",
+        texto: v?.texto ?? "[não deu para abrir este registro]",
+        doc: v?.doc ?? null,
         correcoes: await Promise.all(x.correcoes.map(async (c) => ({ id: c.id, quando: c.quando, texto: (await cofre.decifrar<{ texto: string }>(c.cripto))?.texto ?? "[não deu para abrir]" }))),
-      })));
+        };
+      }));
       const d = props.demanda ? await cofre.decifrar<{ demanda: string; objetivos: string }>(props.demanda.cripto) : null;
       const en = props.encerramento ? await cofre.decifrar<{ motivo: string; sintese: string }>(props.encerramento.cripto) : null;
       const an = await Promise.all(props.anexos.map(async (a) => { const m = await cofre.decifrar<{ nome: string; tipo: string }>(a.meta); return { id: a.id, caminho: a.caminho, tamanho: a.tamanho, quando: a.quando, nome: m?.nome || "Arquivo", tipo: m?.tipo || "application/octet-stream" }; }));
@@ -161,9 +168,9 @@ export default function Prontuario(props: Props) {
     const t = novo.texto.trim();
     if (!t) return av({ erro: "Escreva a evolução antes de salvar." });
     const s = props.sessoes.find((x) => x.id === novo.sessao);
-    const r = await salvarEvolucao(paciente.id, { sessaoId: s?.id || null, data: s ? isoLocal(s.data) : hojeISO(), rotulo: s ? s.rotulo.split(" · ")[1].replace(/^./, (c) => c.toUpperCase()) : "", cripto: await cofre.cifrar({ texto: t }) });
+    const r = await salvarEvolucao(paciente.id, { sessaoId: s?.id || null, data: s ? isoLocal(s.data) : hojeISO(), rotulo: s ? s.rotulo.split(" · ")[1].replace(/^./, (c) => c.toUpperCase()) : "", cripto: await cofre.cifrar(novo.doc ? { texto: t, doc: novo.doc } : { texto: t }) });
     av(r);
-    if (!r.erro) { setNovo({ ...novo, texto: "" }); router.refresh(); }
+    if (!r.erro) { setNovo({ ...novo, texto: "", doc: null }); setEdKey((k) => k + 1); router.refresh(); }
   });
   const salvarCorr = () => corr && iniciar(async () => {
     const t = corr.texto.trim();
@@ -313,14 +320,14 @@ export default function Prontuario(props: Props) {
                       <option value="">{paciente.clinica ? "Sem atendimento vinculado · hoje" : "Sem sessão vinculada · hoje"}</option>
                     </select>
                   </div>
-                  <textarea aria-label="Nova evolução" placeholder="Como foi a sessão, o que foi trabalhado, tarefas combinadas…" value={novo.texto} onChange={(e) => setNovo({ ...novo, texto: e.target.value })} />
+                  <EditorEvolucao key={edKey} placeholder="Como foi a sessão, o que foi trabalhado, tarefas combinadas…" aoMudar={(v) => setNovo((n) => ({ ...n, texto: v.texto, doc: v.doc }))} />
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}><span style={{ fontSize: 12, color: "#8A7A7E" }}>Depois de salva, a evolução não pode ser apagada, só corrigida com uma nota.</span><button type="button" className="bt" onClick={salvarEvo} disabled={pend} style={{ width: "auto" }}>{pend ? "Salvando…" : "Salvar evolução"}</button></div>
                 </div>
                 <div style={{ marginTop: 10 }}>
                   {evos.map((e) => (
                     <article className="evo" key={e.id}>
                       <div className="cab"><b>{diaLongo(e.data)}</b>{e.rotulo ? <span className="pill p-on">{e.rotulo}</span> : null}</div>
-                      <p style={{ whiteSpace: "pre-wrap" }}>{e.texto}</p>
+                      <TextoRico texto={e.texto} doc={e.doc} />
                       {e.correcoes.map((c) => <div className="corr" key={c.id} style={{ whiteSpace: "pre-wrap" }}>{c.texto}<span>{c.quando}</span></div>)}
                       <span className="reg"><Icone nome="escudo" tam={14} />{e.reg}</span>
                       {corr?.id === e.id ? (
@@ -434,7 +441,7 @@ export default function Prontuario(props: Props) {
           {[...evos].reverse().map((e) => (
             <div key={e.id} style={{ marginBottom: 12 }}>
               <p><b>{diaLongo(e.data)}{e.rotulo ? ` · ${e.rotulo}` : ""}</b></p>
-              <p style={{ whiteSpace: "pre-wrap" }}>{e.texto}</p>
+              <TextoRico texto={e.texto} doc={e.doc} />
               {e.correcoes.map((c) => <p key={c.id} style={{ whiteSpace: "pre-wrap" }}><i>Correção ({c.quando.replace("Correção registrada em ", "")}):</i> {c.texto}</p>)}
             </div>
           ))}
